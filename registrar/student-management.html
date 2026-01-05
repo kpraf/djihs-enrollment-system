@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+   <head>
+      <meta charset="utf-8"/>
+      <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+      <title>Key Teacher | Student Management</title>
+      <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+      <script>
+         tailwind.config = {
+             darkMode: "class",
+             theme: {
+                 extend: {
+                     colors: {
+                         "primary": "#085019",
+                         "background-light": "#f6f7f8",
+                         "background-dark": "#101922",
+                     },
+                     fontFamily: {
+                         "display": ["Inter", "sans-serif"]
+                     },
+                     borderRadius: {
+                         "DEFAULT": "0.25rem",
+                         "lg": "0.5rem",
+                         "xl": "0.75rem",
+                         "full": "9999px"
+                     },
+                 },
+             },
+         }
+      </script>
+      <style>
+         .material-symbols-outlined {
+         font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+         font-size: 24px;
+         }
+      </style>
+   </head>
+   <body class="bg-background-light dark:bg-background-dark font-display text-[#111418] dark:text-gray-200">
+      <div class="flex h-screen">
+            <!-- Sidebar -->
+            <aside class="w-72 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex transition-colors duration-200">
+               <div>
+                  <div class="p-6">
+                     <div class="flex items-center gap-3 mb-1">
+                        <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center overflow-hidden shrink-0 border border-yellow-200 dark:border-yellow-700">
+                           <img alt="School Logo" class="w-full h-full object-cover opacity-90" src="/assets/images/djihs-logo-small.png"/>
+                        </div>
+                     </div>
+                     <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS Registrar</h1>
+                     <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
+                  </div>
+                  <nav class="px-4 space-y-1">
+                  <!-- Dashboard -->
+                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group"
+                     href="/registrar/dashboard.html">
+                     <span class="material-icons-outlined text-[20px]">dashboard</span>
+                     <span class="text-sm font-medium">Dashboard</span>
+                  </a>
+
+                  <!-- Manage Sections -->
+                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group"
+                     href="/registrar/enrollment-management.html">
+                     <span class="material-icons-outlined text-[20px]">how_to_reg</span>
+                     <span class="text-sm font-medium">Enrollment Management</span>
+                  </a>
+
+                  <!-- All Sections -->
+                  <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm"
+                     href="/registrar/student-management.html">
+                     <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">groups</span>
+                     <span class="text-sm font-medium">Student Management</span>
+                  </a>
+                  </nav>
+               </div>
+               <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                  <div class="flex items-center gap-3 mb-4 px-2">
+                     <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm">
+                        IC
+                     </div>
+                     <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate">Registrar Name</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Registrar</p>
+                     </div>
+                  </div>
+                  <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                  <span class="material-icons-outlined text-[18px]">logout</span>
+                  Logout
+                  </button>
+               </div>
+            </aside>
+         <!-- Main Content -->
+         <main class="flex-1 flex-col overflow-y-auto">
+            <div class="flex flex-col p-6 space-y-6">
+               <!-- PageHeading -->
+               <header class="flex flex-wrap items-center justify-between gap-4">
+                  <div class="flex flex-col gap-1">
+                     <h1 class="text-3xl font-black tracking-tight text-[#111418] dark:text-white">Student Management</h1>
+                     <p class="text-base font-normal text-gray-500 dark:text-gray-400">Search, filter, and manage all student records.</p>
+                  </div>
+                  <button class="flex h-10 cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-lg bg-primary px-4 text-white text-sm font-bold">
+                  <span class="material-symbols-outlined" style="font-size: 20px;">add</span>
+                  <span class="truncate">Add New Student</span>
+                  </button>
+               </header>
+               <!-- Main dashboard area -->
+               <div class="grid grid-cols-1 gap-6 lg:grid-cols-4">
+                  <!-- Filter Sidebar -->
+                  <div class="col-span-1 flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-background-dark">
+                     <h3 class="text-lg font-bold text-gray-800 dark:text-white">Filters</h3>
+                     <!-- SearchBar -->
+                     <div class="flex flex-col">
+                        <label class="mb-2 text-sm font-medium text-gray-600 dark:text-gray-300" for="search">Search Student</label>
+                        <div class="relative flex w-full items-stretch">
+                           <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                              <span class="material-symbols-outlined text-gray-400" style="font-size:20px;">search</span>
+                           </div>
+                           <input class="form-input w-full rounded-lg border-gray-300 bg-background-light py-2 pl-10 pr-4 text-sm text-[#111418] placeholder:text-gray-400 focus:border-primary focus:ring-primary dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-500" id="search" placeholder="Name or Student ID..."/>
+                        </div>
+                     </div>
+                     <div class="flex flex-col">
+                        <label class="mb-2 text-sm font-medium text-gray-600 dark:text-gray-300" for="grade-level">Grade Level</label>
+                        <select class="form-select w-full rounded-lg border-gray-300 bg-background-light text-sm text-[#111418] focus:border-primary focus:ring-primary dark:border-gray-600 dark:bg-gray-700 dark:text-white" id="grade-level">
+                           <option>All Grades</option>
+                           <option>9</option>
+                           <option>10</option>
+                           <option>11</option>
+                           <option>12</option>
+                        </select>
+                     </div>
+                     <div class="flex flex-col">
+                        <label class="mb-2 text-sm font-medium text-gray-600 dark:text-gray-300" for="section">Section</label>
+                        <select class="form-select w-full rounded-lg border-gray-300 bg-background-light text-sm text-[#111418] focus:border-primary focus:ring-primary dark:border-gray-600 dark:bg-gray-700 dark:text-white" id="section">
+                           <option>All Sections</option>
+                           <option>A</option>
+                           <option>B</option>
+                           <option>C</option>
+                        </select>
+                     </div>
+                     <div class="flex flex-col">
+                        <label class="mb-2 text-sm font-medium text-gray-600 dark:text-gray-300" for="enrollment-status">Enrollment Status</label>
+                        <select class="form-select w-full rounded-lg border-gray-300 bg-background-light text-sm text-[#111418] focus:border-primary focus:ring-primary dark:border-gray-600 dark:bg-gray-700 dark:text-white" id="enrollment-status">
+                           <option>All Statuses</option>
+                           <option>Enrolled</option>
+                           <option>Pending</option>
+                           <option>Withdrawn</option>
+                        </select>
+                     </div>
+                     <div class="border-t border-gray-200 dark:border-gray-700 pt-4 flex flex-col gap-2">
+                        <button class="flex h-10 w-full items-center justify-center rounded-lg bg-primary text-sm font-bold text-white">Apply Filters</button>
+                        <button class="flex h-10 w-full items-center justify-center rounded-lg bg-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Clear All</button>
+                     </div>
+                  </div>
+                  <!-- Student List / Table -->
+                  <div class="col-span-1 lg:col-span-3">
+                     <div class="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-background-dark">
+                        <div class="overflow-x-auto">
+                           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                              <thead class="bg-gray-50 dark:bg-gray-800">
+                                 <tr>
+                                    <th class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-white sm:pl-6" scope="col"><input class="form-checkbox h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary dark:border-gray-600 dark:bg-gray-700" type="checkbox"/></th>
+                                    <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white" scope="col">Student ID</th>
+                                    <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white" scope="col">Full Name</th>
+                                    <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white" scope="col">Grade</th>
+                                    <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white" scope="col">Section</th>
+                                    <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white" scope="col">Enrollment Status</th>
+                                    <th class="relative py-3.5 pl-3 pr-4 sm:pr-6" scope="col"><span class="sr-only">Actions</span></th>
+                                 </tr>
+                              </thead>
+                              <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-background-dark">
+                                 <tr>
+                                    <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6"><input class="form-checkbox h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary dark:border-gray-600 dark:bg-gray-700" type="checkbox"/></td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">10234</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm font-medium text-gray-900 dark:text-white">Olivia Chen</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">10</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">A</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm">
+                                       <span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/40 dark:text-green-300">Enrolled</span>
+                                    </td>
+                                    <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                                       <div class="flex items-center justify-end gap-2">
+                                          <button class="text-gray-400 hover:text-primary dark:hover:text-primary"><span class="material-symbols-outlined" style="font-size:20px;">edit</span></button>
+                                          <button class="text-gray-400 hover:text-primary dark:hover:text-primary"><span class="material-symbols-outlined" style="font-size:20px;">more_vert</span></button>
+                                       </div>
+                                    </td>
+                                 </tr>
+                                 <tr>
+                                    <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6"><input class="form-checkbox h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary dark:border-gray-600 dark:bg-gray-700" type="checkbox"/></td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">10235</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm font-medium text-gray-900 dark:text-white">Benjamin Carter</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">11</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">B</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm">
+                                       <span class="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300">Pending</span>
+                                    </td>
+                                    <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                                       <div class="flex items-center justify-end gap-2">
+                                          <button class="text-gray-400 hover:text-primary dark:hover:text-primary"><span class="material-symbols-outlined" style="font-size:20px;">edit</span></button>
+                                          <button class="text-gray-400 hover:text-primary dark:hover:text-primary"><span class="material-symbols-outlined" style="font-size:20px;">more_vert</span></button>
+                                       </div>
+                                    </td>
+                                 </tr>
+                                 <tr>
+                                    <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6"><input class="form-checkbox h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary dark:border-gray-600 dark:bg-gray-700" type="checkbox"/></td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">10236</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm font-medium text-gray-900 dark:text-white">Sophia Rodriguez</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">9</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">C</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm">
+                                       <span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/40 dark:text-green-300">Enrolled</span>
+                                    </td>
+                                    <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                                       <div class="flex items-center justify-end gap-2">
+                                          <button class="text-gray-400 hover:text-primary dark:hover:text-primary"><span class="material-symbols-outlined" style="font-size:20px;">edit</span></button>
+                                          <button class="text-gray-400 hover:text-primary dark:hover:text-primary"><span class="material-symbols-outlined" style="font-size:20px;">more_vert</span></button>
+                                       </div>
+                                    </td>
+                                 </tr>
+                                 <tr>
+                                    <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6"><input class="form-checkbox h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary dark:border-gray-600 dark:bg-gray-700" type="checkbox"/></td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">10237</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm font-medium text-gray-900 dark:text-white">Liam Goldberg</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">12</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">A</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm">
+                                       <span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/40 dark:text-red-300">Withdrawn</span>
+                                    </td>
+                                    <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                                       <div class="flex items-center justify-end gap-2">
+                                          <button class="text-gray-400 hover:text-primary dark:hover:text-primary"><span class="material-symbols-outlined" style="font-size:20px;">edit</span></button>
+                                          <button class="text-gray-400 hover:text-primary dark:hover:text-primary"><span class="material-symbols-outlined" style="font-size:20px;">more_vert</span></button>
+                                       </div>
+                                    </td>
+                                 </tr>
+                              </tbody>
+                           </table>
+                        </div>
+                        <!-- Pagination -->
+                        <nav aria-label="Pagination" class="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-background-dark sm:px-6">
+                           <div class="hidden sm:block">
+                              <p class="text-sm text-gray-700 dark:text-gray-300">
+                                 Showing
+                                 <span class="font-medium">1</span>
+                                 to
+                                 <span class="font-medium">4</span>
+                                 of
+                                 <span class="font-medium">20</span>
+                                 results
+                              </p>
+                           </div>
+                           <div class="flex flex-1 justify-between sm:justify-end">
+                              <a class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700" href="#">Previous</a>
+                              <a class="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700" href="#">Next</a>
+                           </div>
+                        </nav>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </main>
+      </div>
+   </body>
+</html>

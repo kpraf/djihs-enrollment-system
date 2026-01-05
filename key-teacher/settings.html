@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+   <head>
+      <meta charset="utf-8"/>
+      <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+      <title>Key Teacher | Settings</title>
+      <link href="https://fonts.googleapis.com" rel="preconnect"/>
+      <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+      <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+      <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+      <script id="tailwind-config">
+         tailwind.config = {
+           darkMode: "class",
+           theme: {
+             extend: {
+               colors: {
+                 "primary": "#085019",
+                 "background-light": "#f6f7f8",
+                 "background-dark": "#101922",
+                 "card-light": "#ffffff",
+                 "card-dark": "#1a2530",
+                 "text-light": "#111418",
+                 "text-dark": "#f0f2f4",
+                 "subtext-light": "#617589",
+                 "subtext-dark": "#94a3b8",
+                 "border-light": "#dbe0e6",
+                 "border-dark": "#334155",
+                 "success": "#28a745",
+                 "error": "#dc3545",
+                 "warning": "#ffc107",
+               },
+               fontFamily: {
+                 "display": ["Inter", "sans-serif"]
+               },
+               borderRadius: {"DEFAULT": "0.5rem", "lg": "0.75rem", "xl": "1rem", "full": "9999px"},
+             },
+           },
+         }
+      </script>
+      <style>
+         .material-symbols-outlined {
+         font-variation-settings:
+         'FILL' 0,
+         'wght' 400,
+         'GRAD' 0,
+         'opsz' 24
+         }
+      </style>
+   </head>
+   <body class="bg-background-light dark:bg-background-dark font-display text-text-light dark:text-text-dark">
+      <div class="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden">
+         <div class="flex min-h-screen">
+            <!-- SideNavBar -->
+            <aside class="w-72 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex transition-colors duration-200">
+               <div>
+                  <div class="p-6">
+                     <div class="flex items-center gap-3 mb-1">
+                        <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center overflow-hidden shrink-0 border border-yellow-200 dark:border-yellow-700">
+                           <img alt="School Logo" class="w-full h-full object-cover opacity-90" src="/assets/images/djihs-logo-small.png"/>
+                        </div>
+                     </div>
+                     <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS Key Teacher</h1>
+                     <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
+                  </div>
+                  <nav class="px-4 space-y-1">
+                  <!-- Dashboard -->
+                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group"
+                     href="/key-teacher/dashboard.html">
+                     <span class="material-icons-outlined text-[20px]">dashboard</span>
+                     <span class="text-sm font-medium">Dashboard</span>
+                  </a>
+
+                  <!-- Manage Sections -->
+                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group"
+                     href="/key-teacher/manage-sections.html">
+                     <span class="material-icons-outlined text-[20px]">view_quilt</span>
+                     <span class="text-sm font-medium">Manage Sections</span>
+                  </a>
+
+                  <!-- All Sections -->
+                  <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm"
+                     href="/key-teacher/settings.html">
+                     <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">settings</span>
+                     <span class="text-sm font-medium">Settings</span>
+                  </a>
+                  </nav>
+               </div>
+               <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                  <div class="flex items-center gap-3 mb-4 px-2">
+                     <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm">
+                        IC
+                     </div>
+                     <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate">Key Teacher Name</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Key Teacher</p>
+                     </div>
+                  </div>
+                  <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                  <span class="material-icons-outlined text-[18px]">logout</span>
+                  Logout
+                  </button>
+               </div>
+            </aside>
+            <!-- Main Content -->
+            <main class="flex-1 p-8">
+               <div class="mx-auto max-w-4xl">
+                  <!-- Breadcrumbs -->
+                  <div class="flex flex-wrap gap-2 pb-4">
+                     <a class="text-subtext-light dark:text-subtext-dark text-sm font-medium leading-normal" href="#">Dashboard</a>
+                     <span class="text-subtext-light dark:text-subtext-dark text-sm font-medium leading-normal">/</span>
+                     <a class="text-subtext-light dark:text-subtext-dark text-sm font-medium leading-normal" href="#">Settings</a>
+                     <span class="text-subtext-light dark:text-subtext-dark text-sm font-medium leading-normal">/</span>
+                     <span class="text-text-light dark:text-text-dark text-sm font-medium leading-normal">Enrollment</span>
+                  </div>
+                  <!-- PageHeading -->
+                  <div class="flex flex-wrap justify-between gap-3 pb-8">
+                     <p class="text-text-light dark:text-text-dark text-3xl font-black leading-tight tracking-[-0.033em] min-w-72">Enrollment Settings</p>
+                  </div>
+                  <!-- Settings Cards -->
+                  <div class="flex flex-col gap-8">
+                     <!-- Card 1: Default Section Capacity -->
+                     <div class="flex flex-col justify-start rounded-lg bg-card-light dark:bg-card-dark shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)]">
+                        <div class="flex flex-col gap-2 p-6 border-b border-border-light dark:border-border-dark">
+                           <p class="text-text-light dark:text-text-dark text-lg font-bold leading-tight tracking-[-0.015em]">Default Section Capacity</p>
+                           <p class="text-subtext-light dark:text-subtext-dark text-sm font-normal leading-normal">Set the default number of students for newly created sections in your grade level.</p>
+                        </div>
+                        <div class="p-6">
+                           <div class="max-w-xs">
+                              <label class="flex flex-col w-full">
+                                 <p class="text-text-light dark:text-text-dark text-sm font-medium leading-normal pb-2">Default students per section</p>
+                                 <div class="relative">
+                                    <input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-text-light dark:text-text-dark focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:border-primary h-12 placeholder:text-subtext-light dark:placeholder:text-subtext-dark px-4 text-base font-normal leading-normal" type="number" value="30"/>
+                                 </div>
+                              </label>
+                           </div>
+                        </div>
+                        <div class="flex justify-end items-center gap-3 p-6 bg-gray-50 dark:bg-black/20 rounded-b-lg">
+                           <button class="px-4 py-2 text-sm font-medium text-text-light dark:text-text-dark bg-transparent rounded-lg hover:bg-gray-200 dark:hover:bg-white/10">Cancel</button>
+                           <button class="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90">Save Changes</button>
+                        </div>
+                     </div>
+                     <!-- Card 2: Academic Year Configuration -->
+                     <div class="flex flex-col justify-start rounded-lg bg-card-light dark:bg-card-dark shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)]">
+                        <div class="flex flex-col gap-2 p-6 border-b border-border-light dark:border-border-dark">
+                           <p class="text-text-light dark:text-text-dark text-lg font-bold leading-tight tracking-[-0.015em]">Academic Year Settings</p>
+                           <p class="text-subtext-light dark:text-subtext-dark text-sm font-normal leading-normal">Configure the academic calendar. Activating this will set the official start and end dates for the enrollment period.</p>
+                        </div>
+                        <div class="p-6 flex flex-col gap-6">
+                           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <label class="flex flex-col w-full">
+                                 <p class="text-text-light dark:text-text-dark text-sm font-medium leading-normal pb-2">Start Month</p>
+                                 <select class="form-select flex w-full min-w-0 flex-1 rounded-lg text-text-light dark:text-text-dark focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:border-primary h-12 px-4 text-base font-normal leading-normal">
+                                    <option>August</option>
+                                    <option>September</option>
+                                    <option>October</option>
+                                 </select>
+                              </label>
+                              <label class="flex flex-col w-full">
+                                 <p class="text-text-light dark:text-text-dark text-sm font-medium leading-normal pb-2">End Month</p>
+                                 <select class="form-select flex w-full min-w-0 flex-1 rounded-lg text-text-light dark:text-text-dark focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:border-primary h-12 px-4 text-base font-normal leading-normal">
+                                    <option>May</option>
+                                    <option>June</option>
+                                    <option>July</option>
+                                 </select>
+                              </label>
+                           </div>
+                           <div class="flex items-center justify-between p-4 rounded-lg bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark">
+                              <label class="text-text-light dark:text-text-dark text-sm font-medium" for="active-year-toggle">Set as Active Academic Year</label>
+                              <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                                 <input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer" id="active-year-toggle" name="toggle" type="checkbox"/>
+                                 <label class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer" for="active-year-toggle"></label>
+                              </div>
+                              <style>
+                                 .toggle-checkbox:checked { right: 0; border-color: #137fec; }
+                                 .toggle-checkbox:checked + .toggle-label { background-color: #137fec; }
+                              </style>
+                           </div>
+                        </div>
+                        <div class="flex justify-end items-center gap-3 p-6 bg-gray-50 dark:bg-black/20 rounded-b-lg">
+                           <button class="px-4 py-2 text-sm font-medium text-text-light dark:text-text-dark bg-transparent rounded-lg hover:bg-gray-200 dark:hover:bg-white/10">Cancel</button>
+                           <button class="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90">Save Changes</button>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </main>
+         </div>
+      </div>
+   </body>
+</html>

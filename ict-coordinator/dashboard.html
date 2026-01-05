@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <meta charset="utf-8"/>
+      <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+      <title>ICT Coordinator | Dashboard</title>
+      <link href="https://fonts.googleapis.com" rel="preconnect"/>
+      <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+      <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+      <script>
+         tailwind.config = {
+           darkMode: "class",
+           theme: {
+             extend: {
+               colors: {
+                 primary: "#085019", // A deep forest green
+                 "primary-hover": "#166534",
+                 "background-light": "#f3f4f6", // gray-100
+                 "background-dark": "#111827", // gray-900
+                 "card-light": "#ffffff",
+                 "card-dark": "#1f2937", // gray-800
+                 "text-main-light": "#1f2937", // gray-800
+                 "text-main-dark": "#f9fafb", // gray-50
+                 "text-sub-light": "#6b7280", // gray-500
+                 "text-sub-dark": "#9ca3af", // gray-400
+               },
+               fontFamily: {
+                 sans: ["Inter", "sans-serif"],
+               },
+               borderRadius: {
+                 DEFAULT: "0.5rem",
+                 'xl': '0.75rem',
+                 '2xl': '1rem',
+               },
+             },
+           },
+         };
+      </script>
+      <style>::-webkit-scrollbar {
+         width: 8px;
+         }
+         ::-webkit-scrollbar-track {
+         background: transparent; 
+         }
+         ::-webkit-scrollbar-thumb {
+         background: #cbd5e1; 
+         border-radius: 4px;
+         }
+         ::-webkit-scrollbar-thumb:hover {
+         background: #94a3b8; 
+         }
+         .dark ::-webkit-scrollbar-thumb {
+         background: #475569;
+         }
+      </style>
+   </head>
+   <body class="bg-background-light dark:bg-background-dark font-sans text-text-main-light dark:text-text-main-dark antialiased transition-colors duration-200">
+      <div class="flex h-screen overflow-hidden">
+          <!-- SideNavBar -->
+         <aside class="w-72 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex transition-colors duration-200">
+            <div>
+               <div class="p-6">
+                  <div class="flex items-center gap-3 mb-1">
+                     <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center overflow-hidden shrink-0 border border-yellow-200 dark:border-yellow-700">
+                        <img alt="School Logo" class="w-full h-full object-cover opacity-90" src="/assets/images/djihs-logo-small.png"/>
+                     </div>
+                  </div>
+                  <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS ICT Coordinator</h1>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
+               </div>
+               <nav class="px-4 space-y-1">
+                  <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm" href="/ict-coordinator/dashboard.html">
+                  <span class="material-icons-outlined text-[20px]">dashboard</span>
+                  <span class="text-sm font-medium">Dashboard</span>
+                  </a>
+                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="/ict-coordinator/staff-account-management.html">
+                  <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">manage_accounts</span>
+                  <span class="text-sm font-medium">Staff Account Management</span>
+                  </a>
+                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="/ict-coordinator/enrollment-management.html">
+                  <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">school</span>
+                  <span class="text-sm font-medium">Students Management</span>
+                  </a>
+                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="/ict-coordinator/manage-access.html">
+                  <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">admin_panel_settings</span>
+                  <span class="text-sm font-medium">System Access Control</span>
+                  </a>
+               </nav>
+            </div>
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+               <div class="flex items-center gap-3 mb-4 px-2">
+                  <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm">
+                     IC
+                  </div>
+                  <div class="flex-1 min-w-0">
+                     <p class="text-sm font-medium text-gray-900 dark:text-white truncate">ICT Coordinator Name</p>
+                     <p class="text-xs text-gray-500 dark:text-gray-400 truncate">ICT Coordinator</p>
+                  </div>
+               </div>
+               <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+               <span class="material-icons-outlined text-[18px]">logout</span>
+               Logout
+               </button>
+            </div>
+         </aside>
+          <!-- Main Content -->
+         <main class="flex-1 overflow-y-auto h-full p-4 md:p-8">
+            <header class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+               <div>
+                  <h2 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">ICT Dashboard</h2>
+                  <p class="text-gray-500 dark:text-gray-400 mt-1">Overview of system health and user activity.</p>
+               </div>
+               <div class="flex items-center text-gray-500 dark:text-gray-400 bg-white dark:bg-card-dark px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                  <span class="material-icons-outlined mr-2 text-primary dark:text-green-400">calendar_today</span>
+                  <span class="text-sm font-medium">October 26, 2023</span>
+               </div>
+            </header>
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+               <div class="bg-card-light dark:bg-card-dark p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
+                  <div class="flex justify-between items-start mb-4">
+                     <p class="text-sm font-medium text-gray-500 dark:text-gray-400">System Status</p>
+                     <span class="material-icons-outlined text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-1.5 rounded-lg">cloud_done</span>
+                  </div>
+                  <div>
+                     <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Online</h3>
+                     <p class="text-sm font-medium text-green-600 dark:text-green-400">99.9% Uptime</p>
+                  </div>
+               </div>
+               <div class="bg-card-light dark:bg-card-dark p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
+                  <div class="flex justify-between items-start mb-4">
+                     <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Active Users</p>
+                     <span class="material-icons-outlined text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-1.5 rounded-lg">perm_identity</span>
+                  </div>
+                  <div>
+                     <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">12</h3>
+                     <p class="text-sm font-medium text-green-600 dark:text-green-400">+2 today</p>
+                  </div>
+               </div>
+               <div class="bg-card-light dark:bg-card-dark p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
+                  <div class="flex justify-between items-start mb-4">
+                     <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Recent Logins</p>
+                     <span class="material-icons-outlined text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-1.5 rounded-lg">login</span>
+                  </div>
+                  <div>
+                     <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">56</h3>
+                     <p class="text-sm font-medium text-gray-500 dark:text-gray-400">In last 24h</p>
+                  </div>
+               </div>
+               <div class="bg-card-light dark:bg-card-dark p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
+                  <div class="flex justify-between items-start mb-4">
+                     <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Accounts</p>
+                     <span class="material-icons-outlined text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-1.5 rounded-lg">groups</span>
+                  </div>
+                  <div>
+                     <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">245</h3>
+                     <p class="text-sm font-medium text-green-600 dark:text-green-400">+5 this week</p>
+                  </div>
+               </div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+               <div class="lg:col-span-2 bg-card-light dark:bg-card-dark p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col h-full">
+                  <div class="mb-6">
+                     <h3 class="text-lg font-bold text-gray-900 dark:text-white">User Login Activity</h3>
+                  </div>
+                  <div class="relative w-full flex-1">
+                     <div class="mb-6">
+                        <span class="text-4xl font-bold text-gray-900 dark:text-white block">850</span>
+                        <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Last 7 Days <span class="text-green-600 dark:text-green-400 ml-1">+15.3%</span></span>
+                     </div>
+                     <div class="relative w-full flex-1">
+                        <svg class="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 1000 400">
+                           <defs>
+                              <linearGradient id="gradient" x1="0%" x2="0%" y1="0%" y2="100%">
+                                 <stop offset="0%" style="stop-color:#14532d;stop-opacity:0.2"></stop>
+                                 <stop offset="100%" style="stop-color:#14532d;stop-opacity:0"></stop>
+                              </linearGradient>
+                              <linearGradient id="gradientDark" x1="0%" x2="0%" y1="0%" y2="100%">
+                                 <stop offset="0%" style="stop-color:#4ade80;stop-opacity:0.2"></stop>
+                                 <stop offset="100%" style="stop-color:#4ade80;stop-opacity:0"></stop>
+                              </linearGradient>
+                           </defs>
+                           <path class="fill-primary dark:fill-green-400/20 opacity-10 dark:opacity-20 stroke-none" d="M0,300 C50,280 100,150 150,150 C200,150 200,240 250,240 C300,240 300,160 350,160 C400,160 400,240 450,240 C500,240 500,180 550,180 C600,180 620,280 650,290 C680,300 700,320 730,280 C760,180 750,120 780,120 C810,120 830,220 860,230 C890,240 910,290 940,290 C970,290 980,160 1000,150 L1000,400 L0,400 Z"></path>
+                           <path class="text-primary dark:text-green-400" d="M0,300 C50,280 100,150 150,150 C200,150 200,240 250,240 C300,240 300,160 350,160 C400,160 400,240 450,240 C500,240 500,180 550,180 C600,180 620,280 650,290 C680,300 700,320 730,280 C760,180 750,120 780,120 C810,120 830,220 860,230 C890,240 910,290 940,290 C970,290 980,160 1000,150" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" vector-effect="non-scaling-stroke"></path>
+                        </svg>
+                        <div class="flex justify-between mt-4 text-xs font-medium text-gray-400 dark:text-gray-500">
+                           <span>Mon</span>
+                           <span>Tue</span>
+                           <span>Wed</span>
+                           <span>Thu</span>
+                           <span>Fri</span>
+                           <span>Sat</span>
+                           <span>Sun</span>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+               <div class="bg-card-light dark:bg-card-dark p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col">
+                  <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-6">Recent Activity</h3>
+                  <div class="space-y-6 flex-1 overflow-y-auto pr-2">
+                     <div class="flex gap-4">
+                        <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                           <span class="material-icons-outlined text-blue-600 dark:text-blue-400 text-sm">person_add</span>
+                        </div>
+                        <div>
+                           <p class="text-sm font-medium text-gray-900 dark:text-gray-200">New account created for J. Doe</p>
+                           <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">2 minutes ago</p>
+                        </div>
+                     </div>
+                     <div class="flex gap-4">
+                        <div class="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center shrink-0">
+                           <span class="material-icons-outlined text-yellow-600 dark:text-yellow-400 text-sm">lock</span>
+                        </div>
+                        <div>
+                           <p class="text-sm font-medium text-gray-900 dark:text-gray-200">Failed login attempt for Admin</p>
+                           <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">15 minutes ago</p>
+                        </div>
+                     </div>
+                     <div class="flex gap-4">
+                        <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
+                           <span class="material-icons-outlined text-green-600 dark:text-green-400 text-sm">verified_user</span>
+                        </div>
+                        <div>
+                           <p class="text-sm font-medium text-gray-900 dark:text-gray-200">Permissions updated for S. Smith</p>
+                           <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">1 hour ago</p>
+                        </div>
+                     </div>
+                     <div class="flex gap-4">
+                        <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                           <span class="material-icons-outlined text-blue-600 dark:text-blue-400 text-sm">person_add</span>
+                        </div>
+                        <div>
+                           <p class="text-sm font-medium text-gray-900 dark:text-gray-200">New account created for M. Jones</p>
+                           <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">3 hours ago</p>
+                        </div>
+                     </div>
+                     <div class="flex gap-4">
+                        <div class="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                           <span class="material-icons-outlined text-red-600 dark:text-red-400 text-sm">person_off</span>
+                        </div>
+                        <div>
+                           <p class="text-sm font-medium text-gray-900 dark:text-gray-200">Account for P. Miller disabled</p>
+                           <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Yesterday</p>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+            <div class="mb-4">
+               <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Quick Actions</h3>
+               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div class="bg-card-light dark:bg-card-dark p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between">
+                     <div>
+                        <div class="mb-3 text-primary dark:text-green-400">
+                           <span class="material-icons-outlined text-3xl">manage_accounts</span>
+                        </div>
+                        <h4 class="text-base font-bold text-gray-900 dark:text-white mb-2">Manage Staff Accounts</h4>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Create, edit, and manage accounts for all school staff members.</p>
+                     </div>
+                     <div>
+                        <button class="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors inline-flex items-center" href="/ict-coordinator/staff-account-management.html">
+                        Manage Accounts
+                        </button>
+                     </div>
+                  </div>
+                  <div class="bg-card-light dark:bg-card-dark p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between">
+                     <div>
+                        <div class="mb-3 text-primary dark:text-green-400">
+                           <span class="material-icons-outlined text-3xl">admin_panel_settings</span>
+                        </div>
+                        <h4 class="text-base font-bold text-gray-900 dark:text-white mb-2">Configure Access Roles</h4>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Define and assign user roles and permissions to control system access.</p>
+                     </div>
+                     <div>
+                        <button class="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors inline-flex items-center" href="/ict-coordinator/manage-access.html">
+                        Configure Roles
+                        </button>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </main>
+      </div>
+   </body>
+</html>

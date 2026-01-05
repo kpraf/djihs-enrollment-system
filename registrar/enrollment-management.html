@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <meta charset="utf-8"/>
+      <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+      <title>Key Teacher | Enrollment Management</title>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+      <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+      <script id="tailwind-config">
+         tailwind.config = {
+             darkMode: "class",
+             theme: {
+                 extend: {
+                     colors: {
+                         "primary": "#085019", // Academic Blue
+                         "background-light": "#F4F6F8",
+                         "background-dark": "#101922",
+                         "success": "#2ECC71",
+                         "warning": "#F39C12",
+                         "error": "#E74C3C",
+                     },
+                     fontFamily: {
+                         "display": ["Inter", "sans-serif"]
+                     },
+                     borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                 },
+             },
+         }
+      </script>
+      <style>
+         body {
+         font-family: 'Inter', sans-serif;
+         }
+      </style>
+   </head>
+   <body class="bg-background-light dark:bg-background-dark font-display">
+      <div class="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden">
+         <div class="flex min-h-screen">
+            <!-- Sidebar -->
+            <aside class="w-72 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex transition-colors duration-200">
+               <div>
+                  <div class="p-6">
+                     <div class="flex items-center gap-3 mb-1">
+                        <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center overflow-hidden shrink-0 border border-yellow-200 dark:border-yellow-700">
+                           <img alt="School Logo" class="w-full h-full object-cover opacity-90" src="/assets/images/djihs-logo-small.png"/>
+                        </div>
+                     </div>
+                     <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS Registrar</h1>
+                     <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
+                  </div>
+                  <nav class="px-4 space-y-1">
+                  <!-- Dashboard -->
+                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group"
+                     href="/registrar/dashboard.html">
+                     <span class="material-icons-outlined text-[20px]">dashboard</span>
+                     <span class="text-sm font-medium">Dashboard</span>
+                  </a>
+
+                  <!-- Manage Sections -->
+                  <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm"
+                     href="/registrar/enrollment-management.html">
+                     <span class="material-icons-outlined text-[20px]">how_to_reg</span>
+                     <span class="text-sm font-medium">Enrollment Management</span>
+                  </a>
+
+                  <!-- All Sections -->
+                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group"
+                     href="/registrar/student-management.html">
+                     <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">groups</span>
+                     <span class="text-sm font-medium">Student Management</span>
+                  </a>
+                  </nav>
+               </div>
+               <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                  <div class="flex items-center gap-3 mb-4 px-2">
+                     <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm">
+                        IC
+                     </div>
+                     <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate">Registrar Name</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Registrar</p>
+                     </div>
+                  </div>
+                  <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                  <span class="material-icons-outlined text-[18px]">logout</span>
+                  Logout
+                  </button>
+               </div>
+            </aside>
+            <!-- Main Content -->
+            <div class="flex-1 flex flex-col">
+               <main class="layout-container flex h-full grow flex-col">
+                  <div class="px-6 lg:px-10 flex flex-1 justify-center py-8">
+                     <div class="layout-content-container flex flex-col w-full max-w-7xl">
+                        <div class="flex flex-col gap-8">
+                           <div class="bg-white dark:bg-slate-900/70 p-6 rounded-xl shadow-sm space-y-8">
+                              <div class="space-y-4">
+                                 <h3 class="text-lg font-semibold text-slate-800 dark:text-white border-b border-slate-200 dark:border-slate-800 pb-2">Enrollment Details</h3>
+                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <label class="flex flex-col">
+                                       <p class="text-slate-800 dark:text-white text-sm font-medium leading-normal pb-2">School Year</p>
+                                       <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" placeholder="e.g., 2024-2025" type="text"/>
+                                    </label>
+                                    <label class="flex flex-col">
+                                       <p class="text-slate-800 dark:text-white text-sm font-medium leading-normal pb-2">Grade Level to Enroll</p>
+                                       <select class="form-select flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 text-base font-normal leading-normal">
+                                          <option>Grade 7</option>
+                                          <option>Grade 8</option>
+                                          <option>Grade 9</option>
+                                          <option>Grade 10</option>
+                                          <option>Grade 11</option>
+                                          <option>Grade 12</option>
+                                       </select>
+                                    </label>
+                                    <label class="flex flex-col">
+                                       <p class="text-slate-800 dark:text-white text-sm font-medium leading-normal pb-2">Learner Reference No. (LRN)</p>
+                                       <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" placeholder="Enter LRN if applicable" type="text"/>
+                                    </label>
+                                 </div>
+                              </div>
+                              <div class="space-y-4">
+                                 <h3 class="text-lg font-semibold text-slate-800 dark:text-white border-b border-slate-200 dark:border-slate-800 pb-2">Type of Learner</h3>
+                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                       <p class="text-slate-800 dark:text-white text-sm font-medium leading-normal pb-2">REGULAR</p>
+                                       <div class="flex flex-wrap gap-x-6 gap-y-2"><label class="flex items-center gap-2 text-slate-600 dark:text-slate-300"><input class="form-radio text-primary focus:ring-primary/50" name="learner-type" type="radio"/>Old Student</label><label class="flex items-center gap-2 text-slate-600 dark:text-slate-300"><input class="form-radio text-primary focus:ring-primary/50" name="learner-type" type="radio"/>New Student</label><label class="flex items-center gap-2 text-slate-600 dark:text-slate-300"><input class="form-radio text-primary focus:ring-primary/50" name="learner-type" type="radio"/>ALS</label><label class="flex items-center gap-2 text-slate-600 dark:text-slate-300"><input class="form-radio text-primary focus:ring-primary/50" name="learner-type" type="radio"/>Balik-aral</label></div>
+                                    </div>
+                                    <div>
+                                       <p class="text-slate-800 dark:text-white text-sm font-medium leading-normal pb-2">IRREGULAR</p>
+                                       <div class="flex flex-wrap gap-x-6 gap-y-2"><label class="flex items-center gap-2 text-slate-600 dark:text-slate-300"><input class="form-radio text-primary focus:ring-primary/50" name="learner-type" type="radio"/>Balik-aral</label><label class="flex items-center gap-2 text-slate-600 dark:text-slate-300"><input class="form-radio text-primary focus:ring-primary/50" name="learner-type" type="radio"/>Repeater</label><label class="flex items-center gap-2 text-slate-600 dark:text-slate-300"><input class="form-radio text-primary focus:ring-primary/50" name="learner-type" type="radio"/>Transferee</label></div>
+                                    </div>
+                                 </div>
+                              </div>
+                              <div class="space-y-4">
+                                 <h3 class="text-lg font-semibold text-slate-800 dark:text-white border-b border-slate-200 dark:border-slate-800 pb-2">Track (For Grade 11 &amp; 12)</h3>
+                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                       <p class="text-slate-800 dark:text-white text-sm font-medium leading-normal pb-2">ACADEMIC</p>
+                                       <div class="flex flex-wrap gap-x-6 gap-y-2"><label class="flex items-center gap-2 text-slate-600 dark:text-slate-300"><input class="form-radio text-primary focus:ring-primary/50" name="track" type="radio"/>ABM</label><label class="flex items-center gap-2 text-slate-600 dark:text-slate-300"><input class="form-radio text-primary focus:ring-primary/50" name="track" type="radio"/>HUMSS</label><label class="flex items-center gap-2 text-slate-600 dark:text-slate-300"><input class="form-radio text-primary focus:ring-primary/50" name="track" type="radio"/>STEM</label></div>
+                                    </div>
+                                    <div>
+                                       <p class="text-slate-800 dark:text-white text-sm font-medium leading-normal pb-2">TVL</p>
+                                       <div class="flex flex-wrap gap-x-6 gap-y-2"><label class="flex items-center gap-2 text-slate-600 dark:text-slate-300"><input class="form-radio text-primary focus:ring-primary/50" name="track" type="radio"/>HE-COOKERY/BPP/FBS NCII</label><label class="flex items-center gap-2 text-slate-600 dark:text-slate-300"><input class="form-radio text-primary focus:ring-primary/50" name="track" type="radio"/>ICT-CSS NCII</label><label class="flex items-center gap-2 text-slate-600 dark:text-slate-300"><input class="form-radio text-primary focus:ring-primary/50" name="track" type="radio"/>IA-EIM NCII</label></div>
+                                    </div>
+                                 </div>
+                              </div>
+                              <div class="space-y-4">
+                                 <h3 class="text-lg font-semibold text-slate-800 dark:text-white border-b border-slate-200 dark:border-slate-800 pb-2">Learner's Information</h3>
+                                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    <label class="flex flex-col md:col-span-1">
+                                       <p class="text-slate-800 dark:text-white text-sm font-medium leading-normal pb-2">Last Name</p>
+                                       <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" placeholder="e.g., Dela Cruz" type="text"/>
+                                    </label>
+                                    <label class="flex flex-col md:col-span-1">
+                                       <p class="text-slate-800 dark:text-white text-sm font-medium leading-normal pb-2">Given Name</p>
+                                       <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" placeholder="e.g., Juan" type="text"/>
+                                    </label>
+                                    <label class="flex flex-col">
+                                       <p class="text-slate-800 dark:text-white text-sm font-medium leading-normal pb-2">Middle Name</p>
+                                       <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" placeholder="e.g., Santos" type="text"/>
+                                    </label>
+                                    <label class="flex flex-col">
+                                       <p class="text-slate-800 dark:text-white text-sm font-medium leading-normal pb-2">Suffix</p>
+                                       <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" placeholder="e.g., Jr." type="text"/>
+                                    </label>
+                                    <label class="flex flex-col">
+                                       <p class="text-slate-800 dark:text-white text-sm font-medium leading-normal pb-2">Birthdate</p>
+                                       <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" type="date"/>
+                                    </label>
+                                    <label class="flex flex-col">
+                                       <p class="text-slate-800 dark:text-white text-sm font-medium leading-normal pb-2">Age</p>
+                                       <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" placeholder="e.g., 16" type="number"/>
+                                    </label>
+                                    <label class="flex flex-col">
+                                       <p class="text-slate-800 dark:text-white text-sm font-medium leading-normal pb-2">Sex</p>
+                                       <select class="form-select flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 text-base font-normal leading-normal">
+                                          <option>Male</option>
+                                          <option>Female</option>
+                                       </select>
+                                    </label>
+                                    <label class="flex flex-col">
+                                       <p class="text-slate-800 dark:text-white text-sm font-medium leading-normal pb-2">Religion</p>
+                                       <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" placeholder="e.g., Roman Catholic" type="text"/>
+                                    </label>
+                                 </div>
+                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                       <p class="text-slate-800 dark:text-white text-sm font-medium leading-normal pb-2">Member of IP Community?</p>
+                                       <div class="flex gap-4"><label class="flex items-center gap-2 text-slate-600 dark:text-slate-300"><input class="form-radio text-primary focus:ring-primary/50" name="ip-community" type="radio"/>Yes</label><label class="flex items-center gap-2 text-slate-600 dark:text-slate-300"><input class="form-radio text-primary focus:ring-primary/50" name="ip-community" type="radio"/>No</label></div>
+                                    </div>
+                                    <div class="flex items-end gap-4">
+                                       <p class="text-slate-800 dark:text-white text-sm font-medium leading-normal pb-2">With Disability?</p>
+                                       <div class="flex gap-4"><label class="flex items-center gap-2 text-slate-600 dark:text-slate-300"><input class="form-radio text-primary focus:ring-primary/50" name="disability" type="radio"/>Yes</label><label class="flex items-center gap-2 text-slate-600 dark:text-slate-300"><input class="form-radio text-primary focus:ring-primary/50" name="disability" type="radio"/>No</label></div>
+                                       <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" placeholder="If yes, please specify" type="text"/>
+                                    </div>
+                                 </div>
+                                 <div class="pt-4">
+                                    <p class="text-slate-800 dark:text-white text-sm font-medium leading-normal pb-2">Current Address</p>
+                                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                                       <label class="flex flex-col md:col-span-1">
+                                          <p class="text-xs text-slate-500 dark:text-slate-400 pb-1">House No.</p>
+                                          <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" placeholder="e.g., 123" type="text"/>
+                                       </label>
+                                       <label class="flex flex-col md:col-span-1">
+                                          <p class="text-xs text-slate-500 dark:text-slate-400 pb-1">Sitio/Street</p>
+                                          <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" placeholder="e.g., Sampaguita St." type="text"/>
+                                       </label>
+                                       <label class="flex flex-col">
+                                          <p class="text-xs text-slate-500 dark:text-slate-400 pb-1">Barangay</p>
+                                          <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" placeholder="e.g., San Jose" type="text"/>
+                                       </label>
+                                       <label class="flex flex-col">
+                                          <p class="text-xs text-slate-500 dark:text-slate-400 pb-1">Municipality/City</p>
+                                          <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" placeholder="e.g., Antipolo City" type="text"/>
+                                       </label>
+                                       <label class="flex flex-col">
+                                          <p class="text-xs text-slate-500 dark:text-slate-400 pb-1">Province</p>
+                                          <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" placeholder="e.g., Rizal" type="text"/>
+                                       </label>
+                                    </div>
+                                 </div>
+                              </div>
+                              <div class="space-y-4">
+                                 <h3 class="text-lg font-semibold text-slate-800 dark:text-white border-b border-slate-200 dark:border-slate-800 pb-2">Parent/Guardian Information</h3>
+                                 <div class="space-y-4">
+                                    <p class="text-slate-800 dark:text-white text-sm font-medium">Father's Name</p>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                       <label class="flex flex-col">
+                                          <p class="text-xs text-slate-500 dark:text-slate-400 pb-1">Last Name</p>
+                                          <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" type="text"/>
+                                       </label>
+                                       <label class="flex flex-col">
+                                          <p class="text-xs text-slate-500 dark:text-slate-400 pb-1">Given Name</p>
+                                          <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" type="text"/>
+                                       </label>
+                                       <label class="flex flex-col">
+                                          <p class="text-xs text-slate-500 dark:text-slate-400 pb-1">Middle Name</p>
+                                          <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" type="text"/>
+                                       </label>
+                                    </div>
+                                 </div>
+                                 <div class="space-y-4">
+                                    <p class="text-slate-800 dark:text-white text-sm font-medium">Mother's Maiden Name</p>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                       <label class="flex flex-col">
+                                          <p class="text-xs text-slate-500 dark:text-slate-400 pb-1">Last Name</p>
+                                          <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" type="text"/>
+                                       </label>
+                                       <label class="flex flex-col">
+                                          <p class="text-xs text-slate-500 dark:text-slate-400 pb-1">Given Name</p>
+                                          <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" type="text"/>
+                                       </label>
+                                       <label class="flex flex-col">
+                                          <p class="text-xs text-slate-500 dark:text-slate-400 pb-1">Middle Name</p>
+                                          <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" type="text"/>
+                                       </label>
+                                    </div>
+                                 </div>
+                                 <div class="space-y-4">
+                                    <p class="text-slate-800 dark:text-white text-sm font-medium">Legal Guardian's Name (if not parent)</p>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                       <label class="flex flex-col">
+                                          <p class="text-xs text-slate-500 dark:text-slate-400 pb-1">Last Name</p>
+                                          <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" type="text"/>
+                                       </label>
+                                       <label class="flex flex-col">
+                                          <p class="text-xs text-slate-500 dark:text-slate-400 pb-1">Given Name</p>
+                                          <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" type="text"/>
+                                       </label>
+                                       <label class="flex flex-col">
+                                          <p class="text-xs text-slate-500 dark:text-slate-400 pb-1">Middle Name</p>
+                                          <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" type="text"/>
+                                       </label>
+                                    </div>
+                                 </div>
+                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                                    <label class="flex flex-col">
+                                       <p class="text-slate-800 dark:text-white text-sm font-medium leading-normal pb-2">Contact Number</p>
+                                       <input class="form-input flex w-full min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" placeholder="Enter contact number" type="tel"/>
+                                    </label>
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               </main>
+               <footer class="sticky bottom-0 z-10 bg-white/80 dark:bg-background-dark/80 backdrop-blur-sm border-t border-slate-200 dark:border-slate-800 mt-auto">
+                  <div class="flex items-center justify-end max-w-full mx-auto px-6 lg:px-10 py-4">
+                     <div class="flex items-center gap-3">
+                        <button class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-slate-300 dark:hover:bg-slate-700">
+                        <span class="truncate">Reset Form</span>
+                        </button>
+                        <button class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-primary/90">
+                        <span class="truncate">Submit Enrollment</span>
+                        </button>
+                     </div>
+                  </div>
+               </footer>
+            </div>
+         </div>
+      </div>
+   </body>
+</html>

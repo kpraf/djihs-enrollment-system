@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+   <head>
+      <meta charset="utf-8"/>
+      <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+      <title>ICT Coordinator | Staff Account Management</title>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+      <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+      <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com" rel="preconnect"/>
+      <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+      <script>
+         tailwind.config = {
+           darkMode: "class",
+           theme: {
+             extend: {
+               colors: {
+                 "primary": "#085019",
+                 "background-light": "#f6f7f8",
+                 "background-dark": "#101922",
+               },
+               fontFamily: {
+                 "display": ["Inter", "sans-serif"]
+               },
+               borderRadius: {
+                 "DEFAULT": "0.25rem",
+                 "lg": "0.5rem",
+                 "xl": "0.75rem",
+                 "full": "9999px"
+               },
+             },
+           },
+         }
+      </script>
+   </head>
+   <body class="font-display bg-background-light dark:bg-background-dark">
+      <div class="relative flex min-h-screen w-full">
+         <!-- SideNavBar -->
+         <aside class="w-72 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex transition-colors duration-200">
+            <div>
+               <div class="p-6">
+                  <div class="flex items-center gap-3 mb-1">
+                     <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center overflow-hidden shrink-0 border border-yellow-200 dark:border-yellow-700">
+                        <img alt="School Logo" class="w-full h-full object-cover opacity-90" src="/assets/images/djihs-logo-small.png"/>
+                     </div>
+                  </div>
+                  <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS ICT Coordinator</h1>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
+               </div>
+               <nav class="px-4 space-y-1">
+                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="/ict-coordinator/dashboard.html">
+                  <span class="material-icons-outlined text-[20px]">dashboard</span>
+                  <span class="text-sm font-medium">Dashboard</span>
+                  </a>
+                  <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm" href="/ict-coordinator/staff-account-management.html">
+                  <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">manage_accounts</span>
+                  <span class="text-sm font-medium">Staff Account Management</span>
+                  </a>
+                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="/ict-coordinator/enrollment-management.html">
+                  <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">school</span>
+                  <span class="text-sm font-medium">Students Management</span>
+                  </a>
+                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="/ict-coordinator/manage-access.html">
+                  <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">admin_panel_settings</span>
+                  <span class="text-sm font-medium">System Access Control</span>
+                  </a>
+               </nav>
+            </div>
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+               <div class="flex items-center gap-3 mb-4 px-2">
+                  <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm">
+                     IC
+                  </div>
+                  <div class="flex-1 min-w-0">
+                     <p class="text-sm font-medium text-gray-900 dark:text-white truncate">ICT Coordinator Name</p>
+                     <p class="text-xs text-gray-500 dark:text-gray-400 truncate">ICT Coordinator</p>
+                  </div>
+               </div>
+               <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+               <span class="material-icons-outlined text-[18px]">logout</span>
+               Logout
+               </button>
+            </div>
+         </aside>
+         <!-- Main Content -->
+         <main class="flex-1 p-8">
+            <div class="mx-auto max-w-7xl">
+               <!-- PageHeading -->
+               <header class="flex flex-wrap items-center justify-between gap-4">
+                  <div class="flex flex-col gap-1">
+                     <h2 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Staff Account Management</h2>
+                     <p class="text-base font-normal leading-normal text-gray-500 dark:text-gray-400">Create, view, and manage staff accounts and their system roles.</p>
+                  </div>
+                  <button class="flex h-10 cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-lg bg-primary px-4 text-sm font-bold leading-normal text-white">
+                  <span class="material-symbols-outlined">add</span>
+                  <span class="truncate">Create New Account</span>
+                  </button>
+               </header>
+               <!-- Search and Filter Bar -->
+               <div class="mt-8 flex flex-wrap items-center gap-4">
+                  <!-- SearchBar -->
+                  <div class="flex-grow">
+                     <label class="flex h-12 w-full min-w-72 flex-col">
+                        <div class="flex h-full w-full flex-1 items-stretch rounded-lg bg-white dark:bg-background-dark/50 border border-gray-200 dark:border-gray-700">
+                           <div class="flex items-center justify-center pl-4 text-gray-500 dark:text-gray-400">
+                              <span class="material-symbols-outlined">search</span>
+                           </div>
+                           <input class="form-input h-full min-w-0 flex-1 resize-none overflow-hidden border-none bg-transparent px-2 text-base font-normal leading-normal text-gray-900 placeholder:text-gray-500 focus:outline-0 focus:ring-0 dark:text-white dark:placeholder:text-gray-400" placeholder="Search by name, email, or role..." value=""/>
+                        </div>
+                     </label>
+                  </div>
+                  <!-- Chips -->
+                  <div class="flex gap-3">
+                     <button class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-lg border border-gray-200 bg-white px-3 dark:border-gray-700 dark:bg-background-dark/50">
+                        <span class="material-symbols-outlined text-gray-600 dark:text-gray-300">badge</span>
+                        <p class="text-sm font-medium leading-normal text-gray-800 dark:text-gray-200">Role</p>
+                        <span class="material-symbols-outlined text-gray-600 dark:text-gray-300">expand_more</span>
+                     </button>
+                     <button class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-lg border border-gray-200 bg-white px-3 dark:border-gray-700 dark:bg-background-dark/50">
+                        <span class="material-symbols-outlined text-gray-600 dark:text-gray-300">toggle_on</span>
+                        <p class="text-sm font-medium leading-normal text-gray-800 dark:text-gray-200">Status</p>
+                        <span class="material-symbols-outlined text-gray-600 dark:text-gray-300">expand_more</span>
+                     </button>
+                  </div>
+               </div>
+               <!-- Table -->
+               <div class="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-background-dark/50">
+                  <div class="overflow-x-auto">
+                     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-background-dark/70">
+                           <tr>
+                              <th class="w-12 px-6 py-3" scope="col">
+                                 <input class="h-4 w-4 rounded border-gray-300 bg-gray-100 text-primary focus:ring-2 focus:ring-primary/50 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-primary" type="checkbox"/>
+                              </th>
+                              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400" scope="col">Name</th>
+                              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400" scope="col">Staff ID</th>
+                              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400" scope="col">Role</th>
+                              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400" scope="col">Status</th>
+                              <th class="relative px-6 py-3" scope="col"><span class="sr-only">Actions</span></th>
+                           </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-background-dark/50">
+                           <tr>
+                              <td class="whitespace-nowrap px-6 py-4">
+                                 <input class="h-4 w-4 rounded border-gray-300 bg-gray-100 text-primary focus:ring-2 focus:ring-primary/50 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-primary" type="checkbox"/>
+                              </td>
+                              <td class="whitespace-nowrap px-6 py-4">
+                                 <div class="flex items-center gap-3">
+                                    <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="Avatar of Olivia Martin" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuB6jX1QcTxoHymMgGEZxkcShicJWNYl8WX3GeGZl980AJVv16zdE4IYasesyLjGvkJ9aaiRZ1_w9xnhOiYShxAvWLn866_Cau2CBxGuPoamcV2zfYSBhuR_09gnOH7rubhJhlpSnlhF4r49JO-CLnOoFjwCQQ3WquuEpbGwkwzuzibJLhgKk-MoKIz6MEZJkkSSPViBBjOO9NyO-g2IcAl4-NDLMa_9So6zcR8vYL8Qx_f1C8LFK2C9Xr_K55KdQ6ZYAcIOmAsNa8cy");'></div>
+                                    <div class="text-sm font-medium text-gray-900 dark:text-white">Olivia Martin</div>
+                                 </div>
+                              </td>
+                              <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">ID-84321</td>
+                              <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">Teacher</td>
+                              <td class="whitespace-nowrap px-6 py-4">
+                                 <span class="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800 dark:bg-green-900/50 dark:text-green-300">Active</span>
+                              </td>
+                              <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                                 <button class="text-primary hover:text-primary/80 dark:text-primary/90 dark:hover:text-primary">
+                                 <span class="material-symbols-outlined">more_horiz</span>
+                                 </button>
+                              </td>
+                           </tr>
+                           <tr>
+                              <td class="whitespace-nowrap px-6 py-4">
+                                 <input class="h-4 w-4 rounded border-gray-300 bg-gray-100 text-primary focus:ring-2 focus:ring-primary/50 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-primary" type="checkbox"/>
+                              </td>
+                              <td class="whitespace-nowrap px-6 py-4">
+                                 <div class="flex items-center gap-3">
+                                    <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="Avatar of Benjamin Carter" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuABDXHk549IqK1zbW3WtsuGtoOk0j8olImcUObWd5kmj58cEviu5fZVg5RbHjflNnRtg6Sdlp_q4rmtrAS_YQ-Vn1_S3XZPQAeu-Ef2zXzqyX8o9ymSyIL4OlNxAbJvOAVmXm4aqe96focMngiV-ELbgNUICizZiv27N17PisBlLt3kJxgbUGyL7xYgvLBfBfJONDj_prOGygyILpsYR5KOLO0DXS08XPf0W28iPHQl7i1MyvhzyNiX8sVEPYKR9P1SWGzOznyGMwVl");'></div>
+                                    <div class="text-sm font-medium text-gray-900 dark:text-white">Benjamin Carter</div>
+                                 </div>
+                              </td>
+                              <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">ID-84322</td>
+                              <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">Admin</td>
+                              <td class="whitespace-nowrap px-6 py-4">
+                                 <span class="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800 dark:bg-green-900/50 dark:text-green-300">Active</span>
+                              </td>
+                              <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                                 <button class="text-primary hover:text-primary/80 dark:text-primary/90 dark:hover:text-primary">
+                                 <span class="material-symbols-outlined">more_horiz</span>
+                                 </button>
+                              </td>
+                           </tr>
+                           <tr>
+                              <td class="whitespace-nowrap px-6 py-4">
+                                 <input class="h-4 w-4 rounded border-gray-300 bg-gray-100 text-primary focus:ring-2 focus:ring-primary/50 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-primary" type="checkbox"/>
+                              </td>
+                              <td class="whitespace-nowrap px-6 py-4">
+                                 <div class="flex items-center gap-3">
+                                    <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="Avatar of Sophia Lee" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDCTbi5wf75DO7N-Q-Y-R0yC9nJL8uZ8Oxt8lqtULbKLh4vTPODZCpdWD8OfHNciEQe_-g6TZKA4AqZmOS7LVP9zEbpMNLYgl3S-KRZCCLpCV_NZwxF3dehe9L0lSM8e-iuavINA_kguqsDrCs-RsoC9-REopDHgrlAUkSG6uSrWowNCp0-ehhPlyAXbitw43PSXjGKQBAOZDt9kB741Oy0CO0BzDobR0s0ulUnbEmWPxMtMYNUWHxl2hp8gwjR8JPVPlab-6Xh0eDI");'></div>
+                                    <div class="text-sm font-medium text-gray-900 dark:text-white">Sophia Lee</div>
+                                 </div>
+                              </td>
+                              <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">ID-84323</td>
+                              <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">Registrar</td>
+                              <td class="whitespace-nowrap px-6 py-4">
+                                 <span class="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800 dark:bg-green-900/50 dark:text-green-300">Active</span>
+                              </td>
+                              <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                                 <button class="text-primary hover:text-primary/80 dark:text-primary/90 dark:hover:text-primary">
+                                 <span class="material-symbols-outlined">more_horiz</span>
+                                 </button>
+                              </td>
+                           </tr>
+                           <tr>
+                              <td class="whitespace-nowrap px-6 py-4">
+                                 <input class="h-4 w-4 rounded border-gray-300 bg-gray-100 text-primary focus:ring-2 focus:ring-primary/50 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-primary" type="checkbox"/>
+                              </td>
+                              <td class="whitespace-nowrap px-6 py-4">
+                                 <div class="flex items-center gap-3">
+                                    <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="Avatar of Ethan Garcia" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuARk2wS0ZfV1CXP0T6G_fKFPicUTH6LBbSRGM4zW1twFTLPsoHytrtrqOWb_aXOnPbxvrv9PQHk_zieqZ2YhfQl9A0XNnTuQKqZR5AQC3dXDUPKJmJD4YDHTUYLgtDuqUMdidrd5oA6zvlLRqiGYJ-R8xJ4bvjMnnyUzHBHVW1lB4JKOf6Y-ufbCiJZuv615o-es01aBTAn_atGx6m8b11KThwbDhGWIdbDouca0l-AB_I6D6V7-fSiqToeXaGbHemCloVAE7cZeCRZ");'></div>
+                                    <div class="text-sm font-medium text-gray-900 dark:text-white">Ethan Garcia</div>
+                                 </div>
+                              </td>
+                              <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">ID-84324</td>
+                              <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">Teacher</td>
+                              <td class="whitespace-nowrap px-6 py-4">
+                                 <span class="inline-flex rounded-full bg-red-100 px-2 text-xs font-semibold leading-5 text-red-800 dark:bg-red-900/50 dark:text-red-300">Inactive</span>
+                              </td>
+                              <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                                 <button class="text-primary hover:text-primary/80 dark:text-primary/90 dark:hover:text-primary">
+                                 <span class="material-symbols-outlined">more_horiz</span>
+                                 </button>
+                              </td>
+                           </tr>
+                           <tr>
+                              <td class="whitespace-nowrap px-6 py-4">
+                                 <input class="h-4 w-4 rounded border-gray-300 bg-gray-100 text-primary focus:ring-2 focus:ring-primary/50 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-primary" type="checkbox"/>
+                              </td>
+                              <td class="whitespace-nowrap px-6 py-4">
+                                 <div class="flex items-center gap-3">
+                                    <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="Avatar of Ava Rodriguez" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAqn1JQ98bA_YEJXMt2yYAqZUmsT48k9oRfDB0fJiBHkPiE4R-EgucadvsqX_48D5MSFuPLl294fy-BTqP5dssIaJEqPbHB03cyJeAmZIQcvjzItfADiRORSkiWHAiuqLpCMVocFZyvgnor9Sn3rTxTLYtXKDVnAasgpnG9s_maXRt-RTUhTtTjY3h_pMtVGpf3S7rHtRtzIjiRk-KnJHuecSFbJVzmXQToa51YrrlphtARSXV0bbZ7S91Bl77VeiwVxTNJyqfG0lyt");'></div>
+                                    <div class="text-sm font-medium text-gray-900 dark:text-white">Ava Rodriguez</div>
+                                 </div>
+                              </td>
+                              <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">ID-84325</td>
+                              <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">Admin</td>
+                              <td class="whitespace-nowrap px-6 py-4">
+                                 <span class="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800 dark:bg-green-900/50 dark:text-green-300">Active</span>
+                              </td>
+                              <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                                 <button class="text-primary hover:text-primary/80 dark:text-primary/90 dark:hover:text-primary">
+                                 <span class="material-symbols-outlined">more_horiz</span>
+                                 </button>
+                              </td>
+                           </tr>
+                        </tbody>
+                     </table>
+                  </div>
+               </div>
+            </div>
+         </main>
+      </div>
+   </body>
+</html>
