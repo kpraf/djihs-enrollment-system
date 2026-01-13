@@ -17,10 +17,16 @@ Primary Color: #085019
 - Adviser 4 pages
 - Subject Teacher 2 pages
 
-DATABASE
+-- ========================================
+-- CREATE DATABASE (if it doesn't exist) 
+-- AND USE IT
+-- ========================================
+CREATE DATABASE IF NOT EXISTS djihs_enrollment;
+USE djihs_enrollment;
 
--- =========================================
-
+-- ========================================
+-- CREATE USER TABLE
+-- ========================================
 CREATE TABLE User (
     UserID INT PRIMARY KEY AUTO_INCREMENT,
     Username VARCHAR(50) UNIQUE NOT NULL,
@@ -35,7 +41,6 @@ CREATE TABLE User (
 -- ========================================
 -- INSERT DEFAULT USERS
 -- ========================================
-
 INSERT INTO User (Username, Password, FirstName, LastName, Role)
 VALUES
 ('admin001', '$2y$10$Badb4KyJ6hYo41XlhgpGlO3wyXilqexGqiIe1LglStN.BxTIl9PvG', 'Admin', 'User', 'Admin'),
@@ -50,9 +55,12 @@ Just copy and paste into phpMyAdmin or MySQL CLI.
 No need to hash the passwords again, they are ready to use.
 They can login using the original credentials:
 
-Admin          -> admin001 / admin123
-ICT Coordinator -> ICT001 / ict123
-Registrar      -> REG001 / reg123
-Adviser        -> ADV001 / adv123
-Subject Teacher -> ST001 / st123
-Key Teacher    -> KT001 / kt123
+-- ========================================
+-- LOGIN PASSWORDS (plain text reference)
+-- ========================================
+-- Admin          -> admin001 / admin123
+-- ICT Coordinator -> ICT001 / ict123
+-- Registrar      -> REG001 / reg123
+-- Adviser        -> ADV001 / adv123
+-- Subject Teacher -> ST001 / st123
+-- Key Teacher    -> KT001 / kt123
