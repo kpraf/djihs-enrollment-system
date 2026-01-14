@@ -8,6 +8,28 @@
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
       <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
       <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+      <script src="../js/auth.js"></script>
+      <script>
+        (function() {
+            const isLoggedIn = localStorage.getItem('isLoggedIn');
+            const userDataString = localStorage.getItem('user');
+            
+            if (!isLoggedIn || !userDataString) {
+                window.location.href = '../login.html';
+                return;
+            }
+            
+            try {
+                const user = JSON.parse(userDataString);
+                if (user.Role !== 'Registrar') {
+                    alert('Access denied. Registrar access required.');
+                    window.location.href = '../login.html';
+                }
+            } catch (e) {
+                window.location.href = '../login.html';
+            }
+        })();
+      </script>
       <script>
          tailwind.config = {
              darkMode: "class",
@@ -265,5 +287,6 @@
             </div>
          </main>
       </div>
+       <script src="../js/student-management.js"></script>
    </body>
 </html>

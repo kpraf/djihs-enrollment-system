@@ -294,6 +294,80 @@ class EnrollmentAPI {
             ];
         }
     }
+    
+    /**
+     * Approve enrollment
+     */
+    public function approveEnrollment($enrollmentID, $reviewerID) {
+        try {
+            // Update enrollment status
+            $query = "UPDATE Enrollment 
+                      SET Status = 'Confirmed',
+                          ProcessedBy = :reviewerID,
+                          ProcessedDate = NOW()
+                      WHERE EnrollmentID = :enrollmentID";
+            
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':enrollmentID', $enrollmentID);
+            $stmt->bindParam(':reviewerID', $reviewerID);
+            
+            if ($stmt->execute()) {
+                return [
+                    'success' => true,
+                    'message' => 'Enrollment approved successfully'
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to approve enrollment'
+                ];
+            }
+            
+        } catch (PDOException $e) {
+            return [
+                'success' => false,
+                'message' => 'Error approving enrollment: ' . $e->getMessage()
+            ];
+        }
+    }
+    
+    /**
+     * Reject enrollment
+     */
+    public function rejectEnrollment($enrollmentID, $reviewerID, $reason) {
+        try {
+            // Update enrollment status
+            $query = "UPDATE Enrollment 
+                      SET Status = 'Cancelled',
+                          ProcessedBy = :reviewerID,
+                          ProcessedDate = NOW(),
+                          Remarks = :reason
+                      WHERE EnrollmentID = :enrollmentID";
+            
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':enrollmentID', $enrollmentID);
+            $stmt->bindParam(':reviewerID', $reviewerID);
+            $stmt->bindParam(':reason', $reason);
+            
+            if ($stmt->execute()) {
+                return [
+                    'success' => true,
+                    'message' => 'Enrollment rejected'
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to reject enrollment'
+                ];
+            }
+            
+        } catch (PDOException $e) {
+            return [
+                'success' => false,
+                'message' => 'Error rejecting enrollment: ' . $e->getMessage()
+            ];
+        }
+    }
 }
 
 // =====================================================
@@ -314,18 +388,46 @@ try {
     // Get action parameter
     $action = $_GET['action'] ?? 'submit';
     
+    // Log the request for debugging
+    error_log("Enrollment API - Method: {$_SERVER['REQUEST_METHOD']}, Action: {$action}");
+    
     // Handle different HTTP methods
     switch ($_SERVER['REQUEST_METHOD']) {
         case 'POST':
+            $inputData = json_decode(file_get_contents('php://input'), true);
+            error_log("POST Data: " . json_encode($inputData));
+            
             if ($action === 'submit') {
-                $data = json_decode(file_get_contents('php://input'), true);
-                $result = $api->submitEnrollment($data);
+                $result = $api->submitEnrollment($inputData);
                 echo json_encode($result);
+                
+            } elseif ($action === 'approve') {
+                if (!isset($inputData['enrollmentID']) || !isset($inputData['reviewerID'])) {
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'Missing enrollmentID or reviewerID'
+                    ]);
+                    exit;
+                }
+                $result = $api->approveEnrollment($inputData['enrollmentID'], $inputData['reviewerID']);
+                echo json_encode($result);
+                
+            } elseif ($action === 'reject') {
+                if (!isset($inputData['enrollmentID']) || !isset($inputData['reviewerID']) || !isset($inputData['reason'])) {
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'Missing enrollmentID, reviewerID, or reason'
+                    ]);
+                    exit;
+                }
+                $result = $api->rejectEnrollment($inputData['enrollmentID'], $inputData['reviewerID'], $inputData['reason']);
+                echo json_encode($result);
+                
             } else {
                 http_response_code(400);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Invalid action for POST request'
+                    'message' => 'Invalid action for POST request: ' . $action
                 ]);
             }
             break;
@@ -352,7 +454,7 @@ try {
                 http_response_code(400);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Invalid action for GET request'
+                    'message' => 'Invalid action for GET request: ' . $action
                 ]);
             }
             break;
@@ -367,6 +469,7 @@ try {
     
 } catch (Exception $e) {
     http_response_code(500);
+    error_log("Enrollment API Error: " . $e->getMessage());
     echo json_encode([
         'success' => false,
         'message' => 'Server error: ' . $e->getMessage()
