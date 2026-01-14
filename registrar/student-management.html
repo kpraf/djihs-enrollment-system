@@ -8,9 +8,13 @@
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
       <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
       <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+
+            <!-- AUTHENTICATION PROTECTION - MUST BE FIRST -->
       <script src="../js/auth.js"></script>
       <script>
-        (function() {
+         // Protect this page - only Admin role can access
+         // This runs before page renders
+         (function() {
             const isLoggedIn = localStorage.getItem('isLoggedIn');
             const userDataString = localStorage.getItem('user');
             
@@ -111,7 +115,7 @@
                         <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Registrar</p>
                      </div>
                   </div>
-                  <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                  <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors logout-btn">
                   <span class="material-icons-outlined text-[18px]">logout</span>
                   Logout
                   </button>
