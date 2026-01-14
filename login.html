@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <meta charset="utf-8"/>
+      <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+      <title>DJIHS Login</title>
+      <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+      <script>
+         tailwind.config = {
+           darkMode: "class",
+           theme: {
+             extend: {
+               colors: {
+                 primary: "#085019",
+                 "background-light": "#f8f9fa",
+                 "background-dark": "#111827",
+                 "card-light": "#ffffff",
+                 "card-dark": "#1f2937",
+               },
+               fontFamily: {
+                 display: ["Inter", "sans-serif"],
+               },
+               borderRadius: {
+                 DEFAULT: "0.375rem",
+               },
+             },
+           },
+         };
+      </script>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+      <style>
+         ::-webkit-scrollbar {
+            width: 8px;
+         }
+         ::-webkit-scrollbar-track {
+            background: transparent; 
+         }
+         ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+         }
+         ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+         }
+         
+         .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #085019;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+         }
+         
+         @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+         }
+         
+         .alert {
+            padding: 12px 16px;
+            border-radius: 0.375rem;
+            margin-bottom: 16px;
+            font-size: 14px;
+         }
+         
+         .alert-error {
+            background-color: #fee;
+            color: #c00;
+            border: 1px solid #fcc;
+         }
+         
+         .alert-success {
+            background-color: #efe;
+            color: #0a0;
+            border: 1px solid #cfc;
+         }
+      </style>
+   </head>
+   <body class="bg-background-light dark:bg-background-dark font-display min-h-screen flex flex-col text-gray-800 dark:text-gray-100 transition-colors duration-200">
+      <header class="bg-primary w-full py-4 px-6 md:px-12 shadow-md z-20 relative">
+         <h1 class="text-white text-lg md:text-xl font-bold tracking-wide">Don Jose Integrated High School</h1>
+      </header>
+      <main class="flex-grow flex relative w-full overflow-hidden">
+         <div class="absolute inset-0 z-0 flex items-center justify-start overflow-hidden pointer-events-none">
+            <img alt="School Logo Watermark Pattern" class="w-[140vw] max-w-[1000px] md:w-[50vw] opacity-[0.07] dark:opacity-[0.05] -translate-x-1/4 translate-y-12 md:translate-x-0 md:ml-12 object-contain" src="./assets/images/DJIHS-Logo.png"/>
+         </div>
+         <div class="container mx-auto px-4 py-8 md:py-12 z-10 flex flex-col md:flex-row items-center justify-center md:justify-end h-full">
+            <div class="hidden md:block md:w-1/2 lg:w-3/5"></div>
+            <div class="w-full md:w-1/2 lg:w-2/5 max-w-md">
+               <div class="bg-card-light dark:bg-card-dark rounded-lg shadow-xl p-8 md:p-10 border border-gray-100 dark:border-gray-700 relative overflow-hidden">
+                  <div class="relative z-10">
+                     <div class="flex justify-center mb-6">
+                        <img alt="Don Jose Integrated High School Logo" class="w-20 h-20 object-contain drop-shadow-sm" src="./assets/images/DJIHS-Logo.png"/>
+                     </div>
+                     <div class="text-center mb-8">
+                        <h2 class="text-xl md:text-2xl font-bold text-gray-900 dark:text-white leading-tight mb-2">
+                           Don Jose Integrated High School <br/>
+                           Enrollment System
+                        </h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">
+                           Please select your role to login
+                        </p>
+                     </div>
+                     
+                     <!-- Alert message -->
+                     <div id="alertMessage" class="hidden"></div>
+                     
+                     <form id="loginForm" class="space-y-5">
+                        <div>
+                           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" for="role">Select your role</label>
+                           <div class="relative">
+                              <select class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary py-2.5 pl-3 pr-10 sm:text-sm appearance-none" id="role" name="role" required>
+                                 <option disabled="" selected="" value="">Select your role</option>
+                                 <option value="admin">Admin</option>
+                                 <option value="adviser">Adviser</option>
+                                 <option value="key-teacher">Key Teacher</option>
+                                 <option value="ict-coordinator">ICT Coordinator</option>
+                                 <option value="registrar">Registrar</option>
+                                 <option value="subject-teacher">Subject Teacher</option>
+                              </select>
+                           </div>
+                        </div>
+                        <div>
+                           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" for="employeeId">Employee ID</label>
+                           <input class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2.5 px-3" id="employeeId" name="employeeId" placeholder="Enter your ID" type="text" required/>
+                        </div>
+                        <div>
+                           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" for="password">Password</label>
+                           <input class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2.5 px-3" id="password" name="password" placeholder="Enter your password" type="password" required/>
+                        </div>
+                        <div class="flex items-center justify-end">
+                           <a class="text-sm font-medium text-primary hover:text-green-800 dark:hover:text-green-400 transition-colors" href="#">
+                           Forgot Password?
+                           </a>
+                        </div>
+                        <button id="loginBtn" class="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-bold text-white bg-primary hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all duration-200" type="submit">
+                           <span id="btnText">Login</span>
+                           <div id="btnSpinner" class="spinner ml-2 hidden"></div>
+                        </button>
+                     </form>
+                     <div class="mt-6 text-center">
+                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                           Don't have an account? 
+                           <a class="font-medium text-primary hover:text-green-800 dark:hover:text-green-400 transition-colors" href="#">
+                           Register
+                           </a>
+                        </p>
+                     </div>
+                     <div class="mt-8 border-t border-gray-100 dark:border-gray-700 pt-6">
+                        <p class="text-center text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
+                           © 2025 Don Jose Integrated High School.<br/>
+                           All rights reserved.
+                        </p>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </main>
+      
+      <script>
+         // API Configuration - Update this to match your folder name
+         const API_URL = './backend/api/login.php';
+         
+         // Get form elements
+         const loginForm = document.getElementById('loginForm');
+         const alertMessage = document.getElementById('alertMessage');
+         const loginBtn = document.getElementById('loginBtn');
+         const btnText = document.getElementById('btnText');
+         const btnSpinner = document.getElementById('btnSpinner');
+         
+         // Show alert message
+         function showAlert(message, type = 'error') {
+            alertMessage.className = `alert alert-${type}`;
+            alertMessage.textContent = message;
+            alertMessage.classList.remove('hidden');
+            
+            setTimeout(() => {
+               alertMessage.classList.add('hidden');
+            }, 5000);
+         }
+         
+         // Show loading state
+         function setLoading(isLoading) {
+            if (isLoading) {
+               loginBtn.disabled = true;
+               btnText.textContent = 'Logging in...';
+               btnSpinner.classList.remove('hidden');
+            } else {
+               loginBtn.disabled = false;
+               btnText.textContent = 'Login';
+               btnSpinner.classList.add('hidden');
+            }
+         }
+         
+         // Handle form submission
+         loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Get form values
+            const role = document.getElementById('role').value;
+            const username = document.getElementById('employeeId').value.trim();
+            const password = document.getElementById('password').value;
+            
+            // Validate inputs
+            if (!role) {
+               showAlert('Please select your role');
+               return;
+            }
+            
+            if (!username) {
+               showAlert('Please enter your Employee ID');
+               return;
+            }
+            
+            if (!password) {
+               showAlert('Please enter your password');
+               return;
+            }
+            
+            // Show loading state
+            setLoading(true);
+            alertMessage.classList.add('hidden');
+            
+            try {
+               // Send login request
+               const response = await fetch(API_URL, {
+                  method: 'POST',
+                  headers: {
+                     'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                     username: username,
+                     password: password,
+                     role: role
+                  })
+               });
+               
+               const data = await response.json();
+               
+               if (data.success) {
+                  // Login successful
+                  showAlert('Login successful! Redirecting...', 'success');
+                  
+                  // Store user data in localStorage
+                  localStorage.setItem('user', JSON.stringify(data.user));
+                  localStorage.setItem('isLoggedIn', 'true');
+                  
+                  // Redirect based on role - using your folder structure
+                  setTimeout(() => {
+                     const dashboardMap = {
+                        'Admin': './admin/dashboard.html',
+                        'Adviser': './adviser/dashboard.html',
+                        'Key_Teacher': './key-teacher/dashboard.html',
+                        'ICT_Coordinator': './ict-coordinator/dashboard.html',
+                        'Registrar': './registrar/dashboard.html',
+                        'Subject_Teacher': './subject-teacher/dashboard.html'
+                     };
+                     
+                     const dashboard = dashboardMap[data.user.Role];
+                     
+                     if (dashboard) {
+                        window.location.href = dashboard;
+                     } else {
+                        showAlert('Dashboard not found for your role');
+                        setLoading(false);
+                     }
+                  }, 1500);
+                  
+               } else {
+                  // Login failed
+                  showAlert(data.message || 'Login failed. Please try again.');
+                  setLoading(false);
+               }
+               
+            } catch (error) {
+               console.error('Login error:', error);
+               showAlert('Connection error. Please check if the server is running.');
+               setLoading(false);
+            }
+         });
+         
+         // Debug: Log API URL on page load (remove in production)
+         console.log('API URL:', API_URL);
+         console.log('Current page:', window.location.href);
+      </script>
+   </body>
+</html>

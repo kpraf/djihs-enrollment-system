@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+   <head>
+      <meta charset="utf-8"/>
+      <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+      <title>Admin | Dashboard</title>
+      <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+      <script>
+         tailwind.config = {
+           darkMode: "class",
+           theme: {
+             extend: {
+               colors: {
+                 "primary": "#085019",
+                 "background-light": "#F4F7FA",
+                 "background-dark": "#101922",
+               },
+               fontFamily: {
+                 "display": ["Inter", "sans-serif"]
+               },
+               borderRadius: {
+                 "DEFAULT": "0.25rem",
+                 "lg": "0.5rem",
+                 "xl": "0.75rem",
+                 "full": "9999px"
+               },
+             },
+           },
+         }
+      </script>
+      <style>
+         body {
+         font-family: 'Inter', sans-serif;
+         }
+         .material-symbols-outlined {
+         font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+         }
+      </style>
+   </head>
+   <body class="font-display bg-background-light dark:bg-background-dark">
+      <div class="relative flex min-h-screen w-full">
+         <!-- SideNavBar -->
+            <aside class="w-72 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex transition-colors duration-200">
+               <div>
+                  <div class="p-6">
+                     <div class="flex items-center gap-3 mb-1">
+                        <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center overflow-hidden shrink-0 border border-yellow-200 dark:border-yellow-700">
+                           <img alt="School Logo" class="w-full h-full object-cover opacity-90" src="../assets/images/djihs-logo-small.png"/>
+                        </div>
+                     </div>
+                     <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS Admin</h1>
+                     <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
+                  </div>
+                  <nav class="px-4 space-y-1">
+                     <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm" href="../admin/dashboard.html">
+                     <span class="material-icons-outlined text-[20px]">dashboard</span>
+                     <span class="text-sm font-medium">Dashboard</span>
+                     </a>
+                     <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="../admin/analytics.html">
+                     <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">analytics</span>
+                     <span class="text-sm font-medium">Analytics</span>
+                     </a>
+                     <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="../admin/settings.html">
+                     <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">settings</span>
+                     <span class="text-sm font-medium">Settings</span>
+                     </a>
+                  </nav>
+               </div>
+               <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                  <div class="flex items-center gap-3 mb-4 px-2">
+                     <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm">
+                        IC
+                     </div>
+                     <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate">Admin Name</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Admin</p>
+                     </div>
+                  </div>
+                  <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                  <span class="material-icons-outlined text-[18px]">logout</span>
+                  Logout
+                  </button>
+               </div>
+            </aside>
+         <!-- Main Content -->
+         <main class="flex-1">
+            <!-- Content Area -->
+            <div class="p-6 md:p-8">
+               <!-- PageHeading -->
+               <div class="flex flex-wrap justify-between gap-3 mb-6">
+                  <div class="flex flex-col gap-1">
+                     <p class="text-slate-900 dark:text-white text-2xl md:text-3xl font-bold leading-tight tracking-tight">Admin Dashboard</p>
+                     <p class="text-slate-600 dark:text-slate-400 text-base font-normal leading-normal">Welcome back, Admin! Here's an overview of the system.</p>
+                  </div>
+               </div>
+               <!-- Stats -->
+               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                  <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                     <div class="flex items-center justify-between">
+                        <p class="text-slate-600 dark:text-slate-400 text-base font-medium leading-normal">Total Students</p>
+                        <span class="material-symbols-outlined text-primary">school</span>
+                     </div>
+                     <p class="text-slate-900 dark:text-white tracking-tight text-3xl font-bold leading-tight">1,250</p>
+                  </div>
+                  <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                     <div class="flex items-center justify-between">
+                        <p class="text-slate-600 dark:text-slate-400 text-base font-medium leading-normal">Active Teachers</p>
+                        <span class="material-symbols-outlined text-primary">co_present</span>
+                     </div>
+                     <p class="text-slate-900 dark:text-white tracking-tight text-3xl font-bold leading-tight">85</p>
+                  </div>
+                  <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                     <div class="flex items-center justify-between">
+                        <p class="text-slate-600 dark:text-slate-400 text-base font-medium leading-normal">Pending Applications</p>
+                        <span class="material-symbols-outlined text-amber-500">pending_actions</span>
+                     </div>
+                     <p class="text-slate-900 dark:text-white tracking-tight text-3xl font-bold leading-tight">32</p>
+                  </div>
+                  <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                     <div class="flex items-center justify-between">
+                        <p class="text-slate-600 dark:text-slate-400 text-base font-medium leading-normal">System Status</p>
+                        <span class="material-symbols-outlined text-green-500">cloud_done</span>
+                     </div>
+                     <div class="flex items-center gap-2">
+                        <p class="text-slate-900 dark:text-white tracking-tight text-3xl font-bold leading-tight">Online</p>
+                     </div>
+                  </div>
+               </div>
+               <!-- Charts -->
+               <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
+                  <div class="lg:col-span-3 flex flex-col gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+                     <p class="text-slate-800 dark:text-slate-200 text-base font-medium leading-normal">Students by Grade Level</p>
+                     <div class="flex h-64 gap-6 items-end justify-items-center px-3">
+                        <div class="flex flex-col items-center gap-2 w-full h-full justify-end">
+                           <div class="bg-primary w-full rounded-t-lg" style="height: 25%;"></div>
+                           <p class="text-slate-500 dark:text-slate-400 text-xs font-medium leading-normal">Grade 9</p>
+                        </div>
+                        <div class="flex flex-col items-center gap-2 w-full h-full justify-end">
+                           <div class="bg-primary w-full rounded-t-lg" style="height: 60%;"></div>
+                           <p class="text-slate-500 dark:text-slate-400 text-xs font-medium leading-normal">Grade 10</p>
+                        </div>
+                        <div class="flex flex-col items-center gap-2 w-full h-full justify-end">
+                           <div class="bg-primary w-full rounded-t-lg" style="height: 80%;"></div>
+                           <p class="text-slate-500 dark:text-slate-400 text-xs font-medium leading-normal">Grade 11</p>
+                        </div>
+                        <div class="flex flex-col items-center gap-2 w-full h-full justify-end">
+                           <div class="bg-primary w-full rounded-t-lg" style="height: 50%;"></div>
+                           <p class="text-slate-500 dark:text-slate-400 text-xs font-medium leading-normal">Grade 12</p>
+                        </div>
+                     </div>
+                  </div>
+                  <div class="lg:col-span-2 flex flex-col gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+                     <p class="text-slate-800 dark:text-slate-200 text-base font-medium leading-normal">Enrollment Status Breakdown</p>
+                     <div class="flex items-center justify-center h-64">
+                        <div class="relative w-48 h-48">
+                           <svg class="size-full" height="36" viewbox="0 0 36 36" width="36" xmlns="http://www.w3.org/2000/svg">
+                              <circle cx="18" cy="18" fill="transparent" r="15.91549430918954" stroke="#E0E0E0" stroke-width="4"></circle>
+                              <circle cx="18" cy="18" fill="transparent" r="15.91549430918954" stroke="#085019" stroke-dasharray="80 20" stroke-dashoffset="25" stroke-width="4"></circle>
+                              <circle cx="18" cy="18" fill="transparent" r="15.91549430918954" stroke="#0277FF" stroke-dasharray="15 85" stroke-dashoffset="105" stroke-width="4"></circle>
+                              <circle cx="18" cy="18" fill="transparent" r="15.91549430918954" stroke="#FF0000" stroke-dasharray="5 95" stroke-dashoffset="90" stroke-width="4"></circle>
+                           </svg>
+                           <div class="absolute inset-0 flex flex-col items-center justify-center">
+                              <span class="text-3xl font-bold text-slate-800 dark:text-slate-200">1300</span>
+                              <span class="text-sm text-slate-500 dark:text-slate-400">Total</span>
+                           </div>
+                        </div>
+                     </div>
+                     <div class="flex justify-center gap-4 text-sm">
+                        <div class="flex items-center gap-2"><span class="size-3 rounded-full bg-[#50E3C2]"></span><span class="text-slate-600 dark:text-slate-400">Enrolled (80%)</span></div>
+                        <div class="flex items-center gap-2"><span class="size-3 rounded-full bg-[#4A90E2]"></span><span class="text-slate-600 dark:text-slate-400">Pending (15%)</span></div>
+                        <div class="flex items-center gap-2"><span class="size-3 rounded-full bg-red-400"></span><span class="text-slate-600 dark:text-slate-400">Rejected (5%)</span></div>
+                     </div>
+                  </div>
+               </div>
+               <!-- Quick Actions & Recent Activity -->
+               <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div class="lg:col-span-1 flex flex-col gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+                     <h3 class="text-slate-800 dark:text-slate-200 text-base font-medium leading-normal">Quick Actions</h3>
+                     <div class="flex flex-col gap-3">
+                        <button class="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary/90">
+                        <span class="material-symbols-outlined">checklist</span> Manage Pending Applications
+                        </button>
+                        <button class="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700">
+                        <span class="material-symbols-outlined">person_add</span> Add New User
+                        </button>
+                        <button class="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700">
+                        <span class="material-symbols-outlined">assessment</span> View System Reports
+                        </button>
+                     </div>
+                  </div>
+                  <div class="lg:col-span-2 flex flex-col gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+                     <h3 class="text-slate-800 dark:text-slate-200 text-base font-medium leading-normal">Recent Activity</h3>
+                     <ul class="flex flex-col divide-y divide-slate-200 dark:divide-slate-800">
+                        <li class="flex items-center gap-4 py-3">
+                           <div class="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/50"><span class="material-symbols-outlined text-green-500">check_circle</span></div>
+                           <div class="flex-1">
+                              <p class="text-sm text-slate-800 dark:text-slate-200">John Doe's application was <span class="font-semibold text-green-600 dark:text-green-400">approved</span>.</p>
+                              <p class="text-xs text-slate-500 dark:text-slate-400">2 minutes ago</p>
+                           </div>
+                        </li>
+                        <li class="flex items-center gap-4 py-3">
+                           <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/50"><span class="material-symbols-outlined text-blue-500">mail</span></div>
+                           <div class="flex-1">
+                              <p class="text-sm text-slate-800 dark:text-slate-200">New application from Jane Smith received.</p>
+                              <p class="text-xs text-slate-500 dark:text-slate-400">15 minutes ago</p>
+                           </div>
+                        </li>
+                        <li class="flex items-center gap-4 py-3">
+                           <div class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800"><span class="material-symbols-outlined text-slate-500">edit</span></div>
+                           <div class="flex-1">
+                              <p class="text-sm text-slate-800 dark:text-slate-200">Teacher profile updated for Mr. Anderson.</p>
+                              <p class="text-xs text-slate-500 dark:text-slate-400">1 hour ago</p>
+                           </div>
+                        </li>
+                        <li class="flex items-center gap-4 py-3">
+                           <div class="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/50"><span class="material-symbols-outlined text-red-500">cancel</span></div>
+                           <div class="flex-1">
+                              <p class="text-sm text-slate-800 dark:text-slate-200">Mike Ross's application was <span class="font-semibold text-red-600 dark:text-red-400">rejected</span>.</p>
+                              <p class="text-xs text-slate-500 dark:text-slate-400">3 hours ago</p>
+                           </div>
+                        </li>
+                     </ul>
+                  </div>
+               </div>
+            </div>
+         </main>
+      </div>
+   </body>
+</html>

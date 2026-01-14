@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+   <head>
+      <meta charset="utf-8"/>
+      <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+      <title>Key Teacher | Manage Sections</title>
+      <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+      <script id="tailwind-config">
+         tailwind.config = {
+           darkMode: "class",
+           theme: {
+             extend: {
+               colors: {
+                 "primary": "#085019",
+                 "background-light": "#f6f7f8",
+                 "background-dark": "#101922",
+                 "surface-light": "#ffffff",
+                 "surface-dark": "#1b2837",
+                 "text-light": "#111418",
+                 "text-dark": "#f0f2f4",
+                 "text-muted-light": "#617589",
+                 "text-muted-dark": "#94a3b8",
+                 "border-light": "#dbe0e6",
+                 "border-dark": "#334155"
+               },
+               fontFamily: {
+                 "display": ["Inter", "sans-serif"]
+               },
+               borderRadius: {"DEFAULT": "0.5rem", "lg": "0.75rem", "xl": "1rem", "full": "9999px"},
+             },
+           },
+         }
+      </script>
+      <style>
+         .material-symbols-outlined {
+         font-variation-settings:
+         'FILL' 0,
+         'wght' 400,
+         'GRAD' 0,
+         'opsz' 24
+         }
+      </style>
+   </head>
+   <body class="font-display bg-background-light dark:bg-background-dark">
+      <div class="relative flex min-h-screen w-full flex-col group/design-root">
+         <div class="flex flex-1">
+            <!-- Sidebar -->
+            <aside class="w-72 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex transition-colors duration-200">
+               <div>
+                  <div class="p-6">
+                     <div class="flex items-center gap-3 mb-1">
+                        <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center overflow-hidden shrink-0 border border-yellow-200 dark:border-yellow-700">
+                           <img alt="School Logo" class="w-full h-full object-cover opacity-90" src="../assets/images/djihs-logo-small.png"/>
+                        </div>
+                     </div>
+                     <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS Key Teacher</h1>
+                     <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
+                  </div>
+                  <nav class="px-4 space-y-1">
+                  <!-- Dashboard -->
+                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group"
+                     href="../key-teacher/dashboard.html">
+                     <span class="material-icons-outlined text-[20px]">dashboard</span>
+                     <span class="text-sm font-medium">Dashboard</span>
+                  </a>
+
+                  <!-- Manage Sections -->
+                  <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm"
+                     href="../key-teacher/manage-sections.html">
+                     <span class="material-icons-outlined text-[20px]">view_quilt</span>
+                     <span class="text-sm font-medium">Manage Sections</span>
+                  </a>
+
+                  <!-- All Sections -->
+                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group"
+                     href="../key-teacher/settings.html">
+                     <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">settings</span>
+                     <span class="text-sm font-medium">Settings</span>
+                  </a>
+                  </nav>
+               </div>
+               <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                  <div class="flex items-center gap-3 mb-4 px-2">
+                     <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm">
+                        IC
+                     </div>
+                     <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate">Key Teacher Name</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Key Teacher</p>
+                     </div>
+                  </div>
+                  <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                  <span class="material-icons-outlined text-[18px]">logout</span>
+                  Logout
+                  </button>
+               </div>
+            </aside>
+            <main class="flex-1 p-8">
+               <div class="max-w-7xl mx-auto">
+                  <div class="flex flex-wrap justify-between items-center gap-3 mb-6">
+                     <p class="text-text-light dark:text-text-dark text-3xl font-bold tracking-tight">Manage Sections</p>
+                     <button class="flex min-w-[84px] cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-DEFAULT h-10 px-4 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors">
+                     <span class="material-symbols-outlined text-base">add_circle</span>
+                     <span class="truncate">Create New Section</span>
+                     </button>
+                  </div>
+                  <div class="bg-surface-light dark:bg-surface-dark p-4 rounded-lg border border-border-light dark:border-border-dark mb-6">
+                     <div class="flex flex-wrap items-center justify-between gap-4">
+                        <div class="relative w-full md:w-auto md:flex-1 max-w-sm">
+                           <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-muted-light dark:text-text-muted-dark">search</span>
+                           <input class="w-full h-10 pl-10 pr-4 rounded-DEFAULT bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark text-text-light dark:text-text-dark focus:ring-2 focus:ring-primary focus:border-primary transition-shadow" placeholder="Search section or adviser..." type="text"/>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                           <div class="relative">
+                              <select class="appearance-none w-full md:w-48 h-10 pl-3 pr-10 rounded-DEFAULT bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark text-text-light dark:text-text-dark focus:ring-2 focus:ring-primary focus:border-primary transition-shadow">
+                                 <option>All Grade Levels</option>
+                                 <option>Grade 8</option>
+                                 <option>Grade 9</option>
+                                 <option>Grade 10</option>
+                                 <option>Grade 11</option>
+                                 <option>Grade 12</option>
+                              </select>
+                              <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-text-muted-light dark:text-text-muted-dark pointer-events-none">expand_more</span>
+                           </div>
+                           <div class="relative">
+                              <select class="appearance-none w-full md:w-48 h-10 pl-3 pr-10 rounded-DEFAULT bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark text-text-light dark:text-text-dark focus:ring-2 focus:ring-primary focus:border-primary transition-shadow">
+                                 <option>All Strands</option>
+                                 <option>ABM</option>
+                                 <option>STEM</option>
+                                 <option>HUMSS</option>
+                                 <option>GAS</option>
+                              </select>
+                              <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-text-muted-light dark:text-text-muted-dark pointer-events-none">expand_more</span>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+                  <div class="overflow-x-auto bg-surface-light dark:bg-surface-dark rounded-lg border border-border-light dark:border-border-dark">
+                     <table class="w-full text-left">
+                        <thead class="border-b border-border-light dark:border-border-dark bg-background-light dark:bg-surface-dark/50">
+                           <tr>
+                              <th class="px-4 py-3 text-left text-text-light dark:text-text-dark text-xs font-semibold uppercase tracking-wider">Section Name</th>
+                              <th class="px-4 py-3 text-left text-text-light dark:text-text-dark text-xs font-semibold uppercase tracking-wider">Adviser</th>
+                              <th class="px-4 py-3 text-left text-text-light dark:text-text-dark text-xs font-semibold uppercase tracking-wider">Grade Level/Strand</th>
+                              <th class="px-4 py-3 text-left text-text-light dark:text-text-dark text-xs font-semibold uppercase tracking-wider">Enrollment</th>
+                              <th class="px-4 py-3 text-left text-text-light dark:text-text-dark text-xs font-semibold uppercase tracking-wider">Status</th>
+                              <th class="px-4 py-3 text-left text-text-light dark:text-text-dark text-xs font-semibold uppercase tracking-wider">Actions</th>
+                           </tr>
+                        </thead>
+                        <tbody>
+                           <tr class="border-b border-border-light dark:border-border-dark">
+                              <td class="px-4 py-3 text-sm font-medium text-text-light dark:text-text-dark">11-ABM-A</td>
+                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">Juan Santos</td>
+                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">Grade 11 - ABM</td>
+                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">42/45</td>
+                              <td class="px-4 py-3">
+                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Open</span>
+                              </td>
+                              <td class="px-4 py-3">
+                                 <button class="p-1.5 text-text-muted-light dark:text-text-muted-dark hover:text-primary rounded-full hover:bg-primary/10">
+                                 <span class="material-symbols-outlined text-xl">more_horiz</span>
+                                 </button>
+                              </td>
+                           </tr>
+                           <tr class="border-b border-border-light dark:border-border-dark">
+                              <td class="px-4 py-3 text-sm font-medium text-text-light dark:text-text-dark">10-Aristotle</td>
+                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">Maria Garcia</td>
+                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">Grade 10</td>
+                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">45/45</td>
+                              <td class="px-4 py-3">
+                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Full</span>
+                              </td>
+                              <td class="px-4 py-3">
+                                 <button class="p-1.5 text-text-muted-light dark:text-text-muted-dark hover:text-primary rounded-full hover:bg-primary/10">
+                                 <span class="material-symbols-outlined text-xl">more_horiz</span>
+                                 </button>
+                              </td>
+                           </tr>
+                           <tr class="border-b border-border-light dark:border-border-dark">
+                              <td class="px-4 py-3 text-sm font-medium text-text-light dark:text-text-dark">12-STEM-B</td>
+                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">Peter Jones</td>
+                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">Grade 12 - STEM</td>
+                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">38/40</td>
+                              <td class="px-4 py-3">
+                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Open</span>
+                              </td>
+                              <td class="px-4 py-3">
+                                 <button class="p-1.5 text-text-muted-light dark:text-text-muted-dark hover:text-primary rounded-full hover:bg-primary/10">
+                                 <span class="material-symbols-outlined text-xl">more_horiz</span>
+                                 </button>
+                              </td>
+                           </tr>
+                           <tr class="border-b border-border-light dark:border-border-dark">
+                              <td class="px-4 py-3 text-sm font-medium text-text-light dark:text-text-dark">9-Newton</td>
+                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">Ana Reyes</td>
+                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">Grade 9</td>
+                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">44/45</td>
+                              <td class="px-4 py-3">
+                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Nearing Full</span>
+                              </td>
+                              <td class="px-4 py-3">
+                                 <button class="p-1.5 text-text-muted-light dark:text-text-muted-dark hover:text-primary rounded-full hover:bg-primary/10">
+                                 <span class="material-symbols-outlined text-xl">more_horiz</span>
+                                 </button>
+                              </td>
+                           </tr>
+                           <tr>
+                              <td class="px-4 py-3 text-sm font-medium text-text-light dark:text-text-dark">8-Einstein</td>
+                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">Carlos Gomez</td>
+                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">Grade 8</td>
+                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">40/40</td>
+                              <td class="px-4 py-3">
+                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Full</span>
+                              </td>
+                              <td class="px-4 py-3">
+                                 <button class="p-1.5 text-text-muted-light dark:text-text-muted-dark hover:text-primary rounded-full hover:bg-primary/10">
+                                 <span class="material-symbols-outlined text-xl">more_horiz</span>
+                                 </button>
+                              </td>
+                           </tr>
+                        </tbody>
+                     </table>
+                  </div>
+               </div>
+            </main>
+         </div>
+      </div>
+   </body>
+</html>

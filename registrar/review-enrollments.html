@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Review Enrollments | DJIHS Registrar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    
+    <!-- AUTHENTICATION PROTECTION -->
+    <script src="../js/auth.js"></script>
+    <script>
+        (function() {
+            const isLoggedIn = localStorage.getItem('isLoggedIn');
+            const userDataString = localStorage.getItem('user');
+            
+            if (!isLoggedIn || !userDataString) {
+                window.location.href = '../login.html';
+                return;
+            }
+            
+            try {
+                const user = JSON.parse(userDataString);
+                if (user.Role !== 'Registrar') {
+                    alert('Access denied. Registrar access required.');
+                    window.location.href = '../login.html';
+                }
+            } catch (e) {
+                window.location.href = '../login.html';
+            }
+        })();
+    </script>
+    
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#085019",
+                        "background-light": "#F4F6F8",
+                        "background-dark": "#101922",
+                        "success": "#2ECC71",
+                        "warning": "#F39C12",
+                        "error": "#E74C3C",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #085019;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display">
+    <div class="flex min-h-screen">
+        <!-- Sidebar -->
+        <aside class="w-72 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex">
+            <div>
+                <div class="p-6">
+                    <div class="flex items-center gap-3 mb-1">
+                        <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center overflow-hidden shrink-0 border border-yellow-200 dark:border-yellow-700">
+                            <img alt="School Logo" class="w-full h-full object-cover opacity-90" src="../assets/images/djihs-logo-small.png"/>
+                        </div>
+                    </div>
+                    <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS Registrar</h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
+                </div>
+                <nav class="px-4 space-y-1">
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="dashboard.html">
+                        <span class="material-icons-outlined text-[20px]">dashboard</span>
+                        <span class="text-sm font-medium">Dashboard</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="enrollment-management.html">
+                        <span class="material-icons-outlined text-[20px]">how_to_reg</span>
+                        <span class="text-sm font-medium">New Enrollment</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm" href="review-enrollments.html">
+                        <span class="material-icons-outlined text-[20px]">rate_review</span>
+                        <span class="text-sm font-medium">Review Enrollments</span>
+                        <span id="pendingBadge" class="ml-auto bg-white text-primary text-xs font-bold px-2 py-1 rounded-full hidden">0</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="student-management.html">
+                        <span class="material-icons-outlined text-[20px]">groups</span>
+                        <span class="text-sm font-medium">Student Management</span>
+                    </a>
+                </nav>
+            </div>
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                <div class="flex items-center gap-3 mb-4 px-2">
+                    <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm user-initials">RG</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate user-name">Registrar</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate user-role">Registrar</p>
+                    </div>
+                </div>
+                <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors logout-btn">
+                    <span class="material-icons-outlined text-[18px]">logout</span>
+                    Logout
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col">
+            <main class="flex-1 px-6 lg:px-10 py-8">
+                <div class="max-w-7xl mx-auto">
+                    <!-- Header -->
+                    <div class="mb-8">
+                        <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Review Enrollments</h2>
+                        <p class="text-gray-600 dark:text-gray-400">Review and approve pending student enrollments</p>
+                    </div>
+
+                    <!-- Stats Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Pending Review</p>
+                                    <p id="pendingCount" class="text-3xl font-bold text-warning">0</p>
+                                </div>
+                                <div class="w-12 h-12 bg-warning/10 rounded-lg flex items-center justify-center">
+                                    <span class="material-icons-outlined text-warning text-2xl">pending</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Approved Today</p>
+                                    <p id="approvedCount" class="text-3xl font-bold text-success">0</p>
+                                </div>
+                                <div class="w-12 h-12 bg-success/10 rounded-lg flex items-center justify-center">
+                                    <span class="material-icons-outlined text-success text-2xl">check_circle</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Enrolled</p>
+                                    <p id="totalCount" class="text-3xl font-bold text-primary">0</p>
+                                </div>
+                                <div class="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                                    <span class="material-icons-outlined text-primary text-2xl">school</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-6 border border-gray-200 dark:border-gray-700">
+                        <div class="flex flex-wrap gap-4">
+                            <select id="filterGrade" class="form-select rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                                <option value="">All Grade Levels</option>
+                                <option value="Grade 7">Grade 7</option>
+                                <option value="Grade 8">Grade 8</option>
+                                <option value="Grade 9">Grade 9</option>
+                                <option value="Grade 10">Grade 10</option>
+                                <option value="Grade 11">Grade 11</option>
+                                <option value="Grade 12">Grade 12</option>
+                            </select>
+                            <select id="filterStrand" class="form-select rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                                <option value="">All Strands</option>
+                                <option value="ABM">ABM</option>
+                                <option value="HUMSS">HUMSS</option>
+                                <option value="STEM">STEM</option>
+                                <option value="HE-COOKERY">HE-COOKERY/BPP/FBS</option>
+                                <option value="ICT-CSS">ICT-CSS</option>
+                                <option value="IA-EIM">IA-EIM</option>
+                            </select>
+                            <button id="btnRefresh" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2">
+                                <span class="material-icons-outlined text-[18px]">refresh</span>
+                                Refresh
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div id="loadingState" class="flex flex-col items-center justify-center py-12">
+                        <div class="loading-spinner mb-4"></div>
+                        <p class="text-gray-600 dark:text-gray-400">Loading pending enrollments...</p>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="emptyState" class="hidden bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center border border-gray-200 dark:border-gray-700">
+                        <span class="material-icons-outlined text-gray-400 text-6xl mb-4">inbox</span>
+                        <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">No Pending Enrollments</h3>
+                        <p class="text-gray-600 dark:text-gray-400">All enrollments have been reviewed</p>
+                    </div>
+
+                    <!-- Enrollments Table -->
+                    <div id="enrollmentsTable" class="hidden bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead class="bg-gray-50 dark:bg-gray-900">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Student</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">LRN</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Grade</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Strand</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="enrollmentsBody" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                    <!-- Rows will be inserted here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- View Details Modal -->
+    <div id="detailsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white">Enrollment Details</h3>
+                <button id="closeModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                    <span class="material-icons-outlined">close</span>
+                </button>
+            </div>
+            <div id="modalContent" class="p-6">
+                <!-- Content will be loaded here -->
+            </div>
+            <div class="sticky bottom-0 bg-gray-50 dark:bg-gray-900 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex gap-3 justify-end">
+                <button id="btnApprove" class="px-6 py-2 bg-success text-white rounded-lg hover:bg-success/90 transition-colors flex items-center gap-2">
+                    <span class="material-icons-outlined text-[18px]">check_circle</span>
+                    Approve
+                </button>
+                <button id="btnReject" class="px-6 py-2 bg-error text-white rounded-lg hover:bg-error/90 transition-colors flex items-center gap-2">
+                    <span class="material-icons-outlined text-[18px]">cancel</span>
+                    Reject
+                </button>
+                <button id="btnCloseModal" class="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/enrollment-review.js"></script>
+</body>
+</html>
