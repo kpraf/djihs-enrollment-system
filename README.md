@@ -1,5 +1,3 @@
-# djihs-enrollment-system
-
 - There are 6 roles here
 1. Admins
 2. Key Teachers
