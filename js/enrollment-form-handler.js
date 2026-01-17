@@ -242,6 +242,25 @@ class EnrollmentFormHandler {
         }
 
         console.log('Complete form data:', formData);
+        // Weight & Height (if you add these fields to the form)
+        formData.weight = this.getInputByPlaceholder(nameInputs, 'Weight (kg)')?.value || null;
+        formData.height = this.getInputByPlaceholder(nameInputs, 'Height (m)')?.value || null;
+        
+        // 4Ps Beneficiary
+        const fourPsRadio = document.querySelector('input[name="4ps-beneficiary"]:checked');
+        formData.is4PsBeneficiary = fourPsRadio?.nextSibling?.textContent.trim() === 'Yes';
+        
+        // Zip Code & Country
+        formData.zipCode = this.getInputByPlaceholder(nameInputs, 'Zip Code')?.value.trim() || null;
+        formData.country = this.getInputByPlaceholder(nameInputs, 'Country')?.value.trim() || 'Philippines';
+        
+        // Enrollment Type (Regular/Late/Transferee)
+        // Default to 'Regular' for now - you can add a radio button for this
+        formData.enrollmentType = 'Regular';
+        
+        // Set encoded date
+        formData.encodedDate = new Date().toISOString();
+
         return formData;
     }
 
@@ -319,6 +338,15 @@ class EnrollmentFormHandler {
         const hasParent = formData.fatherFirstName || formData.motherFirstName || formData.guardianFirstName;
         if (!hasParent) {
             errors.push('At least one parent or guardian name is required');
+        }
+        // NEW: Validate enrollment type
+        if (!formData.enrollmentType) {
+            errors.push('Enrollment Type is required');
+        }
+
+        // Validate that enrollmentType matches learnerType logic
+        if (formData.learnerType === 'Irregular_Transferee' && formData.enrollmentType !== 'Transferee') {
+            formData.enrollmentType = 'Transferee'; // Auto-correct
         }
 
         return errors;

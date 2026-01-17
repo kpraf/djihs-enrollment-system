@@ -415,7 +415,44 @@ class EnrollmentReviewHandler {
                     </div>
                 ` : ''}
             </div>
+
+            ${data.Weight || data.Height ? `
+                <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                    <h4 class="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="material-icons-outlined text-primary">fitness_center</span>
+                        Physical Information
+                    </h4>
+                    <div class="grid grid-cols-2 gap-4">
+                        ${data.Weight ? `
+                            <div>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Weight</p>
+                                <p class="text-sm font-medium text-gray-900 dark:text-white">
+                                    ${data.Weight} kg
+                                </p>
+                            </div>
+                        ` : ''}
+                        ${data.Height ? `
+                            <div>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Height</p>
+                                <p class="text-sm font-medium text-gray-900 dark:text-white">
+                                    ${data.Height} m
+                                </p>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            ` : ''}
+
+            ${data.Is4PsBeneficiary ? `
+                <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                    <p class="text-sm text-gray-900 dark:text-white">
+                        <strong>4Ps Beneficiary:</strong> Yes
+                    </p>
+                </div>
+            ` : ''}
+            
         `;
+        
 
         modal.classList.remove('hidden');
     }

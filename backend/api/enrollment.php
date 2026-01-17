@@ -1,6 +1,6 @@
 <?php
 // =====================================================
-// Enrollment API - Updated for New Schema
+// Enrollment API - Updated with New Fields
 // File: backend/api/enrollment.php
 // =====================================================
 
@@ -75,29 +75,56 @@ class EnrollmentAPI {
                 ];
             }
             
+            // 🆕 Validate and set default values for new fields
+            $weight = !empty($data['weight']) ? floatval($data['weight']) : null;
+            $height = !empty($data['height']) ? floatval($data['height']) : null;
+            $is4PsBeneficiary = isset($data['is4PsBeneficiary']) ? (int)$data['is4PsBeneficiary'] : 0;
+            $zipCode = !empty($data['zipCode']) ? trim($data['zipCode']) : null;
+            $country = !empty($data['country']) ? trim($data['country']) : 'Philippines';
+            
+            // 🆕 Set enrollment type - auto-determine based on learner type if not provided
+            if (empty($data['enrollmentType'])) {
+                $data['enrollmentType'] = $this->determineEnrollmentType($data['learnerType']);
+            }
+            
+            // Validate enrollment type
+            $validEnrollmentTypes = ['Regular', 'Late', 'Transferee'];
+            if (!in_array($data['enrollmentType'], $validEnrollmentTypes)) {
+                return [
+                    'success' => false,
+                    'message' => 'Invalid enrollment type. Must be Regular, Late, or Transferee'
+                ];
+            }
+            
             // Begin transaction
             $this->conn->beginTransaction();
             
-            // 1. Insert Student record
+            // 1. Insert Student record WITH NEW FIELDS
             $studentQuery = "INSERT INTO Student (
                 LRN, LastName, FirstName, MiddleName, ExtensionName,
                 DateOfBirth, Age, Gender, Religion,
                 IsIPCommunity, IPCommunitySpecify, IsPWD, PWDSpecify,
                 HouseNumber, SitioStreet, Barangay, Municipality, Province,
+                ZipCode, Country,
+                Weight, Height, Is4PsBeneficiary,
                 FatherLastName, FatherFirstName, FatherMiddleName,
                 MotherLastName, MotherFirstName, MotherMiddleName,
                 GuardianLastName, GuardianFirstName, GuardianMiddleName,
                 ContactNumber, EnrollmentStatus, IsTransferee,
+                EncodedDate, EncodedBy,
                 CreatedBy, CreatedAt
             ) VALUES (
                 :lrn, :lastName, :firstName, :middleName, :extensionName,
                 :birthdate, :age, :sex, :religion,
                 :isIPCommunity, :ipCommunitySpecify, :isPWD, :pwdSpecify,
                 :houseNumber, :sitioStreet, :barangay, :municipality, :province,
+                :zipCode, :country,
+                :weight, :height, :is4PsBeneficiary,
                 :fatherLastName, :fatherFirstName, :fatherMiddleName,
                 :motherLastName, :motherFirstName, :motherMiddleName,
                 :guardianLastName, :guardianFirstName, :guardianMiddleName,
                 :contactNumber, 'Active', :isTransferee,
+                NOW(), :encodedBy,
                 :createdBy, NOW()
             )";
             
@@ -115,15 +142,15 @@ class EnrollmentAPI {
             $stmt->bindParam(':middleName', $data['middleName']);
             $stmt->bindParam(':extensionName', $data['extensionName']);
             $stmt->bindParam(':birthdate', $data['birthdate']);
-            $stmt->bindParam(':age', $data['age']);
+            $stmt->bindParam(':age', $data['age'], PDO::PARAM_INT);
             $stmt->bindParam(':sex', $data['sex']);
             $stmt->bindParam(':religion', $data['religion']);
             
             $isIPCommunity = $data['isIPCommunity'] ? 1 : 0;
             $isPWD = $data['isPWD'] ? 1 : 0;
-            $stmt->bindParam(':isIPCommunity', $isIPCommunity);
+            $stmt->bindParam(':isIPCommunity', $isIPCommunity, PDO::PARAM_INT);
             $stmt->bindParam(':ipCommunitySpecify', $data['ipCommunitySpecify']);
-            $stmt->bindParam(':isPWD', $isPWD);
+            $stmt->bindParam(':isPWD', $isPWD, PDO::PARAM_INT);
             $stmt->bindParam(':pwdSpecify', $data['pwdSpecify']);
             
             $stmt->bindParam(':houseNumber', $data['houseNumber']);
@@ -131,6 +158,15 @@ class EnrollmentAPI {
             $stmt->bindParam(':barangay', $data['barangay']);
             $stmt->bindParam(':municipality', $data['municipality']);
             $stmt->bindParam(':province', $data['province']);
+            
+            // 🆕 Bind new address fields
+            $stmt->bindParam(':zipCode', $zipCode);
+            $stmt->bindParam(':country', $country);
+            
+            // 🆕 Bind new SF8 fields
+            $stmt->bindParam(':weight', $weight);
+            $stmt->bindParam(':height', $height);
+            $stmt->bindParam(':is4PsBeneficiary', $is4PsBeneficiary, PDO::PARAM_INT);
             
             $stmt->bindParam(':fatherLastName', $data['fatherLastName']);
             $stmt->bindParam(':fatherFirstName', $data['fatherFirstName']);
@@ -145,13 +181,16 @@ class EnrollmentAPI {
             $stmt->bindParam(':guardianMiddleName', $data['guardianMiddleName']);
             
             $stmt->bindParam(':contactNumber', $data['contactNumber']);
-            $stmt->bindParam(':isTransferee', $isTransferee);
-            $stmt->bindParam(':createdBy', $data['createdBy']);
+            $stmt->bindParam(':isTransferee', $isTransferee, PDO::PARAM_INT);
+            
+            // 🆕 Bind encoded by (who entered the data)
+            $stmt->bindParam(':encodedBy', $data['createdBy'], PDO::PARAM_INT);
+            $stmt->bindParam(':createdBy', $data['createdBy'], PDO::PARAM_INT);
             
             $stmt->execute();
             $studentID = $this->conn->lastInsertId();
             
-            // 2. Insert Enrollment record
+            // 2. Insert Enrollment record WITH ENROLLMENT TYPE
             $enrollmentQuery = "INSERT INTO Enrollment (
                 StudentID, GradeLevelID, StrandID, AcademicYear,
                 LearnerType, EnrollmentType, Status,
@@ -164,18 +203,12 @@ class EnrollmentAPI {
             
             $stmt2 = $this->conn->prepare($enrollmentQuery);
             
-            // Determine enrollment type
-            $enrollmentType = ($isTransferee || 
-                             $data['learnerType'] === 'Regular_Balik_Aral' ||
-                             $data['learnerType'] === 'Irregular_Balik_Aral') 
-                             ? 'Transferee' : 'Regular';
-            
-            $stmt2->bindParam(':studentID', $studentID);
-            $stmt2->bindParam(':gradeLevel', $data['gradeLevel']);
-            $stmt2->bindParam(':strandID', $data['strandID']);
+            $stmt2->bindParam(':studentID', $studentID, PDO::PARAM_INT);
+            $stmt2->bindParam(':gradeLevel', $data['gradeLevel'], PDO::PARAM_INT);
+            $stmt2->bindParam(':strandID', $data['strandID'], PDO::PARAM_INT);
             $stmt2->bindParam(':schoolYear', $data['schoolYear']);
             $stmt2->bindParam(':learnerType', $data['learnerType']);
-            $stmt2->bindParam(':enrollmentType', $enrollmentType);
+            $stmt2->bindParam(':enrollmentType', $data['enrollmentType']);
             
             $stmt2->execute();
             $enrollmentID = $this->conn->lastInsertId();
@@ -193,6 +226,7 @@ class EnrollmentAPI {
                     'lrn' => $data['lrn'],
                     'gradeLevel' => $data['gradeLevel'],
                     'schoolYear' => $data['schoolYear'],
+                    'enrollmentType' => $data['enrollmentType'],
                     'status' => 'Pending'
                 ]
             ];
@@ -210,6 +244,23 @@ class EnrollmentAPI {
                 'message' => 'Database error: ' . $e->getMessage()
             ];
         }
+    }
+    
+    /**
+     * 🆕 Helper: Determine enrollment type based on learner type
+     */
+    private function determineEnrollmentType($learnerType) {
+        $transfereeTypes = [
+            'Irregular_Transferee',
+            'Regular_Balik_Aral',
+            'Irregular_Balik_Aral'
+        ];
+        
+        if (in_array($learnerType, $transfereeTypes)) {
+            return 'Transferee';
+        }
+        
+        return 'Regular';
     }
     
     /**
@@ -253,7 +304,7 @@ class EnrollmentAPI {
     }
     
     /**
-     * Get enrollment details
+     * Get enrollment details - 🆕 INCLUDES NEW FIELDS
      */
     public function getEnrollmentDetails($enrollmentID) {
         try {
@@ -262,7 +313,16 @@ class EnrollmentAPI {
                 s.*,
                 gl.GradeLevelName,
                 st.StrandName,
-                CONCAT(s.LastName, ', ', s.FirstName, ' ', IFNULL(s.MiddleName, '')) AS FullName
+                CONCAT(s.LastName, ', ', s.FirstName, ' ', IFNULL(s.MiddleName, '')) AS FullName,
+                CONCAT(
+                    IFNULL(s.HouseNumber, ''), ' ',
+                    IFNULL(s.SitioStreet, ''), ', ',
+                    s.Barangay, ', ',
+                    s.Municipality, ', ',
+                    s.Province,
+                    IFNULL(CONCAT(' ', s.ZipCode), ''),
+                    IFNULL(CONCAT(', ', s.Country), '')
+                ) AS CompleteAddress
             FROM Enrollment e
             JOIN Student s ON e.StudentID = s.StudentID
             JOIN GradeLevel gl ON e.GradeLevelID = gl.GradeLevelID
@@ -270,7 +330,7 @@ class EnrollmentAPI {
             WHERE e.EnrollmentID = :enrollmentID";
             
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':enrollmentID', $enrollmentID);
+            $stmt->bindParam(':enrollmentID', $enrollmentID, PDO::PARAM_INT);
             $stmt->execute();
             
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -308,8 +368,8 @@ class EnrollmentAPI {
                       WHERE EnrollmentID = :enrollmentID";
             
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':enrollmentID', $enrollmentID);
-            $stmt->bindParam(':reviewerID', $reviewerID);
+            $stmt->bindParam(':enrollmentID', $enrollmentID, PDO::PARAM_INT);
+            $stmt->bindParam(':reviewerID', $reviewerID, PDO::PARAM_INT);
             
             if ($stmt->execute()) {
                 return [
@@ -345,8 +405,8 @@ class EnrollmentAPI {
                       WHERE EnrollmentID = :enrollmentID";
             
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':enrollmentID', $enrollmentID);
-            $stmt->bindParam(':reviewerID', $reviewerID);
+            $stmt->bindParam(':enrollmentID', $enrollmentID, PDO::PARAM_INT);
+            $stmt->bindParam(':reviewerID', $reviewerID, PDO::PARAM_INT);
             $stmt->bindParam(':reason', $reason);
             
             if ($stmt->execute()) {
