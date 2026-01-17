@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>ICT Coordinator - Employee Management</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#085019",
+                        "background-light": "#ffffff",
+                        "background-dark": "#17191c",
+                        "surface-light": "#f8f9fa",
+                        "surface-dark": "#212529",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface-light dark:bg-background-dark font-display text-[#212529] dark:text-gray-100">
+    <div class="flex min-h-screen">
+        <!-- Sidebar Navigation -->
+        <aside class="w-72 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex transition-colors duration-200">
+            <div>
+               <div class="p-6">
+                  <div class="flex items-center gap-3 mb-1">
+                     <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center overflow-hidden shrink-0 border border-yellow-200 dark:border-yellow-700">
+                        <img alt="School Logo" class="w-full h-full object-cover opacity-90" src="../assets/images/djihs-logo-small.png"/>
+                     </div>
+                  </div>
+                  <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS ICT Coordinator</h1>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
+               </div>
+                <nav class="px-4 space-y-1">
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="dashboard.html">
+                        <span class="material-symbols-outlined">dashboard</span>
+                        <span class="text-sm font-medium">Dashboard</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm" href="employee-management.html">
+                        <span class="material-symbols-outlined">group</span>
+                        <span class="text-sm font-semibold">Employee Management</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="manage-access.html">
+                        <span class="material-symbols-outlined">admin_panel_settings</span>
+                        <span class="text-sm font-medium">System Access</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="user-account-management.html">
+                        <span class="material-symbols-outlined">person_add</span>
+                        <span class="text-sm font-medium">Create User Accounts</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="enrollment-management.html">
+                        <span class="material-symbols-outlined">school</span>
+                        <span class="text-sm font-medium">Enrollment</span>
+                    </a>
+                </nav>
+            </div>
+            <div class="mt-auto p-6 border-t border-gray-100 dark:border-gray-800">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold">
+                        <span id="userInitials">IC</span>
+                    </div>
+                    <div class="overflow-hidden">
+                        <h2 id="userName" class="text-sm font-semibold truncate">ICT Coordinator</h2>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate">ICT Coordinator</p>
+                    </div>
+                </div>
+                <button onclick="logout()" class="flex items-center gap-3 w-full px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-red-600 transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">logout</span>
+                    <span class="text-sm font-medium">Log out</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col min-w-0 bg-gray-50 dark:bg-background-dark/50">
+            <!-- Header Section -->
+            <header class="p-8 pb-4">
+                <!-- Error Alert -->
+                <div id="errorAlert" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+                    <strong class="font-bold">Error!</strong>
+                    <span id="errorMessage" class="block sm:inline"></span>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-6 mb-8">
+                    <div>
+                        <h1 class="text-3xl font-black text-gray-900 dark:text-white tracking-tight">Employee Management</h1>
+                        <p class="text-gray-500 dark:text-gray-400 mt-1">Centralized directory for all school personnel and teaching staff.</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <!-- Stats Cards -->
+                        <div class="flex gap-4">
+                            <div class="bg-white dark:bg-surface-dark px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <p class="text-xs text-gray-500">Total</p>
+                                <p id="totalEmployees" class="text-xl font-bold text-primary">0</p>
+                            </div>
+                            <div class="bg-white dark:bg-surface-dark px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <p class="text-xs text-gray-500">Teaching</p>
+                                <p id="teachingStaff" class="text-xl font-bold text-green-600">0</p>
+                            </div>
+                            <div class="bg-white dark:bg-surface-dark px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <p class="text-xs text-gray-500">Non-Teaching</p>
+                                <p id="nonTeachingStaff" class="text-xl font-bold text-purple-600">0</p>
+                            </div>
+                            <div class="bg-white dark:bg-surface-dark px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <p class="text-xs text-gray-500">With Access</p>
+                                <p id="withAccount" class="text-xl font-bold text-orange-600">0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search & Filters -->
+                <div class="bg-white dark:bg-surface-dark p-4 rounded-xl border border-gray-100 dark:border-gray-800 flex flex-wrap items-center gap-4 shadow-sm">
+                    <div class="relative flex-1 min-w-[300px]">
+                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+                        <input id="searchInput" class="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-background-dark/50 border-transparent rounded-lg focus:ring-2 focus:ring-primary focus:bg-white dark:focus:bg-surface-dark transition-all text-sm" placeholder="Search by name, ID or position..." type="text"/>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <select id="employmentTypeFilter" class="px-3 py-2 bg-gray-50 dark:bg-background-dark/50 border-transparent rounded-lg text-sm font-medium transition-colors focus:ring-2 focus:ring-primary">
+                            <option value="">All Types</option>
+                            <option value="Teaching">Teaching</option>
+                            <option value="Non_Teaching">Non-Teaching</option>
+                        </select>
+                        <select id="departmentFilter" class="px-3 py-2 bg-gray-50 dark:bg-background-dark/50 border-transparent rounded-lg text-sm font-medium transition-colors focus:ring-2 focus:ring-primary">
+                            <option value="">All Departments</option>
+                            <option value="JHS">JHS</option>
+                            <option value="SHS">SHS</option>
+                            <option value="Both">Both</option>
+                            <option value="Admin">Admin</option>
+                        </select>
+                        <div class="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
+                        <button onclick="openAddModal()" class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90 transition-all">
+                            <span class="material-symbols-outlined text-[18px]">person_add</span>
+                            Add Employee
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Table Section -->
+            <div class="px-8 pb-8 flex-1">
+                <div class="bg-white dark:bg-surface-dark border border-gray-100 dark:border-gray-800 rounded-xl shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50/50 dark:bg-background-dark/30 border-b border-gray-100 dark:border-gray-800">
+                                    <th class="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Full Name</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Gender</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Department</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Position</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contact</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">System Access</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="employeeTableBody" class="divide-y divide-gray-100 dark:divide-gray-800">
+                                <tr>
+                                    <td colspan="8" class="px-6 py-8 text-center text-gray-500">
+                                        <span class="material-symbols-outlined animate-spin text-4xl">refresh</span>
+                                        <p class="mt-2">Loading employees...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../js/auth.js"></script>
+    <script>
+        let allEmployees = [];
+        let currentUser = null;
+
+        // Show/hide error
+        function showError(message) {
+            const errorAlert = document.getElementById('errorAlert');
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = message;
+            errorAlert.classList.remove('hidden');
+            console.error('ERROR:', message);
+        }
+
+        function hideError() {
+            document.getElementById('errorAlert').classList.add('hidden');
+        }
+
+        // Get initials
+        function getInitials(firstName, lastName) {
+            return (firstName?.charAt(0) || '') + (lastName?.charAt(0) || '');
+        }
+
+        // Check authentication
+        window.onload = async function() {
+            currentUser = checkAuth('ICT_Coordinator');
+            
+            if (currentUser) {
+                document.getElementById('userName').textContent = `${currentUser.FirstName} ${currentUser.LastName}`;
+                document.getElementById('userInitials').textContent = getInitials(currentUser.FirstName, currentUser.LastName);
+                
+                await loadEmployeeStats();
+                await loadEmployees();
+            }
+        };
+
+        // Load employee statistics
+        async function loadEmployeeStats() {
+            try {
+                const response = await fetch('../backend/api/employees.php?action=stats');
+                const result = await response.json();
+                
+                if (result.success) {
+                    const stats = result.data;
+                    document.getElementById('totalEmployees').textContent = stats.total || 0;
+                    document.getElementById('teachingStaff').textContent = stats.teaching || 0;
+                    document.getElementById('nonTeachingStaff').textContent = stats.non_teaching || 0;
+                    document.getElementById('withAccount').textContent = stats.with_account || 0;
+                    hideError();
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+                showError('Error loading statistics: ' + error.message);
+            }
+        }
+
+        // Load all employees
+        async function loadEmployees() {
+            try {
+                const response = await fetch('../backend/api/employees.php?action=all');
+                const result = await response.json();
+                
+                if (result.success) {
+                    allEmployees = result.data;
+                    displayEmployees(allEmployees);
+                    hideError();
+                } else {
+                    showError('Failed to load employees: ' + (result.message || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error loading employees:', error);
+                showError('Failed to load employees: ' + error.message);
+                
+                const tbody = document.getElementById('employeeTableBody');
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="px-6 py-8 text-center text-red-500">
+                            <span class="material-symbols-outlined text-4xl">error</span>
+                            <p class="mt-2">Error: ${error.message}</p>
+                            <small class="text-gray-500">Check browser console (F12) for details</small>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        // Display employees in table
+        function displayEmployees(employees) {
+            const tbody = document.getElementById('employeeTableBody');
+            
+            if (employees.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="px-6 py-8 text-center text-gray-500">
+                            <span class="material-symbols-outlined text-4xl">person_off</span>
+                            <p class="mt-2">No employees found</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = employees.map(emp => {
+                const initials = getInitials(emp.FirstName, emp.LastName);
+                const colors = ['blue', 'indigo', 'purple', 'pink', 'green', 'yellow'];
+                const color = colors[emp.EmployeeID % colors.length];
+                
+                // Status badge
+                let statusBadge = '';
+                if (emp.EmploymentStatus === 'Active') {
+                    statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Active
+                    </span>`;
+                } else if (emp.EmploymentStatus === 'On_Leave') {
+                    statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">
+                        <span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>On Leave
+                    </span>`;
+                } else {
+                    statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-500">
+                        <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>${emp.EmploymentStatus}
+                    </span>`;
+                }
+                
+                return `
+                    <tr class="hover:bg-gray-50/50 dark:hover:bg-background-dark/20 transition-colors">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-${color}-100 flex items-center justify-center text-${color}-600 font-bold text-xs">
+                                    ${initials}
+                                </div>
+                                <div>
+                                    <span class="text-sm font-semibold text-gray-900 dark:text-white">${emp.FullName}</span>
+                                    ${emp.Email ? `<div class="text-xs text-gray-500">${emp.Email}</div>` : ''}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">${emp.Gender}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 ${emp.EmploymentType === 'Teaching' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'} text-xs font-bold rounded">
+                                ${emp.EmploymentType === 'Teaching' ? 'Teaching' : 'Non-Teaching'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">${emp.Department || 'N/A'}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap font-medium">${emp.Position}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">${emp.ContactNumber || 'N/A'}</td>
+                        <td class="px-6 py-4">
+                            ${emp.HasSystemAccess ? 
+                                `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+                                    <span class="material-symbols-outlined text-[16px]">check_circle</span>Yes
+                                </span>` :
+                                `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-500">
+                                    <span class="material-symbols-outlined text-[16px]">cancel</span>No
+                                </span>`
+                            }
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <button onclick="viewEmployee(${emp.EmployeeID})" class="p-2 text-gray-400 hover:text-primary transition-colors" title="View Details">
+                                <span class="material-symbols-outlined">visibility</span>
+                            </button>
+                            <button onclick="editEmployee(${emp.EmployeeID})" class="p-2 text-gray-400 hover:text-green-600 transition-colors" title="Edit Employee">
+                                <span class="material-symbols-outlined">edit</span>
+                            </button>
+                            ${!emp.HasSystemAccess ? 
+                                `<button onclick="createUserAccount(${emp.EmployeeID})" class="p-2 text-gray-400 hover:text-purple-600 transition-colors" title="Create User Account">
+                                    <span class="material-symbols-outlined">person_add</span>
+                                </button>` : ''
+                            }
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Filter employees
+        document.getElementById('searchInput').addEventListener('input', filterEmployees);
+        document.getElementById('employmentTypeFilter').addEventListener('change', filterEmployees);
+        document.getElementById('departmentFilter').addEventListener('change', filterEmployees);
+
+        function filterEmployees() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const type = document.getElementById('employmentTypeFilter').value;
+            const dept = document.getElementById('departmentFilter').value;
+            
+            let filtered = allEmployees.filter(emp => {
+                const matchSearch = emp.FullName.toLowerCase().includes(search) ||
+                                  (emp.Email && emp.Email.toLowerCase().includes(search)) ||
+                                  (emp.EmployeeNumber && emp.EmployeeNumber.toLowerCase().includes(search)) ||
+                                  emp.Position.toLowerCase().includes(search);
+                const matchType = !type || emp.EmploymentType === type;
+                const matchDept = !dept || emp.Department === dept;
+                
+                return matchSearch && matchType && matchDept;
+            });
+            
+            displayEmployees(filtered);
+        }
+
+        function openAddModal() {
+            alert('Add employee form coming soon!');
+        }
+
+        function viewEmployee(id) {
+            const employee = allEmployees.find(e => e.EmployeeID == id);
+            if (employee) {
+                alert(`Employee Details:\n\nName: ${employee.FullName}\nGender: ${employee.Gender}\nPosition: ${employee.Position}\nDepartment: ${employee.Department || 'N/A'}\nType: ${employee.EmploymentType}\nContact: ${employee.ContactNumber || 'N/A'}\nEmail: ${employee.Email || 'N/A'}\nStatus: ${employee.EmploymentStatus}`);
+            }
+        }
+
+        function editEmployee(id) {
+            alert('Edit employee form coming soon!');
+        }
+
+        function createUserAccount(id) {
+            const employee = allEmployees.find(e => e.EmployeeID == id);
+            if (employee) {
+                const confirmed = confirm(`Create user account for ${employee.FullName}?`);
+                if (confirmed) {
+                    alert('User account creation coming soon!');
+                }
+            }
+        }
+
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                localStorage.removeItem('isLoggedIn');
+                localStorage.removeItem('user');
+                window.location.href = '../login.html';
+            }
+        }
+    </script>
+</body>
+</html>
