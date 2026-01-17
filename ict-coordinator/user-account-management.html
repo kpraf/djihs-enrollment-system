@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>ICT Coordinator | User Account Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+    
+    <script src="../js/auth.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#085019",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+</head>
+<body class="font-display bg-background-light dark:bg-background-dark">
+    <div class="relative flex min-h-screen w-full">
+        <!-- Sidebar -->
+        <aside class="w-72 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex">
+            <div>
+                <div class="p-6">
+                    <div class="flex items-center gap-3 mb-1">
+                        <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center overflow-hidden shrink-0 border border-yellow-200">
+                            <img alt="School Logo" class="w-full h-full object-cover opacity-90" src="../assets/images/djihs-logo-small.png"/>
+                        </div>
+                    </div>
+                    <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS ICT Coordinator</h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
+                </div>
+                <nav class="px-4 space-y-1">
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" href="dashboard.html">
+                        <span class="material-icons-outlined text-[20px]">dashboard</span>
+                        <span class="text-sm font-medium">Dashboard</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" href="employee-management.html">
+                        <span class="material-symbols-outlined">group</span>
+                        <span class="text-sm font-medium">Employee Management</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" href="manage-access.html">
+                        <span class="material-symbols-outlined">admin_panel_settings</span>
+                        <span class="text-sm font-medium">System Access</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg shadow-sm" href="user-account-management.html">
+                        <span class="material-symbols-outlined">person_add</span>
+                        <span class="text-sm font-medium">Create User Accounts</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" href="enrollment-management.html">
+                        <span class="material-symbols-outlined">school</span>
+                        <span class="text-sm font-medium">Enrollment</span>
+                    </a>
+                </nav>
+            </div>
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold">
+                        <span id="userInitials">IC</span>
+                    </div>
+                    <div class="overflow-hidden">
+                        <h2 id="userName" class="text-sm font-semibold truncate">ICT Coordinator</h2>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate">ICT Coordinator</p>
+                    </div>
+                </div>
+                <button onclick="logout()" class="flex items-center gap-3 w-full px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-red-600 transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">logout</span>
+                    <span class="text-sm font-medium">Log out</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-8">
+            <div class="mx-auto max-w-7xl">
+                <!-- Header -->
+                <header class="flex flex-wrap items-center justify-between gap-4 mb-8">
+                    <div class="flex flex-col gap-1">
+                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">User Account Management</h2>
+                        <p class="text-base font-normal text-gray-500 dark:text-gray-400">Create and manage system user accounts for staff members.</p>
+                    </div>
+                    <button onclick="openCreateModal()" class="flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-bold text-white hover:bg-primary/90">
+                        <span class="material-symbols-outlined">add</span>
+                        <span>Create New Account</span>
+                    </button>
+                </header>
+
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white dark:bg-background-dark/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <p class="text-xs text-gray-500">Total Accounts</p>
+                        <p id="totalAccounts" class="text-2xl font-bold text-primary">0</p>
+                    </div>
+                    <div class="bg-white dark:bg-background-dark/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <p class="text-xs text-gray-500">Active</p>
+                        <p id="activeAccounts" class="text-2xl font-bold text-green-600">0</p>
+                    </div>
+                    <div class="bg-white dark:bg-background-dark/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <p class="text-xs text-gray-500">Inactive</p>
+                        <p id="inactiveAccounts" class="text-2xl font-bold text-red-600">0</p>
+                    </div>
+                    <div class="bg-white dark:bg-background-dark/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <p class="text-xs text-gray-500">Without Account</p>
+                        <p id="withoutAccount" class="text-2xl font-bold text-orange-600">0</p>
+                    </div>
+                </div>
+
+                <!-- Search and Filter -->
+                <div class="flex flex-wrap items-center gap-4 mb-6">
+                    <div class="flex-grow">
+                        <div class="flex h-12 w-full min-w-72 rounded-lg bg-white dark:bg-background-dark/50 border border-gray-200 dark:border-gray-700">
+                            <div class="flex items-center justify-center pl-4 text-gray-500">
+                                <span class="material-symbols-outlined">search</span>
+                            </div>
+                            <input id="searchInput" class="h-full flex-1 bg-transparent px-2 text-base border-none focus:outline-none focus:ring-0" placeholder="Search by name, username, or role..." type="text"/>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <select id="roleFilter" class="h-10 rounded-lg border border-gray-200 bg-white px-3 dark:border-gray-700 dark:bg-background-dark/50">
+                            <option value="">All Roles</option>
+                            <option value="Admin">Admin</option>
+                            <option value="Adviser">Adviser</option>
+                            <option value="Key_Teacher">Key Teacher</option>
+                            <option value="ICT_Coordinator">ICT Coordinator</option>
+                            <option value="Registrar">Registrar</option>
+                            <option value="Subject_Teacher">Subject Teacher</option>
+                        </select>
+                        <select id="statusFilter" class="h-10 rounded-lg border border-gray-200 bg-white px-3 dark:border-gray-700 dark:bg-background-dark/50">
+                            <option value="">All Status</option>
+                            <option value="1">Active</option>
+                            <option value="0">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-background-dark/50">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-background-dark/70">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Name</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Username</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Role</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Employee Link</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="userTableBody" class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-background-dark/50">
+                                <tr>
+                                    <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                                        <span class="material-symbols-outlined animate-spin text-4xl">refresh</span>
+                                        <p class="mt-2">Loading accounts...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Create User Modal -->
+    <div id="createModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">Create User Account</h3>
+                <button onclick="closeCreateModal()" class="text-gray-500 hover:text-gray-700">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            
+            <form id="createUserForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Link to Employee (Optional)</label>
+                    <select id="employeeSelect" class="w-full px-3 py-2 border rounded-lg">
+                        <option value="">No Employee Link</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-2">Username *</label>
+                    <input type="text" id="username" required class="w-full px-3 py-2 border rounded-lg" placeholder="e.g., TEACHER001"/>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-2">Password *</label>
+                    <input type="password" id="password" required class="w-full px-3 py-2 border rounded-lg" placeholder="Minimum 6 characters"/>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-2">First Name *</label>
+                    <input type="text" id="firstName" required class="w-full px-3 py-2 border rounded-lg"/>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-2">Last Name *</label>
+                    <input type="text" id="lastName" required class="w-full px-3 py-2 border rounded-lg"/>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-2">Role *</label>
+                    <select id="role" required class="w-full px-3 py-2 border rounded-lg">
+                        <option value="">Select Role</option>
+                        <option value="Admin">Admin</option>
+                        <option value="Adviser">Adviser</option>
+                        <option value="Key_Teacher">Key Teacher</option>
+                        <option value="ICT_Coordinator">ICT Coordinator</option>
+                        <option value="Registrar">Registrar</option>
+                        <option value="Subject_Teacher">Subject Teacher</option>
+                    </select>
+                </div>
+                
+                <div class="flex gap-3 pt-4">
+                    <button type="button" onclick="closeCreateModal()" class="flex-1 px-4 py-2 border rounded-lg">Cancel</button>
+                    <button type="submit" class="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">Create Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let allUsers = [];
+        let currentUser = null;
+        let employeesWithoutAccount = [];
+
+        function getInitials(firstName, lastName) {
+            return (firstName?.charAt(0) || '') + (lastName?.charAt(0) || '');
+        }
+
+        window.onload = async function() {
+            currentUser = checkAuth(`ICT_Coordinator`);
+            
+            if (currentUser) {
+                document.getElementById('userName').textContent = `${currentUser.FirstName} ${currentUser.LastName}`;
+                document.getElementById('userInitials').textContent = getInitials(currentUser.FirstName, currentUser.LastName);
+                
+                await loadStats();
+                await loadUsers();
+                await loadEmployeesWithoutAccount();
+            }
+        };
+
+        async function loadStats() {
+            try {
+                const response = await fetch('../backend/api/users.php?action=stats');
+                const result = await response.json();
+                
+                if (result.success) {
+                    const stats = result.data;
+                    document.getElementById('totalAccounts').textContent = stats.total || 0;
+                    document.getElementById('activeAccounts').textContent = stats.active || 0;
+                    document.getElementById('inactiveAccounts').textContent = stats.inactive || 0;
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+            
+            // Load employees without account for stats
+            try {
+                const response = await fetch('../backend/api/users.php?action=employees-without-account');
+                const result = await response.json();
+                if (result.success) {
+                    document.getElementById('withoutAccount').textContent = result.count || 0;
+                }
+            } catch (error) {
+                console.error('Error loading employee count:', error);
+            }
+        }
+
+        async function loadUsers() {
+            try {
+                const response = await fetch('../backend/api/users.php?action=all');
+                const result = await response.json();
+                
+                if (result.success) {
+                    allUsers = result.data;
+                    displayUsers(allUsers);
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        async function loadEmployeesWithoutAccount() {
+            try {
+                const response = await fetch('../backend/api/users.php?action=employees-without-account');
+                const result = await response.json();
+                
+                if (result.success) {
+                    employeesWithoutAccount = result.data;
+                    populateEmployeeSelect();
+                }
+            } catch (error) {
+                console.error('Error loading employees:', error);
+            }
+        }
+
+        function populateEmployeeSelect() {
+            const select = document.getElementById('employeeSelect');
+            select.innerHTML = '<option value="">No Employee Link</option>';
+            
+            employeesWithoutAccount.forEach(emp => {
+                const option = document.createElement('option');
+                option.value = emp.EmployeeID;
+                option.textContent = `${emp.FullName} - ${emp.Position}`;
+                select.appendChild(option);
+            });
+        }
+
+        function displayUsers(users) {
+            const tbody = document.getElementById('userTableBody');
+            
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500">No user accounts found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = users.map(user => {
+                const roleColors = {
+                    'Admin': 'bg-red-100 text-red-800',
+                    'ICT_Coordinator': 'bg-blue-100 text-blue-800',
+                    'Registrar': 'bg-purple-100 text-purple-800',
+                    'Adviser': 'bg-green-100 text-green-800',
+                    'Key_Teacher': 'bg-yellow-100 text-yellow-800',
+                    'Subject_Teacher': 'bg-gray-100 text-gray-800'
+                };
+                
+                return `
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                                    ${getInitials(user.FirstName, user.LastName)}
+                                </div>
+                                <div>
+                                    <div class="text-sm font-medium">${user.FirstName} ${user.LastName}</div>
+                                    ${user.Email ? `<div class="text-xs text-gray-500">${user.Email}</div>` : ''}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-sm">${user.Username}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full ${roleColors[user.Role] || 'bg-gray-100 text-gray-800'}">
+                                ${user.Role.replace('_', ' ')}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-sm">
+                            ${user.EmployeeID ? `
+                                <div class="text-xs">
+                                    <div class="font-medium">${user.Position || 'N/A'}</div>
+                                    <div class="text-gray-500">${user.Department || 'N/A'}</div>
+                                </div>
+                            ` : '<span class="text-gray-400">No link</span>'}
+                        </td>
+                        <td class="px-6 py-4">
+                            ${user.IsActive == 1 ? 
+                                '<span class="inline-flex rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800">Active</span>' :
+                                '<span class="inline-flex rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-800">Inactive</span>'
+                            }
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <button onclick="toggleStatus(${user.UserID})" class="p-2 text-gray-600 hover:text-primary" title="${user.IsActive == 1 ? 'Deactivate' : 'Activate'}">
+                                <span class="material-symbols-outlined">${user.IsActive == 1 ? 'toggle_on' : 'toggle_off'}</span>
+                            </button>
+                            <button onclick="resetPassword(${user.UserID}, '${user.Username}')" class="p-2 text-gray-600 hover:text-primary" title="Reset Password">
+                                <span class="material-symbols-outlined">lock_reset</span>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Filter functions
+        document.getElementById('searchInput').addEventListener('input', filterUsers);
+        document.getElementById('roleFilter').addEventListener('change', filterUsers);
+        document.getElementById('statusFilter').addEventListener('change', filterUsers);
+
+        function filterUsers() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const role = document.getElementById('roleFilter').value;
+            const status = document.getElementById('statusFilter').value;
+            
+            const filtered = allUsers.filter(user => {
+                const matchSearch = user.FirstName.toLowerCase().includes(search) ||
+                                  user.LastName.toLowerCase().includes(search) ||
+                                  user.Username.toLowerCase().includes(search) ||
+                                  user.Role.toLowerCase().includes(search);
+                const matchRole = !role || user.Role === role;
+                const matchStatus = status === '' || user.IsActive == status;
+                
+                return matchSearch && matchRole && matchStatus;
+            });
+            
+            displayUsers(filtered);
+        }
+
+        // Modal functions
+        function openCreateModal() {
+            document.getElementById('createModal').classList.remove('hidden');
+            document.getElementById('createUserForm').reset();
+        }
+
+        function closeCreateModal() {
+            document.getElementById('createModal').classList.add('hidden');
+        }
+
+        // Auto-fill form when employee is selected
+        document.getElementById('employeeSelect').addEventListener('change', function() {
+            const employeeId = this.value;
+            if (employeeId) {
+                const employee = employeesWithoutAccount.find(e => e.EmployeeID == employeeId);
+                if (employee) {
+                    document.getElementById('firstName').value = employee.FirstName;
+                    document.getElementById('lastName').value = employee.LastName;
+                }
+            }
+        });
+
+        // Create user
+        document.getElementById('createUserForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                EmployeeID: document.getElementById('employeeSelect').value || null,
+                Username: document.getElementById('username').value,
+                Password: document.getElementById('password').value,
+                FirstName: document.getElementById('firstName').value,
+                LastName: document.getElementById('lastName').value,
+                Role: document.getElementById('role').value,
+                IsActive: 1
+            };
+            
+            if (formData.Password.length < 6) {
+                alert('Password must be at least 6 characters long');
+                return;
+            }
+            
+            try {
+                const response = await fetch('../backend/api/users.php?action=create', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('User account created successfully!');
+                    closeCreateModal();
+                    await loadStats();
+                    await loadUsers();
+                    await loadEmployeesWithoutAccount();
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error creating user:', error);
+                alert('Failed to create user account');
+            }
+        });
+
+        async function toggleStatus(userId) {
+            if (!confirm('Are you sure you want to change this user\'s status?')) return;
+            
+            try {
+                const response = await fetch('../backend/api/users.php?action=toggle-status', {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ UserID: userId })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    await loadStats();
+                    await loadUsers();
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error toggling status:', error);
+                alert('Failed to update user status');
+            }
+        }
+
+        async function resetPassword(userId, username) {
+            const newPassword = prompt(`Enter new password for ${username}:`);
+            if (!newPassword) return;
+            
+            if (newPassword.length < 6) {
+                alert('Password must be at least 6 characters long');
+                return;
+            }
+            
+            try {
+                const response = await fetch('../backend/api/users.php?action=reset-password', {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ UserID: userId, NewPassword: newPassword })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('Password reset successfully!');
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error resetting password:', error);
+                alert('Failed to reset password');
+            }
+        }
+
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                localStorage.removeItem('isLoggedIn');
+                localStorage.removeItem('user');
+                window.location.href = '../login.html';
+            }
+        }
+    </script>
+</body>
+</html>
