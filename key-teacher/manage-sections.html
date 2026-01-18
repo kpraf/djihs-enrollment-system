@@ -1,260 +1,591 @@
 <!DOCTYPE html>
 <html class="light" lang="en">
-   <head>
-      <meta charset="utf-8"/>
-      <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-      <title>Key Teacher | Manage Sections</title>
-      <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
-      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
-      <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
-      
-     <!-- AUTHENTICATION PROTECTION - MUST BE FIRST -->
-      <script src="../js/auth.js"></script>
-      <script>
-         // Protect this page - only Admin role can access
-         // This runs before page renders
-         (function() {
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Key Teacher | Manage Sections</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+    
+    <!-- AUTHENTICATION PROTECTION -->
+    <script src="../js/auth.js"></script>
+    <script>
+        (function() {
             const isLoggedIn = localStorage.getItem('isLoggedIn');
             const userDataString = localStorage.getItem('user');
             
             if (!isLoggedIn || !userDataString) {
-               window.location.href = '../login.html';
-               return;
+                window.location.href = '../login.html';
+                return;
             }
             
             try {
-               const user = JSON.parse(userDataString);
-               if (user.Role !== 'Key_Teacher') {
-                  alert('Access denied. Key Teacher access required.');
-                  window.location.href = '../login.html';
-               }
+                const user = JSON.parse(userDataString);
+                if (user.Role !== 'Key_Teacher') {
+                    alert('Access denied. Key Teacher access required.');
+                    window.location.href = '../login.html';
+                }
             } catch (e) {
-               window.location.href = '../login.html';
+                window.location.href = '../login.html';
             }
-         })();
-      </script>
-      
-      <script id="tailwind-config">
-         
-         tailwind.config = {
-           darkMode: "class",
-           theme: {
-             extend: {
-               colors: {
-                 "primary": "#085019",
-                 "background-light": "#f6f7f8",
-                 "background-dark": "#101922",
-                 "surface-light": "#ffffff",
-                 "surface-dark": "#1b2837",
-                 "text-light": "#111418",
-                 "text-dark": "#f0f2f4",
-                 "text-muted-light": "#617589",
-                 "text-muted-dark": "#94a3b8",
-                 "border-light": "#dbe0e6",
-                 "border-dark": "#334155"
-               },
-               fontFamily: {
-                 "display": ["Inter", "sans-serif"]
-               },
-               borderRadius: {"DEFAULT": "0.5rem", "lg": "0.75rem", "xl": "1rem", "full": "9999px"},
-             },
-           },
-         }
-      </script>
-      <style>
-         .material-symbols-outlined {
-         font-variation-settings:
-         'FILL' 0,
-         'wght' 400,
-         'GRAD' 0,
-         'opsz' 24
-         }
-      </style>
-   </head>
-   <body class="font-display bg-background-light dark:bg-background-dark">
-      <div class="relative flex min-h-screen w-full flex-col group/design-root">
-         <div class="flex flex-1">
-            <!-- Sidebar -->
-            <aside class="w-72 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex transition-colors duration-200">
-               <div>
-                  <div class="p-6">
-                     <div class="flex items-center gap-3 mb-1">
-                        <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center overflow-hidden shrink-0 border border-yellow-200 dark:border-yellow-700">
-                           <img alt="School Logo" class="w-full h-full object-cover opacity-90" src="../assets/images/djihs-logo-small.png"/>
+        })();
+    </script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#085019",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="font-display bg-background-light dark:bg-background-dark">
+    <div class="relative flex min-h-screen w-full">
+        <!-- Sidebar -->
+        <aside class="w-72 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex">
+            <div>
+                <div class="p-6">
+                    <div class="flex items-center gap-3 mb-1">
+                        <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center overflow-hidden shrink-0 border border-yellow-200">
+                            <img alt="School Logo" class="w-full h-full object-cover opacity-90" src="../assets/images/djihs-logo-small.png"/>
                         </div>
-                     </div>
-                     <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS Key Teacher</h1>
-                     <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
-                  </div>
-                  <nav class="px-4 space-y-1">
-                  <!-- Dashboard -->
-                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group"
-                     href="../key-teacher/dashboard.html">
-                     <span class="material-icons-outlined text-[20px]">dashboard</span>
-                     <span class="text-sm font-medium">Dashboard</span>
-                  </a>
-
-                  <!-- Manage Sections -->
-                  <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm"
-                     href="../key-teacher/manage-sections.html">
-                     <span class="material-icons-outlined text-[20px]">view_quilt</span>
-                     <span class="text-sm font-medium">Manage Sections</span>
-                  </a>
-
-                  <!-- All Sections -->
-                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group"
-                     href="../key-teacher/settings.html">
-                     <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">settings</span>
-                     <span class="text-sm font-medium">Settings</span>
-                  </a>
-                  </nav>
-               </div>
-               <div class="p-4 border-t border-gray-200 dark:border-gray-700">
-                  <div class="flex items-center gap-3 mb-4 px-2">
-                     <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm">
-                        IC
-                     </div>
-                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate">Key Teacher Name</p>
+                    </div>
+                    <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS Key Teacher</h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
+                </div>
+                <nav class="px-4 space-y-1">
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="dashboard.html">
+                        <span class="material-icons-outlined text-[20px]">dashboard</span>
+                        <span class="text-sm font-medium">Dashboard</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg shadow-sm" href="manage-sections.html">
+                        <span class="material-icons-outlined text-[20px]">view_quilt</span>
+                        <span class="text-sm font-medium">Manage Sections</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="assign-students.html">
+                        <span class="material-icons-outlined text-[20px]">group_add</span>
+                        <span class="text-sm font-medium">Assign Students</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="settings.html">
+                        <span class="material-icons-outlined text-[20px]">settings</span>
+                        <span class="text-sm font-medium">Settings</span>
+                    </a>
+                </nav>
+            </div>
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                <div class="flex items-center gap-3 mb-4 px-2">
+                    <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm" id="userInitials">KT</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate" id="userName">Key Teacher</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Key Teacher</p>
-                     </div>
-                  </div>
-                  <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors logout-btn">
-                  <span class="material-icons-outlined text-[18px]">logout</span>
-                  Logout
-                  </button>
-               </div>
-            </aside>
-            <main class="flex-1 p-8">
-               <div class="max-w-7xl mx-auto">
-                  <div class="flex flex-wrap justify-between items-center gap-3 mb-6">
-                     <p class="text-text-light dark:text-text-dark text-3xl font-bold tracking-tight">Manage Sections</p>
-                     <button class="flex min-w-[84px] cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-DEFAULT h-10 px-4 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors">
-                     <span class="material-symbols-outlined text-base">add_circle</span>
-                     <span class="truncate">Create New Section</span>
-                     </button>
-                  </div>
-                  <div class="bg-surface-light dark:bg-surface-dark p-4 rounded-lg border border-border-light dark:border-border-dark mb-6">
-                     <div class="flex flex-wrap items-center justify-between gap-4">
-                        <div class="relative w-full md:w-auto md:flex-1 max-w-sm">
-                           <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-muted-light dark:text-text-muted-dark">search</span>
-                           <input class="w-full h-10 pl-10 pr-4 rounded-DEFAULT bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark text-text-light dark:text-text-dark focus:ring-2 focus:ring-primary focus:border-primary transition-shadow" placeholder="Search section or adviser..." type="text"/>
+                    </div>
+                </div>
+                <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors logout-btn">
+                    <span class="material-icons-outlined text-[18px]">logout</span>
+                    Logout
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-8">
+            <div class="max-w-7xl mx-auto">
+                <!-- Header -->
+                <div class="flex flex-wrap justify-between items-center gap-3 mb-6">
+                    <div>
+                        <p class="text-gray-900 dark:text-white text-3xl font-bold">Manage Sections</p>
+                        <p class="text-gray-600 dark:text-gray-400 text-base">Create and manage class sections</p>
+                    </div>
+                    <button onclick="openCreateModal()" class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
+                        <span class="material-symbols-outlined text-[20px]">add_circle</span>
+                        <span class="text-sm font-medium">Create New Section</span>
+                    </button>
+                </div>
+
+                <!-- Filters -->
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
+                    <div class="flex flex-wrap items-center gap-4">
+                        <div class="flex-1 min-w-[200px]">
+                            <input id="searchInput" type="text" placeholder="Search section or adviser..." 
+                                   class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary"
+                                   oninput="filterSections()">
                         </div>
-                        <div class="flex flex-wrap gap-2">
-                           <div class="relative">
-                              <select class="appearance-none w-full md:w-48 h-10 pl-3 pr-10 rounded-DEFAULT bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark text-text-light dark:text-text-dark focus:ring-2 focus:ring-primary focus:border-primary transition-shadow">
-                                 <option>All Grade Levels</option>
-                                 <option>Grade 8</option>
-                                 <option>Grade 9</option>
-                                 <option>Grade 10</option>
-                                 <option>Grade 11</option>
-                                 <option>Grade 12</option>
-                              </select>
-                              <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-text-muted-light dark:text-text-muted-dark pointer-events-none">expand_more</span>
-                           </div>
-                           <div class="relative">
-                              <select class="appearance-none w-full md:w-48 h-10 pl-3 pr-10 rounded-DEFAULT bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark text-text-light dark:text-text-dark focus:ring-2 focus:ring-primary focus:border-primary transition-shadow">
-                                 <option>All Strands</option>
-                                 <option>ABM</option>
-                                 <option>STEM</option>
-                                 <option>HUMSS</option>
-                                 <option>GAS</option>
-                              </select>
-                              <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-text-muted-light dark:text-text-muted-dark pointer-events-none">expand_more</span>
-                           </div>
-                        </div>
-                     </div>
-                  </div>
-                  <div class="overflow-x-auto bg-surface-light dark:bg-surface-dark rounded-lg border border-border-light dark:border-border-dark">
-                     <table class="w-full text-left">
-                        <thead class="border-b border-border-light dark:border-border-dark bg-background-light dark:bg-surface-dark/50">
-                           <tr>
-                              <th class="px-4 py-3 text-left text-text-light dark:text-text-dark text-xs font-semibold uppercase tracking-wider">Section Name</th>
-                              <th class="px-4 py-3 text-left text-text-light dark:text-text-dark text-xs font-semibold uppercase tracking-wider">Adviser</th>
-                              <th class="px-4 py-3 text-left text-text-light dark:text-text-dark text-xs font-semibold uppercase tracking-wider">Grade Level/Strand</th>
-                              <th class="px-4 py-3 text-left text-text-light dark:text-text-dark text-xs font-semibold uppercase tracking-wider">Enrollment</th>
-                              <th class="px-4 py-3 text-left text-text-light dark:text-text-dark text-xs font-semibold uppercase tracking-wider">Status</th>
-                              <th class="px-4 py-3 text-left text-text-light dark:text-text-dark text-xs font-semibold uppercase tracking-wider">Actions</th>
-                           </tr>
+                        <select id="yearFilter" onchange="filterSections()" class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                            <option value="">All School Years</option>
+                        </select>
+                        <select id="gradeFilter" onchange="filterSections()" class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                            <option value="">All Grade Levels</option>
+                            <option value="7">Grade 7</option>
+                            <option value="8">Grade 8</option>
+                            <option value="9">Grade 9</option>
+                            <option value="10">Grade 10</option>
+                            <option value="11">Grade 11</option>
+                            <option value="12">Grade 12</option>
+                        </select>
+                        <select id="strandFilter" onchange="filterSections()" class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                            <option value="">All Strands</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Sections Table -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Section Name</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Adviser</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Grade/Strand</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Capacity</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Status</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Actions</th>
+                            </tr>
                         </thead>
-                        <tbody>
-                           <tr class="border-b border-border-light dark:border-border-dark">
-                              <td class="px-4 py-3 text-sm font-medium text-text-light dark:text-text-dark">11-ABM-A</td>
-                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">Juan Santos</td>
-                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">Grade 11 - ABM</td>
-                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">42/45</td>
-                              <td class="px-4 py-3">
-                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Open</span>
-                              </td>
-                              <td class="px-4 py-3">
-                                 <button class="p-1.5 text-text-muted-light dark:text-text-muted-dark hover:text-primary rounded-full hover:bg-primary/10">
-                                 <span class="material-symbols-outlined text-xl">more_horiz</span>
-                                 </button>
-                              </td>
-                           </tr>
-                           <tr class="border-b border-border-light dark:border-border-dark">
-                              <td class="px-4 py-3 text-sm font-medium text-text-light dark:text-text-dark">10-Aristotle</td>
-                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">Maria Garcia</td>
-                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">Grade 10</td>
-                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">45/45</td>
-                              <td class="px-4 py-3">
-                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Full</span>
-                              </td>
-                              <td class="px-4 py-3">
-                                 <button class="p-1.5 text-text-muted-light dark:text-text-muted-dark hover:text-primary rounded-full hover:bg-primary/10">
-                                 <span class="material-symbols-outlined text-xl">more_horiz</span>
-                                 </button>
-                              </td>
-                           </tr>
-                           <tr class="border-b border-border-light dark:border-border-dark">
-                              <td class="px-4 py-3 text-sm font-medium text-text-light dark:text-text-dark">12-STEM-B</td>
-                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">Peter Jones</td>
-                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">Grade 12 - STEM</td>
-                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">38/40</td>
-                              <td class="px-4 py-3">
-                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Open</span>
-                              </td>
-                              <td class="px-4 py-3">
-                                 <button class="p-1.5 text-text-muted-light dark:text-text-muted-dark hover:text-primary rounded-full hover:bg-primary/10">
-                                 <span class="material-symbols-outlined text-xl">more_horiz</span>
-                                 </button>
-                              </td>
-                           </tr>
-                           <tr class="border-b border-border-light dark:border-border-dark">
-                              <td class="px-4 py-3 text-sm font-medium text-text-light dark:text-text-dark">9-Newton</td>
-                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">Ana Reyes</td>
-                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">Grade 9</td>
-                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">44/45</td>
-                              <td class="px-4 py-3">
-                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Nearing Full</span>
-                              </td>
-                              <td class="px-4 py-3">
-                                 <button class="p-1.5 text-text-muted-light dark:text-text-muted-dark hover:text-primary rounded-full hover:bg-primary/10">
-                                 <span class="material-symbols-outlined text-xl">more_horiz</span>
-                                 </button>
-                              </td>
-                           </tr>
-                           <tr>
-                              <td class="px-4 py-3 text-sm font-medium text-text-light dark:text-text-dark">8-Einstein</td>
-                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">Carlos Gomez</td>
-                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">Grade 8</td>
-                              <td class="px-4 py-3 text-sm text-text-muted-light dark:text-text-muted-dark">40/40</td>
-                              <td class="px-4 py-3">
-                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Full</span>
-                              </td>
-                              <td class="px-4 py-3">
-                                 <button class="p-1.5 text-text-muted-light dark:text-text-muted-dark hover:text-primary rounded-full hover:bg-primary/10">
-                                 <span class="material-symbols-outlined text-xl">more_horiz</span>
-                                 </button>
-                              </td>
-                           </tr>
+                        <tbody id="sectionsTableBody" class="divide-y divide-gray-200 dark:divide-gray-700">
+                            <tr>
+                                <td colspan="6" class="px-4 py-8 text-center text-gray-500">Loading sections...</td>
+                            </tr>
                         </tbody>
-                     </table>
-                  </div>
-               </div>
-            </main>
-         </div>
-      </div>
-   </body>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Create/Edit Modal -->
+    <div id="sectionModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white" id="modalTitle">Create New Section</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            
+            <form id="sectionForm" onsubmit="saveSection(event)">
+                <input type="hidden" id="sectionId">
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Section Name *</label>
+                        <input type="text" id="sectionName" required 
+                               class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                               placeholder="e.g., Grade 10 - Rizal">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Academic Year *</label>
+                        <select id="academicYear" required class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                            <option value="">Select Year</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Grade Level *</label>
+                        <select id="gradeLevel" required onchange="handleGradeChange()" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                            <option value="">Select Grade</option>
+                            <option value="1">Grade 7</option>
+                            <option value="2">Grade 8</option>
+                            <option value="3">Grade 9</option>
+                            <option value="4">Grade 10</option>
+                            <option value="5">Grade 11</option>
+                            <option value="6">Grade 12</option>
+                        </select>
+                    </div>
+                    
+                    <div id="strandDiv" style="display: none;">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Strand</label>
+                        <select id="strand" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                            <option value="">Select Strand</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Capacity *</label>
+                        <input type="number" id="capacity" required min="1" max="100" value="40"
+                               class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Adviser *</label>
+                        <select id="adviser" required class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                            <option value="">Select Adviser</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3 mt-6">
+                    <button type="button" onclick="closeModal()" class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
+                        Save Section
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let sections = [];
+        let allSections = [];
+        let advisers = [];
+        let strands = [];
+        let currentUser = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            currentUser = JSON.parse(localStorage.getItem('user'));
+            displayUserInfo();
+            setupEventListeners();
+            loadSchoolYears();
+            loadStrands();
+            loadAdvisers();
+            loadSections();
+        });
+
+        function displayUserInfo() {
+            if (currentUser) {
+                document.getElementById('userName').textContent = `${currentUser.FirstName} ${currentUser.LastName}`;
+                document.getElementById('userInitials').textContent = `${currentUser.FirstName[0]}${currentUser.LastName[0]}`;
+            }
+        }
+
+        function setupEventListeners() {
+            document.querySelectorAll('.logout-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (confirm('Are you sure you want to logout?')) {
+                        localStorage.removeItem('isLoggedIn');
+                        localStorage.removeItem('user');
+                        window.location.href = '../login.html';
+                    }
+                });
+            });
+        }
+
+        async function loadSchoolYears() {
+            try {
+                const response = await fetch('../backend/api/get-school-years.php');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const yearFilter = document.getElementById('yearFilter');
+                    const academicYear = document.getElementById('academicYear');
+                    
+                    data.schoolYears.forEach(year => {
+                        const option1 = document.createElement('option');
+                        option1.value = year;
+                        option1.textContent = `S.Y. ${year}`;
+                        yearFilter.appendChild(option1);
+                        
+                        const option2 = document.createElement('option');
+                        option2.value = year;
+                        option2.textContent = year;
+                        academicYear.appendChild(option2);
+                    });
+                    
+                    if (data.schoolYears.length > 0) {
+                        academicYear.value = data.schoolYears[0];
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading school years:', error);
+            }
+        }
+
+        async function loadStrands() {
+            try {
+                const response = await fetch('../backend/api/students.php?action=get_strands');
+                const data = await response.json();
+                
+                if (data.success) {
+                    strands = data.strands;
+                    const strandFilter = document.getElementById('strandFilter');
+                    const strandSelect = document.getElementById('strand');
+                    
+                    strands.forEach(strand => {
+                        const option1 = document.createElement('option');
+                        option1.value = strand.StrandID;
+                        option1.textContent = strand.StrandCode;
+                        strandFilter.appendChild(option1);
+                        
+                        const option2 = document.createElement('option');
+                        option2.value = strand.StrandID;
+                        option2.textContent = `${strand.StrandCode} - ${strand.StrandName}`;
+                        strandSelect.appendChild(option2);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading strands:', error);
+            }
+        }
+
+        async function loadAdvisers() {
+            try {
+                const response = await fetch('../backend/api/manage-sections.php?action=advisers');
+                const data = await response.json();
+                
+                if (data.success) {
+                    advisers = data.advisers;
+                    const adviserSelect = document.getElementById('adviser');
+                    
+                    advisers.forEach(adviser => {
+                        const option = document.createElement('option');
+                        option.value = JSON.stringify({
+                            employeeId: adviser.EmployeeID,
+                            userId: adviser.UserID
+                        });
+                        option.textContent = adviser.FullName;
+                        adviserSelect.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading advisers:', error);
+            }
+        }
+
+        async function loadSections() {
+            try {
+                const response = await fetch('../backend/api/manage-sections.php?action=list');
+                const data = await response.json();
+                
+                if (data.success) {
+                    allSections = data.sections;
+                    sections = [...allSections];
+                    renderSections();
+                }
+            } catch (error) {
+                console.error('Error loading sections:', error);
+                alert('Failed to load sections');
+            }
+        }
+
+        function renderSections() {
+            const tbody = document.getElementById('sectionsTableBody');
+            
+            if (sections.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">No sections found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = sections.map(section => {
+                const statusColors = {
+                    'Full': 'bg-red-100 text-red-800',
+                    'Nearing Full': 'bg-yellow-100 text-yellow-800',
+                    'Open': 'bg-green-100 text-green-800'
+                };
+                
+                const gradeStrand = section.StrandCode ? 
+                    `${section.GradeLevelName} - ${section.StrandCode}` : 
+                    section.GradeLevelName;
+                
+                return `
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">${section.SectionName}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">${section.AdviserName || 'Not assigned'}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">${gradeStrand}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">${section.CurrentEnrollment}/${section.Capacity}</td>
+                        <td class="px-4 py-3">
+                            <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[section.Status]}">
+                                ${section.Status}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="flex gap-2">
+                                <button onclick="editSection(${section.SectionID})" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Edit">
+                                    <span class="material-symbols-outlined text-xl">edit</span>
+                                </button>
+                                <button onclick="deleteSection(${section.SectionID}, '${section.SectionName}')" class="p-1.5 text-red-600 hover:bg-red-50 rounded" title="Delete">
+                                    <span class="material-symbols-outlined text-xl">delete</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterSections() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const year = document.getElementById('yearFilter').value;
+            const grade = document.getElementById('gradeFilter').value;
+            const strand = document.getElementById('strandFilter').value;
+            
+            sections = allSections.filter(section => {
+                const matchSearch = !search || 
+                    section.SectionName.toLowerCase().includes(search) ||
+                    (section.AdviserName && section.AdviserName.toLowerCase().includes(search));
+                const matchYear = !year || section.AcademicYear === year;
+                const matchGrade = !grade || section.GradeLevelNumber.toString() === grade;
+                const matchStrand = !strand || (section.StrandID && section.StrandID.toString() === strand);
+                
+                return matchSearch && matchYear && matchGrade && matchStrand;
+            });
+            
+            renderSections();
+        }
+
+        function handleGradeChange() {
+            const grade = document.getElementById('gradeLevel').value;
+            const strandDiv = document.getElementById('strandDiv');
+            
+            // Show strand selection for Grade 11 and 12 (SHS)
+            if (grade === '5' || grade === '6') {
+                strandDiv.style.display = 'block';
+            } else {
+                strandDiv.style.display = 'none';
+                document.getElementById('strand').value = '';
+            }
+        }
+
+        function openCreateModal() {
+            document.getElementById('modalTitle').textContent = 'Create New Section';
+            document.getElementById('sectionForm').reset();
+            document.getElementById('sectionId').value = '';
+            document.getElementById('strandDiv').style.display = 'none';
+            document.getElementById('sectionModal').classList.remove('hidden');
+            document.getElementById('sectionModal').classList.add('flex');
+        }
+
+        async function editSection(sectionId) {
+            try {
+                const response = await fetch(`../backend/api/manage-sections.php?action=details&id=${sectionId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const section = data.section;
+                    
+                    document.getElementById('modalTitle').textContent = 'Edit Section';
+                    document.getElementById('sectionId').value = section.SectionID;
+                    document.getElementById('sectionName').value = section.SectionName;
+                    document.getElementById('academicYear').value = section.AcademicYear;
+                    document.getElementById('gradeLevel').value = section.GradeLevelID;
+                    document.getElementById('capacity').value = section.Capacity;
+                    
+                    handleGradeChange();
+                    
+                    if (section.StrandID) {
+                        document.getElementById('strand').value = section.StrandID;
+                    }
+                    
+                    if (section.AdviserEmployeeID && section.AdviserID) {
+                        const adviserData = JSON.stringify({
+                            employeeId: section.AdviserEmployeeID,
+                            userId: section.AdviserID
+                        });
+                        document.getElementById('adviser').value = adviserData;
+                    }
+                    
+                    document.getElementById('sectionModal').classList.remove('hidden');
+                    document.getElementById('sectionModal').classList.add('flex');
+                }
+            } catch (error) {
+                console.error('Error loading section details:', error);
+                alert('Failed to load section details');
+            }
+        }
+
+        async function saveSection(event) {
+            event.preventDefault();
+            
+            const sectionId = document.getElementById('sectionId').value;
+            const adviserValue = document.getElementById('adviser').value;
+            
+            if (!adviserValue) {
+                alert('Please select an adviser');
+                return;
+            }
+            
+            let adviserData = { employeeId: null, userId: null };
+            
+            try {
+                adviserData = JSON.parse(adviserValue);
+            } catch (e) {
+                alert('Invalid adviser selection');
+                return;
+            }
+            
+            const payload = {
+                sectionId: sectionId || undefined,
+                sectionName: document.getElementById('sectionName').value,
+                gradeLevelId: document.getElementById('gradeLevel').value,
+                strandId: document.getElementById('strand').value || null,
+                adviserEmployeeId: adviserData.employeeId,
+                adviserUserId: adviserData.userId,
+                capacity: document.getElementById('capacity').value,
+                academicYear: document.getElementById('academicYear').value
+            };
+            
+            console.log('Sending payload:', payload); // Debug log
+            
+            const action = sectionId ? 'update' : 'create';
+            
+            try {
+                const response = await fetch(`../backend/api/manage-sections.php?action=${action}`, {
+                    method: sectionId ? 'PUT' : 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(data.message);
+                    closeModal();
+                    loadSections();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error saving section:', error);
+                alert('Failed to save section');
+            }
+        }
+
+        async function deleteSection(sectionId, sectionName) {
+            if (!confirm(`Are you sure you want to delete "${sectionName}"?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`../backend/api/manage-sections.php?action=delete&id=${sectionId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(data.message);
+                    loadSections();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error deleting section:', error);
+                alert('Failed to delete section');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('sectionModal').classList.add('hidden');
+            document.getElementById('sectionModal').classList.remove('flex');
+        }
+    </script>
+</body>
 </html>

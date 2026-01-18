@@ -5,15 +5,12 @@
       <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
       <title>Registrar | Dashboard</title>
       <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet"/>
       <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
       <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
 
-      <!-- AUTHENTICATION PROTECTION - MUST BE FIRST -->
       <script src="../js/auth.js"></script>
       <script>
-         // Protect this page - only Admin role can access
-         // This runs before page renders
          (function() {
             const isLoggedIn = localStorage.getItem('isLoggedIn');
             const userDataString = localStorage.getItem('user');
@@ -60,11 +57,7 @@
       </script>
       <style>
          .material-symbols-outlined {
-         font-variation-settings:
-         'FILL' 0,
-         'wght' 400,
-         'GRAD' 0,
-         'opsz' 24
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24
          }
       </style>
    </head>
@@ -84,167 +77,339 @@
                      <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
                   </div>
                   <nav class="px-4 space-y-1">
-                  <!-- Dashboard -->
-                  <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm"
-                     href="../registrar/dashboard.html">
-                     <span class="material-icons-outlined text-[20px]">dashboard</span>
-                     <span class="text-sm font-medium">Dashboard</span>
-                  </a>
-
-                  <!-- Manage Sections -->
-                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="enrollment-management.html">
-                     <span class="material-icons-outlined text-[20px]">how_to_reg</span>
-                     <span class="text-sm font-medium">New Enrollment</span>
-                  </a>
-
-                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="review-enrollments.html">
-                     <span class="material-icons-outlined text-[20px]">rate_review</span>
-                     <span class="text-sm font-medium">Review Enrollments</span>
-                  </a>
-
-                  <!-- All Sections -->
-                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group"
-                     href="../registrar/student-management.html">
-                     <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">groups</span>
-                     <span class="text-sm font-medium">Student Management</span>
-                  </a>
+                     <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm" href="dashboard.html">
+                        <span class="material-icons-outlined text-[20px]">dashboard</span>
+                        <span class="text-sm font-medium">Dashboard</span>
+                     </a>
+                     <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="enrollment-management.html">
+                        <span class="material-icons-outlined text-[20px]">how_to_reg</span>
+                        <span class="text-sm font-medium">New Enrollment</span>
+                     </a>
+                     <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="review-enrollments.html">
+                        <span class="material-icons-outlined text-[20px]">rate_review</span>
+                        <span class="text-sm font-medium">Review Enrollments</span>
+                     </a>
+                     <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="student-management.html">
+                        <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">groups</span>
+                        <span class="text-sm font-medium">Student Management</span>
+                     </a>
                   </nav>
                </div>
                <div class="p-4 border-t border-gray-200 dark:border-gray-700">
                   <div class="flex items-center gap-3 mb-4 px-2">
                      <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm">
-                        IC
+                        <span id="userInitials">RE</span>
                      </div>
                      <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate">Registrar Name</p>
+                        <p id="userName" class="text-sm font-medium text-gray-900 dark:text-white truncate">Registrar Name</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Registrar</p>
                      </div>
                   </div>
-                  <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors logout-btn">
-                  <span class="material-icons-outlined text-[18px]">logout</span>
-                  Logout
+                  <button onclick="logout()" class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                     <span class="material-icons-outlined text-[18px]">logout</span>
+                     Logout
                   </button>
                </div>
             </aside>
+
             <!-- Main Content -->
             <div class="flex flex-1 flex-col">
                <main class="flex-1 p-6 md:p-10">
-                  <!-- PageHeading -->
+                  <!-- Page Heading -->
                   <div class="flex flex-wrap justify-between gap-3 mb-6">
                      <div class="flex min-w-72 flex-col gap-2">
-                        <p class="text-slate-900 dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">Welcome, Registrar!</p>
+                        <p class="text-slate-900 dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">Welcome, <span id="registrarName">Registrar</span>!</p>
                         <p class="text-slate-500 dark:text-slate-400 text-base font-normal leading-normal">Here's an overview of the current enrollment status.</p>
                      </div>
                   </div>
+
                   <!-- Stats -->
                   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                      <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                        <p class="text-slate-700 dark:text-slate-300 text-base font-medium leading-normal">Total Applicants</p>
-                        <p class="text-slate-900 dark:text-white tracking-light text-3xl font-bold leading-tight">1,204</p>
-                        <p class="text-emerald-500 text-sm font-medium leading-normal">+5.2% vs last month</p>
+                        <p class="text-slate-700 dark:text-slate-300 text-base font-medium leading-normal">Total Students</p>
+                        <p id="totalStudents" class="text-slate-900 dark:text-white tracking-light text-3xl font-bold leading-tight">0</p>
+                        <p class="text-emerald-500 text-sm font-medium leading-normal" id="totalStudentsChange">Loading...</p>
                      </div>
                      <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
                         <p class="text-slate-700 dark:text-slate-300 text-base font-medium leading-normal">Pending Approval</p>
-                        <p class="text-slate-900 dark:text-white tracking-light text-3xl font-bold leading-tight">86</p>
-                        <p class="text-emerald-500 text-sm font-medium leading-normal">+12% vs last month</p>
+                        <p id="pendingCount" class="text-slate-900 dark:text-white tracking-light text-3xl font-bold leading-tight">0</p>
+                        <p class="text-orange-500 text-sm font-medium leading-normal">Needs Review</p>
                      </div>
                      <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                        <p class="text-slate-700 dark:text-slate-300 text-base font-medium leading-normal">Needs Document Verification</p>
-                        <p class="text-slate-900 dark:text-white tracking-light text-3xl font-bold leading-tight">32</p>
-                        <p class="text-red-500 text-sm font-medium leading-normal">-3.1% vs last month</p>
+                        <p class="text-slate-700 dark:text-slate-300 text-base font-medium leading-normal">Confirmed Enrollments</p>
+                        <p id="confirmedCount" class="text-slate-900 dark:text-white tracking-light text-3xl font-bold leading-tight">0</p>
+                        <p class="text-emerald-500 text-sm font-medium leading-normal" id="confirmedChange">This Year</p>
                      </div>
                      <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                        <p class="text-slate-700 dark:text-slate-300 text-base font-medium leading-normal">Total Enrolled</p>
-                        <p class="text-slate-900 dark:text-white tracking-light text-3xl font-bold leading-tight">750</p>
-                        <p class="text-emerald-500 text-sm font-medium leading-normal">+8.0% vs last month</p>
+                        <p class="text-slate-700 dark:text-slate-300 text-base font-medium leading-normal">Active Students</p>
+                        <p id="activeStudents" class="text-slate-900 dark:text-white tracking-light text-3xl font-bold leading-tight">0</p>
+                        <p class="text-blue-500 text-sm font-medium leading-normal">Current Year</p>
                      </div>
                   </div>
-                  <!-- Enrollment Progress & Pending Tasks -->
+
+                  <!-- Pending Tasks & Enrollment Progress -->
                   <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                      <!-- Pending Tasks Table -->
                      <div class="lg:col-span-2">
-                        <h2 class="text-slate-900 dark:text-white text-xl font-bold leading-tight tracking-[-0.015em] mb-4">Pending Tasks</h2>
+                        <div class="flex items-center justify-between mb-4">
+                           <h2 class="text-slate-900 dark:text-white text-xl font-bold leading-tight tracking-[-0.015em]">Pending Enrollments</h2>
+                           <a href="review-enrollments.html" class="text-primary hover:text-primary/80 text-sm font-medium">View All →</a>
+                        </div>
                         <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
                            <div class="overflow-x-auto">
                               <table class="w-full text-sm text-left text-slate-500 dark:text-slate-400">
                                  <thead class="text-xs text-slate-700 dark:text-slate-300 uppercase bg-slate-50 dark:bg-slate-800">
                                     <tr>
                                        <th class="px-6 py-3" scope="col">Student Name</th>
-                                       <th class="px-6 py-3" scope="col">Application Date</th>
-                                       <th class="px-6 py-3" scope="col">Status</th>
+                                       <th class="px-6 py-3" scope="col">Grade Level</th>
+                                       <th class="px-6 py-3" scope="col">Date</th>
                                        <th class="px-6 py-3" scope="col">Action</th>
                                     </tr>
                                  </thead>
-                                 <tbody>
-                                    <tr class="bg-white dark:bg-slate-900 border-b dark:border-slate-800">
-                                       <th class="px-6 py-4 font-medium text-slate-900 dark:text-white whitespace-nowrap" scope="row">Olivia Chen</th>
-                                       <td class="px-6 py-4">2023-10-26</td>
-                                       <td class="px-6 py-4"><span class="bg-yellow-100 text-yellow-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full dark:bg-yellow-900 dark:text-yellow-300">Needs Verification</span></td>
-                                       <td class="px-6 py-4"><a class="font-medium text-primary hover:underline" href="#">View</a></td>
-                                    </tr>
-                                    <tr class="bg-white dark:bg-slate-900 border-b dark:border-slate-800">
-                                       <th class="px-6 py-4 font-medium text-slate-900 dark:text-white whitespace-nowrap" scope="row">Benjamin Carter</th>
-                                       <td class="px-6 py-4">2023-10-25</td>
-                                       <td class="px-6 py-4"><span class="bg-orange-100 text-orange-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full dark:bg-orange-900 dark:text-orange-300">Pending Approval</span></td>
-                                       <td class="px-6 py-4"><a class="font-medium text-primary hover:underline" href="#">View</a></td>
-                                    </tr>
-                                    <tr class="bg-white dark:bg-slate-900 border-b dark:border-slate-800">
-                                       <th class="px-6 py-4 font-medium text-slate-900 dark:text-white whitespace-nowrap" scope="row">Sophia Rodriguez</th>
-                                       <td class="px-6 py-4">2023-10-25</td>
-                                       <td class="px-6 py-4"><span class="bg-yellow-100 text-yellow-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full dark:bg-yellow-900 dark:text-yellow-300">Needs Verification</span></td>
-                                       <td class="px-6 py-4"><a class="font-medium text-primary hover:underline" href="#">View</a></td>
-                                    </tr>
-                                    <tr class="bg-white dark:bg-slate-900">
-                                       <th class="px-6 py-4 font-medium text-slate-900 dark:text-white whitespace-nowrap" scope="row">Liam Goldberg</th>
-                                       <td class="px-6 py-4">2023-10-24</td>
-                                       <td class="px-6 py-4"><span class="bg-orange-100 text-orange-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full dark:bg-orange-900 dark:text-orange-300">Pending Approval</span></td>
-                                       <td class="px-6 py-4"><a class="font-medium text-primary hover:underline" href="#">View</a></td>
+                                 <tbody id="pendingTasksBody">
+                                    <tr>
+                                       <td colspan="4" class="px-6 py-8 text-center">
+                                          <span class="material-symbols-outlined animate-spin text-4xl text-gray-400">refresh</span>
+                                          <p class="mt-2 text-gray-500">Loading...</p>
+                                       </td>
                                     </tr>
                                  </tbody>
                               </table>
                            </div>
                         </div>
                      </div>
-                     <!-- Enrollment Progress Chart -->
+
+                     <!-- Grade Level Distribution -->
                      <div class="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800">
-                        <h2 class="text-slate-900 dark:text-white text-xl font-bold leading-tight tracking-[-0.015em] mb-4">Enrollment Progress</h2>
-                        <div class="relative flex items-center justify-center h-48">
-                           <svg class="w-full h-full" viewbox="0 0 36 36">
-                              <path class="text-slate-200 dark:text-slate-700" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"></path>
-                              <path class="text-primary" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="75, 100" stroke-linecap="round" stroke-width="3"></path>
-                           </svg>
-                           <div class="absolute flex flex-col items-center">
-                              <span class="text-3xl font-bold text-slate-900 dark:text-white">75%</span>
-                              <span class="text-slate-500 dark:text-slate-400">Target Reached</span>
+                        <h2 class="text-slate-900 dark:text-white text-xl font-bold leading-tight tracking-[-0.015em] mb-4">Grade Level Distribution</h2>
+                        <div id="gradeLevelChart" class="space-y-3">
+                           <div class="flex items-center justify-center h-48">
+                              <span class="material-symbols-outlined animate-spin text-4xl text-gray-400">refresh</span>
                            </div>
-                        </div>
-                        <div class="text-center mt-4">
-                           <p class="text-slate-900 dark:text-white text-lg font-semibold">750 / 1000 Enrolled</p>
-                           <p class="text-slate-500 dark:text-slate-400 text-sm">250 slots remaining</p>
                         </div>
                      </div>
                   </div>
+
                   <!-- Quick Actions -->
                   <div class="mt-8">
                      <h2 class="text-slate-900 dark:text-white text-xl font-bold leading-tight tracking-[-0.015em] mb-4">Quick Actions</h2>
                      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <button class="flex flex-col items-center justify-center gap-2 p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-primary/50 hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors">
-                        <span class="material-symbols-outlined text-primary text-3xl">person_search</span>
-                        <span class="text-slate-800 dark:text-slate-200 font-semibold">Search for a Student</span>
-                        </button>
-                        <button class="flex flex-col items-center justify-center gap-2 p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-primary/50 hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors">
-                        <span class="material-symbols-outlined text-primary text-3xl">assessment</span>
-                        <span class="text-slate-800 dark:text-slate-200 font-semibold">Generate Report</span>
-                        </button>
-                        <button class="flex flex-col items-center justify-center gap-2 p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-primary/50 hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors">
-                        <span class="material-symbols-outlined text-primary text-3xl">checklist</span>
-                        <span class="text-slate-800 dark:text-slate-200 font-semibold">Verify Documents</span>
-                        </button>
+                        <a href="student-management.html" class="flex flex-col items-center justify-center gap-2 p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-primary/50 hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors">
+                           <span class="material-symbols-outlined text-primary text-3xl">person_search</span>
+                           <span class="text-slate-800 dark:text-slate-200 font-semibold">Search Students</span>
+                        </a>
+                        <a href="enrollment-management.html" class="flex flex-col items-center justify-center gap-2 p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-primary/50 hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors">
+                           <span class="material-symbols-outlined text-primary text-3xl">person_add</span>
+                           <span class="text-slate-800 dark:text-slate-200 font-semibold">New Enrollment</span>
+                        </a>
+                        <a href="review-enrollments.html" class="flex flex-col items-center justify-center gap-2 p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-primary/50 hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors">
+                           <span class="material-symbols-outlined text-primary text-3xl">checklist</span>
+                           <span class="text-slate-800 dark:text-slate-200 font-semibold">Review Enrollments</span>
+                        </a>
                      </div>
                   </div>
                </main>
             </div>
          </div>
       </div>
+
+      <script>
+         let currentUser = null;
+
+         function getInitials(firstName, lastName) {
+            return (firstName?.charAt(0) || '') + (lastName?.charAt(0) || '');
+         }
+
+         function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+               month: 'short', 
+               day: 'numeric', 
+               year: 'numeric' 
+            });
+         }
+
+         window.onload = async function() {
+            currentUser = checkAuth('Registrar');
+            
+            if (currentUser) {
+               document.getElementById('userName').textContent = `${currentUser.FirstName} ${currentUser.LastName}`;
+               document.getElementById('registrarName').textContent = currentUser.FirstName;
+               document.getElementById('userInitials').textContent = getInitials(currentUser.FirstName, currentUser.LastName);
+               
+               await loadDashboardData();
+            }
+         };
+
+         async function loadDashboardData() {
+            await Promise.all([
+               loadStudentStats(),
+               loadEnrollmentStats(),
+               loadPendingEnrollments(),
+               loadGradeLevelDistribution()
+            ]);
+         }
+
+         async function loadStudentStats() {
+            try {
+               const response = await fetch('../backend/api/students.php?action=stats');
+               const result = await response.json();
+               
+               if (result.success) {
+                  const stats = result.data;
+                  document.getElementById('totalStudents').textContent = stats.totalActive || 0;
+                  document.getElementById('activeStudents').textContent = stats.enrolledThisYear || 0;
+                  document.getElementById('totalStudentsChange').textContent = `${stats.totalActive || 0} Active`;
+               }
+            } catch (error) {
+               console.error('Error loading student stats:', error);
+            }
+         }
+
+         async function loadEnrollmentStats() {
+            try {
+               const response = await fetch('../backend/api/enrollment.php?action=pending');
+               const result = await response.json();
+               
+               if (result.success) {
+                  const enrollments = result.data || [];
+                  const pending = enrollments.filter(e => e.Status === 'Pending').length;
+                  const confirmed = enrollments.filter(e => e.Status === 'Confirmed').length;
+                  
+                  document.getElementById('pendingCount').textContent = pending;
+                  document.getElementById('confirmedCount').textContent = confirmed;
+               }
+            } catch (error) {
+               console.error('Error loading enrollment stats:', error);
+            }
+         }
+
+         async function loadPendingEnrollments() {
+            try {
+               const response = await fetch('../backend/api/enrollment.php?action=pending');
+               const result = await response.json();
+               
+               const tbody = document.getElementById('pendingTasksBody');
+               
+               if (result.success && result.data && result.data.length > 0) {
+                  const pendingOnly = result.data.filter(e => e.Status === 'Pending').slice(0, 5);
+                  
+                  if (pendingOnly.length === 0) {
+                     tbody.innerHTML = `
+                        <tr>
+                           <td colspan="4" class="px-6 py-8 text-center text-gray-500">
+                              <span class="material-symbols-outlined text-4xl mb-2">check_circle</span>
+                              <p>No pending enrollments</p>
+                           </td>
+                        </tr>
+                     `;
+                     return;
+                  }
+                  
+                  tbody.innerHTML = pendingOnly.map(enrollment => {
+                     const statusClass = enrollment.Status === 'Pending' 
+                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+                        : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
+                     
+                     return `
+                        <tr class="bg-white dark:bg-slate-900 border-b dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800">
+                           <th class="px-6 py-4 font-medium text-slate-900 dark:text-white whitespace-nowrap" scope="row">
+                              ${enrollment.StudentName}
+                           </th>
+                           <td class="px-6 py-4">${enrollment.GradeLevelName}</td>
+                           <td class="px-6 py-4">${formatDate(enrollment.EnrollmentDate)}</td>
+                           <td class="px-6 py-4">
+                              <a href="review-enrollments.html" class="font-medium text-primary hover:underline">Review</a>
+                           </td>
+                        </tr>
+                     `;
+                  }).join('');
+               } else {
+                  tbody.innerHTML = `
+                     <tr>
+                        <td colspan="4" class="px-6 py-8 text-center text-gray-500">
+                           <span class="material-symbols-outlined text-4xl mb-2">inbox</span>
+                           <p>No pending enrollments</p>
+                        </td>
+                     </tr>
+                  `;
+               }
+            } catch (error) {
+               console.error('Error loading pending enrollments:', error);
+               document.getElementById('pendingTasksBody').innerHTML = `
+                  <tr>
+                     <td colspan="4" class="px-6 py-8 text-center text-red-500">
+                        <p>Error loading data</p>
+                     </td>
+                  </tr>
+               `;
+            }
+         }
+
+         async function loadGradeLevelDistribution() {
+            try {
+               const response = await fetch('../backend/api/students.php?action=stats');
+               const result = await response.json();
+               
+               const container = document.getElementById('gradeLevelChart');
+               
+               if (result.success && result.data.byGradeLevel) {
+                  const gradeData = result.data.byGradeLevel;
+                  
+                  if (gradeData.length === 0) {
+                     container.innerHTML = `
+                        <div class="text-center text-gray-500 py-8">
+                           <span class="material-symbols-outlined text-4xl mb-2">school</span>
+                           <p>No enrollment data</p>
+                        </div>
+                     `;
+                     return;
+                  }
+                  
+                  const total = gradeData.reduce((sum, item) => sum + parseInt(item.count || 0), 0);
+                  
+                  container.innerHTML = gradeData.map(item => {
+                     const count = parseInt(item.count || 0);
+                     const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
+                     const gradeNum = item.GradeLevelName.match(/\d+/)?.[0] || item.GradeLevelName;
+                     
+                     return `
+                        <div class="space-y-2">
+                           <div class="flex items-center justify-between text-sm">
+                              <span class="font-medium text-gray-700 dark:text-gray-300">Grade ${gradeNum}</span>
+                              <span class="text-primary font-bold">${count} (${percentage}%)</span>
+                           </div>
+                           <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                              <div class="bg-primary h-2.5 rounded-full transition-all duration-500" style="width: ${percentage}%"></div>
+                           </div>
+                        </div>
+                     `;
+                  }).join('');
+               } else {
+                  container.innerHTML = `
+                     <div class="text-center text-gray-500 py-8">
+                        <span class="material-symbols-outlined text-4xl mb-2">school</span>
+                        <p>No data available</p>
+                     </div>
+                  `;
+               }
+            } catch (error) {
+               console.error('Error loading grade distribution:', error);
+               document.getElementById('gradeLevelChart').innerHTML = `
+                  <div class="text-center text-red-500 py-8">
+                     <p>Error loading data</p>
+                  </div>
+               `;
+            }
+         }
+
+         function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+               localStorage.removeItem('isLoggedIn');
+               localStorage.removeItem('user');
+               window.location.href = '../login.html';
+            }
+         }
+      </script>
    </body>
 </html>

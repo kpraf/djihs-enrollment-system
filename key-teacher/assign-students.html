@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Key Teacher | Assign Students</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+
+    <!-- AUTHENTICATION PROTECTION -->
+    <script src="../js/auth.js"></script>
+    <script>
+        (function() {
+            const isLoggedIn = localStorage.getItem('isLoggedIn');
+            const userDataString = localStorage.getItem('user');
+            
+            if (!isLoggedIn || !userDataString) {
+                window.location.href = '../login.html';
+                return;
+            }
+            
+            try {
+                const user = JSON.parse(userDataString);
+                if (user.Role !== 'Key_Teacher') {
+                    alert('Access denied. Key Teacher access required.');
+                    window.location.href = '../login.html';
+                }
+            } catch (e) {
+                window.location.href = '../login.html';
+            }
+        })();
+    </script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#085019",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .dragging {
+            opacity: 0.5;
+        }
+        .drag-over {
+            background-color: rgba(8, 80, 25, 0.1);
+            border: 2px dashed #085019;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display">
+    <div class="relative flex h-auto min-h-screen w-full flex-col">
+        <div class="layout-container flex h-full grow flex-col">
+            <div class="flex flex-1">
+                <!-- Sidebar -->
+                <aside class="w-72 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex">
+                    <div>
+                        <div class="p-6">
+                            <div class="flex items-center gap-3 mb-1">
+                                <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center overflow-hidden shrink-0 border border-yellow-200">
+                                    <img alt="School Logo" class="w-full h-full object-cover opacity-90" src="../assets/images/djihs-logo-small.png"/>
+                                </div>
+                            </div>
+                            <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS Key Teacher</h1>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
+                        </div>
+                        <nav class="px-4 space-y-1">
+                            <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="dashboard.html">
+                                <span class="material-icons-outlined text-[20px]">dashboard</span>
+                                <span class="text-sm font-medium">Dashboard</span>
+                            </a>
+                            <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="manage-sections.html">
+                                <span class="material-icons-outlined text-[20px]">view_quilt</span>
+                                <span class="text-sm font-medium">Manage Sections</span>
+                            </a>
+                            <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg shadow-sm" href="assign-students.html">
+                                <span class="material-icons-outlined text-[20px]">group_add</span>
+                                <span class="text-sm font-medium">Assign Students</span>
+                            </a>
+                            <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="settings.html">
+                                <span class="material-icons-outlined text-[20px]">settings</span>
+                                <span class="text-sm font-medium">Settings</span>
+                            </a>
+                        </nav>
+                    </div>
+                    <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center gap-3 mb-4 px-2">
+                            <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm" id="userInitials">KT</div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-gray-900 dark:text-white truncate" id="userName">Key Teacher</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Key Teacher</p>
+                            </div>
+                        </div>
+                        <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors logout-btn">
+                            <span class="material-icons-outlined text-[18px]">logout</span>
+                            Logout
+                        </button>
+                    </div>
+                </aside>
+
+                <!-- Main Content -->
+                <main class="flex-1 p-8 bg-background-light dark:bg-background-dark">
+                    <div class="flex flex-wrap justify-between gap-4 items-start mb-6">
+                        <div class="flex min-w-72 flex-col gap-1">
+                            <p class="text-gray-800 dark:text-white text-3xl font-bold leading-tight tracking-tight">Assign Students to Sections</p>
+                            <p class="text-gray-500 dark:text-gray-400 text-base font-normal leading-normal">Manually assign or use automatic assignment based on enrollment order.</p>
+                        </div>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
+                        <div class="flex flex-wrap items-center gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Academic Year *</label>
+                                <select id="yearFilter" onchange="loadData()" class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                                    <option value="">Select Year</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Grade Level *</label>
+                                <select id="gradeFilter" onchange="loadData()" class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                                    <option value="">Select Grade</option>
+                                    <option value="7">Grade 7</option>
+                                    <option value="8">Grade 8</option>
+                                    <option value="9">Grade 9</option>
+                                    <option value="10">Grade 10</option>
+                                    <option value="11">Grade 11</option>
+                                    <option value="12">Grade 12</option>
+                                </select>
+                            </div>
+                            <div id="strandFilterDiv" style="display: none;">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Strand</label>
+                                <select id="strandFilter" onchange="loadData()" class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                                    <option value="">All Strands</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="dataContainer" style="display: none;">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <!-- Unassigned Students -->
+                            <div class="flex flex-col gap-4">
+                                <div class="flex justify-between items-center">
+                                    <h2 class="text-gray-800 dark:text-white text-xl font-bold">
+                                        Unassigned Students 
+                                        <span class="text-base font-normal text-gray-500" id="unassignedCount">(0)</span>
+                                    </h2>
+                                    <button onclick="autoAssign()" class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm font-medium">
+                                        <span class="material-symbols-outlined text-base">magic_button</span>
+                                        Auto-Assign (FCFS)
+                                    </button>
+                                </div>
+                                
+                                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 flex flex-col gap-3 h-[600px] overflow-y-auto" id="unassignedStudentsList">
+                                    <p class="text-center text-gray-500 py-8">Select year and grade to view students</p>
+                                </div>
+                            </div>
+
+                            <!-- Sections -->
+                            <div class="flex flex-col gap-6" id="sectionsList">
+                                <p class="text-center text-gray-500 py-8">Select year and grade to view sections</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="emptyState" class="text-center py-12">
+                        <span class="material-symbols-outlined text-6xl text-gray-400 mb-4">assignment</span>
+                        <p class="text-gray-600 dark:text-gray-400 text-lg">Select an academic year and grade level to begin assigning students</p>
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let unassignedStudents = [];
+        let sections = [];
+        let strands = [];
+        let draggedStudent = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            currentUser = JSON.parse(localStorage.getItem('user'));
+            displayUserInfo();
+            setupEventListeners();
+            loadSchoolYears();
+            loadStrands();
+        });
+
+        function displayUserInfo() {
+            if (currentUser) {
+                document.getElementById('userName').textContent = `${currentUser.FirstName} ${currentUser.LastName}`;
+                document.getElementById('userInitials').textContent = `${currentUser.FirstName[0]}${currentUser.LastName[0]}`;
+            }
+        }
+
+        function setupEventListeners() {
+            document.querySelectorAll('.logout-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (confirm('Are you sure you want to logout?')) {
+                        localStorage.removeItem('isLoggedIn');
+                        localStorage.removeItem('user');
+                        window.location.href = '../login.html';
+                    }
+                });
+            });
+
+            // Handle grade change for strand display
+            document.getElementById('gradeFilter').addEventListener('change', function() {
+                const grade = this.value;
+                const strandDiv = document.getElementById('strandFilterDiv');
+                if (grade === '11' || grade === '12') {
+                    strandDiv.style.display = 'block';
+                } else {
+                    strandDiv.style.display = 'none';
+                    document.getElementById('strandFilter').value = '';
+                }
+            });
+        }
+
+        async function loadSchoolYears() {
+            try {
+                const response = await fetch('../backend/api/get-school-years.php');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const yearFilter = document.getElementById('yearFilter');
+                    data.schoolYears.forEach(year => {
+                        const option = document.createElement('option');
+                        option.value = year;
+                        option.textContent = year;
+                        yearFilter.appendChild(option);
+                    });
+                    
+                    if (data.schoolYears.length > 0) {
+                        yearFilter.value = data.schoolYears[0];
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading school years:', error);
+            }
+        }
+
+        async function loadStrands() {
+            try {
+                const response = await fetch('../backend/api/students.php?action=get_strands');
+                const data = await response.json();
+                
+                if (data.success) {
+                    strands = data.strands;
+                    const strandFilter = document.getElementById('strandFilter');
+                    
+                    strands.forEach(strand => {
+                        const option = document.createElement('option');
+                        option.value = strand.StrandID;
+                        option.textContent = `${strand.StrandCode} - ${strand.StrandName}`;
+                        strandFilter.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading strands:', error);
+            }
+        }
+
+        async function loadData() {
+            const year = document.getElementById('yearFilter').value;
+            const grade = document.getElementById('gradeFilter').value;
+            const strand = document.getElementById('strandFilter').value;
+
+            if (!year || !grade) {
+                document.getElementById('emptyState').style.display = 'block';
+                document.getElementById('dataContainer').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('dataContainer').style.display = 'block';
+
+            await Promise.all([
+                loadUnassignedStudents(year, grade, strand),
+                loadSections(year, grade, strand)
+            ]);
+        }
+
+        async function loadUnassignedStudents(year, grade, strand) {
+            try {
+                let url = `../backend/api/section-assignments.php?action=unassigned&year=${year}&grade=${grade}`;
+                if (strand) url += `&strand=${strand}`;
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.success) {
+                    unassignedStudents = data.students;
+                    renderUnassignedStudents();
+                }
+            } catch (error) {
+                console.error('Error loading unassigned students:', error);
+                alert('Failed to load unassigned students');
+            }
+        }
+
+        async function loadSections(year, grade, strand) {
+            try {
+                let url = `../backend/api/section-assignments.php?action=sections-with-students&year=${year}&grade=${grade}`;
+                if (strand) url += `&strand=${strand}`;
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.success) {
+                    sections = data.sections;
+                    await loadSectionStudents();
+                    renderSections();
+                }
+            } catch (error) {
+                console.error('Error loading sections:', error);
+                alert('Failed to load sections');
+            }
+        }
+
+        async function loadSectionStudents() {
+            for (let section of sections) {
+                try {
+                    const response = await fetch(`../backend/api/section-assignments.php?action=section-students&sectionId=${section.SectionID}`);
+                    const data = await response.json();
+                    if (data.success) {
+                        section.students = data.students;
+                    }
+                } catch (error) {
+                    console.error(`Error loading students for section ${section.SectionID}:`, error);
+                    section.students = [];
+                }
+            }
+        }
+
+        function renderUnassignedStudents() {
+            const container = document.getElementById('unassignedStudentsList');
+            document.getElementById('unassignedCount').textContent = `(${unassignedStudents.length})`;
+
+            if (unassignedStudents.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 py-8">All students have been assigned to sections</p>';
+                return;
+            }
+
+            container.innerHTML = unassignedStudents.map(student => `
+                <div class="student-item flex items-center justify-between p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-grab"
+                     draggable="true"
+                     data-student-id="${student.StudentID}"
+                     data-enrollment-id="${student.EnrollmentID}"
+                     ondragstart="handleDragStart(event)"
+                     ondragend="handleDragEnd(event)">
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-gray-400">drag_indicator</span>
+                        <div>
+                            <p class="text-gray-800 dark:text-white font-medium">${student.StudentName}</p>
+                            <p class="text-xs text-gray-500">${student.LRN} • ${student.LearnerType.replace(/_/g, ' ')}</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-1">
+                        ${student.IsPWD ? '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">PWD</span>' : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderSections() {
+            const container = document.getElementById('sectionsList');
+
+            if (sections.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 py-8">No sections available for this grade level</p>';
+                return;
+            }
+
+            container.innerHTML = sections.map(section => {
+                const percentage = (section.CurrentEnrollment / section.Capacity) * 100;
+                const progressColor = percentage >= 100 ? 'bg-red-500' : percentage >= 90 ? 'bg-yellow-500' : 'bg-green-500';
+                
+                return `
+                    <div class="section-card bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 flex flex-col gap-3"
+                         data-section-id="${section.SectionID}"
+                         ondrop="handleDrop(event, ${section.SectionID})"
+                         ondragover="handleDragOver(event)"
+                         ondragleave="handleDragLeave(event)">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-gray-800 dark:text-white text-lg font-bold">${section.SectionName}</p>
+                                ${section.AdviserName ? `<p class="text-sm text-gray-500">${section.AdviserName}</p>` : ''}
+                            </div>
+                            <span class="text-gray-500 dark:text-gray-400 text-sm font-medium">${section.CurrentEnrollment}/${section.Capacity}</span>
+                        </div>
+                        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div class="${progressColor} h-2 rounded-full" style="width: ${Math.min(percentage, 100)}%"></div>
+                        </div>
+                        <div class="flex flex-col gap-2 pt-2 border-t border-gray-200 dark:border-gray-700 h-[220px] overflow-y-auto">
+                            ${section.students && section.students.length > 0 ? 
+                                section.students.map(student => `
+                                    <div class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+                                        <div class="flex items-center gap-2">
+                                            <p class="text-sm text-gray-700 dark:text-gray-300">${student.StudentName}</p>
+                                        </div>
+                                        <button onclick="unassignStudent(${student.AssignmentID})" 
+                                                class="text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                                                title="Remove from section">
+                                            <span class="material-symbols-outlined text-base">close</span>
+                                        </button>
+                                    </div>
+                                `).join('') 
+                                : '<p class="text-sm text-gray-500 text-center py-4">No students assigned yet</p>'
+                            }
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function handleDragStart(event) {
+            const studentId = event.currentTarget.dataset.studentId;
+            const enrollmentId = event.currentTarget.dataset.enrollmentId;
+            
+            draggedStudent = {
+                studentId: parseInt(studentId),
+                enrollmentId: parseInt(enrollmentId)
+            };
+            
+            event.currentTarget.classList.add('dragging');
+            event.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragEnd(event) {
+            event.currentTarget.classList.remove('dragging');
+            document.querySelectorAll('.section-card').forEach(card => {
+                card.classList.remove('drag-over');
+            });
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+            event.currentTarget.classList.add('drag-over');
+        }
+
+        function handleDragLeave(event) {
+            event.currentTarget.classList.remove('drag-over');
+        }
+
+        async function handleDrop(event, sectionId) {
+            event.preventDefault();
+            event.currentTarget.classList.remove('drag-over');
+
+            if (!draggedStudent) return;
+
+            // Check if section is full
+            const section = sections.find(s => s.SectionID === sectionId);
+            if (section && section.CurrentEnrollment >= section.Capacity) {
+                alert('This section is already full!');
+                return;
+            }
+
+            try {
+                const response = await fetch('../backend/api/section-assignments.php?action=assign', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        studentId: draggedStudent.studentId,
+                        sectionId: sectionId,
+                        enrollmentId: draggedStudent.enrollmentId,
+                        assignedBy: currentUser.UserID
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    await loadData();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error assigning student:', error);
+                alert('Failed to assign student');
+            }
+
+            draggedStudent = null;
+        }
+
+        async function unassignStudent(assignmentId) {
+            if (!confirm('Remove this student from the section?')) return;
+
+            try {
+                const response = await fetch(`../backend/api/section-assignments.php?action=unassign&id=${assignmentId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    await loadData();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error unassigning student:', error);
+                alert('Failed to unassign student');
+            }
+        }
+
+        async function autoAssign() {
+            const year = document.getElementById('yearFilter').value;
+            const grade = document.getElementById('gradeFilter').value;
+            const strand = document.getElementById('strandFilter').value;
+
+            if (!year || !grade) {
+                alert('Please select academic year and grade level');
+                return;
+            }
+
+            if (unassignedStudents.length === 0) {
+                alert('No unassigned students to assign');
+                return;
+            }
+
+            if (!confirm(`Automatically assign ${unassignedStudents.length} students using first-come, first-served order?`)) {
+                return;
+            }
+
+            try {
+                const payload = {
+                    academicYear: year,
+                    gradeLevel: grade,
+                    assignedBy: currentUser.UserID
+                };
+
+                if (strand) {
+                    payload.strandId = strand;
+                }
+
+                const response = await fetch('../backend/api/section-assignments.php?action=auto-assign', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert(data.message + 
+                        (data.unassignedCount > 0 ? `\n${data.unassignedCount} student(s) could not be assigned (no available slots).` : ''));
+                    await loadData();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error in automatic assignment:', error);
+                alert('Failed to automatically assign students');
+            }
+        }
+    </script>
+</body>
+</html>

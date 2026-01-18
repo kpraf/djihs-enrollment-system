@@ -6,16 +6,13 @@
       <title>ICT Coordinator | Dashboard</title>
       <link href="https://fonts.googleapis.com" rel="preconnect"/>
       <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
       <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
       <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
-         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 
-      <!-- AUTHENTICATION PROTECTION - MUST BE FIRST -->
       <script src="../js/auth.js"></script>
       <script>
-         // Protect this page - only Admin role can access
-         // This runs before page renders
          (function() {
             const isLoggedIn = localStorage.getItem('isLoggedIn');
             const userDataString = localStorage.getItem('user');
@@ -43,16 +40,16 @@
            theme: {
              extend: {
                colors: {
-                 primary: "#085019", // A deep forest green
+                 primary: "#085019",
                  "primary-hover": "#166534",
-                 "background-light": "#f3f4f6", // gray-100
-                 "background-dark": "#111827", // gray-900
+                 "background-light": "#f3f4f6",
+                 "background-dark": "#111827",
                  "card-light": "#ffffff",
-                 "card-dark": "#1f2937", // gray-800
-                 "text-main-light": "#1f2937", // gray-800
-                 "text-main-dark": "#f9fafb", // gray-50
-                 "text-sub-light": "#6b7280", // gray-500
-                 "text-sub-dark": "#9ca3af", // gray-400
+                 "card-dark": "#1f2937",
+                 "text-main-light": "#1f2937",
+                 "text-main-dark": "#f9fafb",
+                 "text-sub-light": "#6b7280",
+                 "text-sub-dark": "#9ca3af",
                },
                fontFamily: {
                  sans: ["Inter", "sans-serif"],
@@ -66,21 +63,22 @@
            },
          };
       </script>
-      <style>::-webkit-scrollbar {
-         width: 8px;
+      <style>
+         ::-webkit-scrollbar {
+            width: 8px;
          }
          ::-webkit-scrollbar-track {
-         background: transparent; 
+            background: transparent; 
          }
          ::-webkit-scrollbar-thumb {
-         background: #cbd5e1; 
-         border-radius: 4px;
+            background: #cbd5e1; 
+            border-radius: 4px;
          }
          ::-webkit-scrollbar-thumb:hover {
-         background: #94a3b8; 
+            background: #94a3b8; 
          }
          .dark ::-webkit-scrollbar-thumb {
-         background: #475569;
+            background: #475569;
          }
       </style>
    </head>
@@ -99,7 +97,7 @@
                   <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
                </div>
                <nav class="px-4 space-y-1">
-                  <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm" href="../ict-coordinator/dashboard.html">
+                  <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm" href="dashboard.html">
                      <span class="material-icons-outlined text-[20px]">dashboard</span>
                      <span class="text-sm font-medium">Dashboard</span>
                   </a>        
@@ -146,9 +144,11 @@
                </div>
                <div class="flex items-center text-gray-500 dark:text-gray-400 bg-white dark:bg-card-dark px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
                   <span class="material-icons-outlined mr-2 text-primary dark:text-green-400">calendar_today</span>
-                  <span class="text-sm font-medium">October 26, 2023</span>
+                  <span class="text-sm font-medium" id="currentDate">Loading...</span>
                </div>
             </header>
+
+            <!-- Stats Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
                <div class="bg-card-light dark:bg-card-dark p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
                   <div class="flex justify-between items-start mb-4">
@@ -157,7 +157,7 @@
                   </div>
                   <div>
                      <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Online</h3>
-                     <p class="text-sm font-medium text-green-600 dark:text-green-400">99.9% Uptime</p>
+                     <p class="text-sm font-medium text-green-600 dark:text-green-400">All Systems Operational</p>
                   </div>
                </div>
                <div class="bg-card-light dark:bg-card-dark p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
@@ -166,18 +166,18 @@
                      <span class="material-icons-outlined text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-1.5 rounded-lg">perm_identity</span>
                   </div>
                   <div>
-                     <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">12</h3>
-                     <p class="text-sm font-medium text-green-600 dark:text-green-400">+2 today</p>
+                     <h3 id="activeUsersCount" class="text-2xl font-bold text-gray-900 dark:text-white mb-1">0</h3>
+                     <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Active</p>
                   </div>
                </div>
                <div class="bg-card-light dark:bg-card-dark p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
                   <div class="flex justify-between items-start mb-4">
-                     <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Recent Logins</p>
-                     <span class="material-icons-outlined text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-1.5 rounded-lg">login</span>
+                     <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Employees</p>
+                     <span class="material-icons-outlined text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-1.5 rounded-lg">badge</span>
                   </div>
                   <div>
-                     <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">56</h3>
-                     <p class="text-sm font-medium text-gray-500 dark:text-gray-400">In last 24h</p>
+                     <h3 id="totalEmployees" class="text-2xl font-bold text-gray-900 dark:text-white mb-1">0</h3>
+                     <p class="text-sm font-medium text-green-600 dark:text-green-400" id="employeeChange">Loading...</p>
                   </div>
                </div>
                <div class="bg-card-light dark:bg-card-dark p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
@@ -186,99 +186,39 @@
                      <span class="material-icons-outlined text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-1.5 rounded-lg">groups</span>
                   </div>
                   <div>
-                     <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">245</h3>
-                     <p class="text-sm font-medium text-green-600 dark:text-green-400">+5 this week</p>
+                     <h3 id="totalAccounts" class="text-2xl font-bold text-gray-900 dark:text-white mb-1">0</h3>
+                     <p class="text-sm font-medium text-gray-500 dark:text-gray-400" id="accountsBreakdown">Loading...</p>
                   </div>
                </div>
             </div>
+
+            <!-- Charts and Activity -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-               <div class="lg:col-span-2 bg-card-light dark:bg-card-dark p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col h-full">
+               <!-- User Distribution Chart -->
+               <div class="lg:col-span-2 bg-card-light dark:bg-card-dark p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
                   <div class="mb-6">
-                     <h3 class="text-lg font-bold text-gray-900 dark:text-white">User Login Activity</h3>
+                     <h3 class="text-lg font-bold text-gray-900 dark:text-white">User Role Distribution</h3>
+                     <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Overview of user accounts by role</p>
                   </div>
-                  <div class="relative w-full flex-1">
-                     <div class="mb-6">
-                        <span class="text-4xl font-bold text-gray-900 dark:text-white block">850</span>
-                        <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Last 7 Days <span class="text-green-600 dark:text-green-400 ml-1">+15.3%</span></span>
-                     </div>
-                     <div class="relative w-full flex-1">
-                        <svg class="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 1000 400">
-                           <defs>
-                              <linearGradient id="gradient" x1="0%" x2="0%" y1="0%" y2="100%">
-                                 <stop offset="0%" style="stop-color:#14532d;stop-opacity:0.2"></stop>
-                                 <stop offset="100%" style="stop-color:#14532d;stop-opacity:0"></stop>
-                              </linearGradient>
-                              <linearGradient id="gradientDark" x1="0%" x2="0%" y1="0%" y2="100%">
-                                 <stop offset="0%" style="stop-color:#4ade80;stop-opacity:0.2"></stop>
-                                 <stop offset="100%" style="stop-color:#4ade80;stop-opacity:0"></stop>
-                              </linearGradient>
-                           </defs>
-                           <path class="fill-primary dark:fill-green-400/20 opacity-10 dark:opacity-20 stroke-none" d="M0,300 C50,280 100,150 150,150 C200,150 200,240 250,240 C300,240 300,160 350,160 C400,160 400,240 450,240 C500,240 500,180 550,180 C600,180 620,280 650,290 C680,300 700,320 730,280 C760,180 750,120 780,120 C810,120 830,220 860,230 C890,240 910,290 940,290 C970,290 980,160 1000,150 L1000,400 L0,400 Z"></path>
-                           <path class="text-primary dark:text-green-400" d="M0,300 C50,280 100,150 150,150 C200,150 200,240 250,240 C300,240 300,160 350,160 C400,160 400,240 450,240 C500,240 500,180 550,180 C600,180 620,280 650,290 C680,300 700,320 730,280 C760,180 750,120 780,120 C810,120 830,220 860,230 C890,240 910,290 940,290 C970,290 980,160 1000,150" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" vector-effect="non-scaling-stroke"></path>
-                        </svg>
-                        <div class="flex justify-between mt-4 text-xs font-medium text-gray-400 dark:text-gray-500">
-                           <span>Mon</span>
-                           <span>Tue</span>
-                           <span>Wed</span>
-                           <span>Thu</span>
-                           <span>Fri</span>
-                           <span>Sat</span>
-                           <span>Sun</span>
-                        </div>
+                  <div class="space-y-4" id="roleDistribution">
+                     <div class="flex items-center justify-center h-40">
+                        <span class="material-symbols-outlined animate-spin text-4xl text-gray-400">refresh</span>
                      </div>
                   </div>
                </div>
+
+               <!-- Recent Activity -->
                <div class="bg-card-light dark:bg-card-dark p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col">
                   <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-6">Recent Activity</h3>
-                  <div class="space-y-6 flex-1 overflow-y-auto pr-2">
-                     <div class="flex gap-4">
-                        <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
-                           <span class="material-icons-outlined text-blue-600 dark:text-blue-400 text-sm">person_add</span>
-                        </div>
-                        <div>
-                           <p class="text-sm font-medium text-gray-900 dark:text-gray-200">New account created for J. Doe</p>
-                           <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">2 minutes ago</p>
-                        </div>
-                     </div>
-                     <div class="flex gap-4">
-                        <div class="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center shrink-0">
-                           <span class="material-icons-outlined text-yellow-600 dark:text-yellow-400 text-sm">lock</span>
-                        </div>
-                        <div>
-                           <p class="text-sm font-medium text-gray-900 dark:text-gray-200">Failed login attempt for Admin</p>
-                           <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">15 minutes ago</p>
-                        </div>
-                     </div>
-                     <div class="flex gap-4">
-                        <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
-                           <span class="material-icons-outlined text-green-600 dark:text-green-400 text-sm">verified_user</span>
-                        </div>
-                        <div>
-                           <p class="text-sm font-medium text-gray-900 dark:text-gray-200">Permissions updated for S. Smith</p>
-                           <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">1 hour ago</p>
-                        </div>
-                     </div>
-                     <div class="flex gap-4">
-                        <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
-                           <span class="material-icons-outlined text-blue-600 dark:text-blue-400 text-sm">person_add</span>
-                        </div>
-                        <div>
-                           <p class="text-sm font-medium text-gray-900 dark:text-gray-200">New account created for M. Jones</p>
-                           <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">3 hours ago</p>
-                        </div>
-                     </div>
-                     <div class="flex gap-4">
-                        <div class="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
-                           <span class="material-icons-outlined text-red-600 dark:text-red-400 text-sm">person_off</span>
-                        </div>
-                        <div>
-                           <p class="text-sm font-medium text-gray-900 dark:text-gray-200">Account for P. Miller disabled</p>
-                           <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Yesterday</p>
-                        </div>
+                  <div class="space-y-6 flex-1 overflow-y-auto pr-2" id="recentActivity">
+                     <div class="flex items-center justify-center h-40">
+                        <span class="material-symbols-outlined animate-spin text-4xl text-gray-400">refresh</span>
                      </div>
                   </div>
                </div>
             </div>
+
+            <!-- Quick Actions -->
             <div class="mb-4">
                <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Quick Actions</h3>
                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -287,32 +227,234 @@
                         <div class="mb-3 text-primary dark:text-green-400">
                            <span class="material-icons-outlined text-3xl">manage_accounts</span>
                         </div>
-                        <h4 class="text-base font-bold text-gray-900 dark:text-white mb-2">Manage Staff Accounts</h4>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Create, edit, and manage accounts for all school staff members.</p>
+                        <h4 class="text-base font-bold text-gray-900 dark:text-white mb-2">Manage Employees</h4>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">View and manage all employee records in the system.</p>
                      </div>
                      <div>
-                        <button class="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors inline-flex items-center" href="/ict-coordinator/staff-account-management.html">
-                        Manage Accounts
-                        </button>
+                        <a href="employee-management.html" class="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors inline-flex items-center">
+                        Go to Employees
+                        </a>
                      </div>
                   </div>
                   <div class="bg-card-light dark:bg-card-dark p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between">
                      <div>
                         <div class="mb-3 text-primary dark:text-green-400">
-                           <span class="material-icons-outlined text-3xl">admin_panel_settings</span>
+                           <span class="material-icons-outlined text-3xl">person_add</span>
                         </div>
-                        <h4 class="text-base font-bold text-gray-900 dark:text-white mb-2">Configure Access Roles</h4>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Define and assign user roles and permissions to control system access.</p>
+                        <h4 class="text-base font-bold text-gray-900 dark:text-white mb-2">Create User Account</h4>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Set up new user accounts and assign system roles.</p>
                      </div>
                      <div>
-                        <button class="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors inline-flex items-center" href="/ict-coordinator/manage-access.html">
-                        Configure Roles
-                        </button>
+                        <a href="user-account-management.html" class="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors inline-flex items-center">
+                        Create Account
+                        </a>
                      </div>
                   </div>
                </div>
             </div>
          </main>
       </div>
+
+      <script>
+         let currentUser = null;
+
+         function getInitials(firstName, lastName) {
+            return (firstName?.charAt(0) || '') + (lastName?.charAt(0) || '');
+         }
+
+         function formatDate(date) {
+            return new Intl.DateTimeFormat('en-US', { 
+               weekday: 'long',
+               year: 'numeric', 
+               month: 'long', 
+               day: 'numeric' 
+            }).format(date);
+         }
+
+         function getRelativeTime(date) {
+            const now = new Date();
+            const diff = now - new Date(date);
+            const minutes = Math.floor(diff / 60000);
+            const hours = Math.floor(diff / 3600000);
+            const days = Math.floor(diff / 86400000);
+
+            if (minutes < 1) return 'Just now';
+            if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+            if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+            if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`;
+            return new Date(date).toLocaleDateString();
+         }
+
+         window.onload = async function() {
+            currentUser = checkAuth('ICT_Coordinator');
+            
+            if (currentUser) {
+               document.getElementById('userName').textContent = `${currentUser.FirstName} ${currentUser.LastName}`;
+               document.getElementById('userInitials').textContent = getInitials(currentUser.FirstName, currentUser.LastName);
+               
+               // Set current date
+               document.getElementById('currentDate').textContent = formatDate(new Date());
+               
+               await loadDashboardData();
+            }
+         };
+
+         async function loadDashboardData() {
+            await Promise.all([
+               loadUserStats(),
+               loadEmployeeStats(),
+               loadRoleDistribution(),
+               loadRecentActivity()
+            ]);
+         }
+
+         async function loadUserStats() {
+            try {
+               const response = await fetch('../backend/api/users.php?action=stats');
+               const result = await response.json();
+               
+               if (result.success) {
+                  const stats = result.data;
+                  document.getElementById('activeUsersCount').textContent = stats.active || 0;
+                  document.getElementById('totalAccounts').textContent = stats.total || 0;
+                  document.getElementById('accountsBreakdown').textContent = `${stats.active || 0} Active, ${stats.inactive || 0} Inactive`;
+               }
+            } catch (error) {
+               console.error('Error loading user stats:', error);
+            }
+         }
+
+         async function loadEmployeeStats() {
+            try {
+               const response = await fetch('../backend/api/employees.php?action=stats');
+               const result = await response.json();
+               
+               if (result.success) {
+                  const stats = result.data;
+                  document.getElementById('totalEmployees').textContent = stats.total || 0;
+                  document.getElementById('employeeChange').textContent = `${stats.teaching || 0} Teaching, ${stats.non_teaching || 0} Non-Teaching`;
+               }
+            } catch (error) {
+               console.error('Error loading employee stats:', error);
+            }
+         }
+
+         async function loadRoleDistribution() {
+            try {
+               const response = await fetch('../backend/api/users.php?action=stats');
+               const result = await response.json();
+               
+               if (result.success) {
+                  const stats = result.data;
+                  const container = document.getElementById('roleDistribution');
+                  
+                  const roles = [
+                     { name: 'Admin', count: parseInt(stats.admin) || 0, color: 'bg-red-500', textColor: 'text-red-600' },
+                     { name: 'Adviser', count: parseInt(stats.adviser) || 0, color: 'bg-green-500', textColor: 'text-green-600' },
+                     { name: 'Key Teacher', count: parseInt(stats.key_teacher) || 0, color: 'bg-yellow-500', textColor: 'text-yellow-600' },
+                     { name: 'ICT Coordinator', count: parseInt(stats.ict) || 0, color: 'bg-blue-500', textColor: 'text-blue-600' },
+                     { name: 'Registrar', count: parseInt(stats.registrar) || 0, color: 'bg-purple-500', textColor: 'text-purple-600' },
+                     { name: 'Subject Teacher', count: parseInt(stats.subject_teacher) || 0, color: 'bg-orange-500', textColor: 'text-orange-600' }
+                  ];
+
+                  const total = roles.reduce((sum, role) => sum + role.count, 0);
+
+                  container.innerHTML = roles.map(role => {
+                     const percentage = total > 0 ? (role.count / total * 100).toFixed(1) : 0;
+                     return `
+                        <div class="space-y-2">
+                           <div class="flex items-center justify-between text-sm">
+                              <span class="font-medium text-gray-700 dark:text-gray-300">${role.name}</span>
+                              <span class="${role.textColor} font-bold">${role.count} (${percentage}%)</span>
+                           </div>
+                           <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                              <div class="${role.color} h-2.5 rounded-full transition-all duration-500" style="width: ${percentage}%"></div>
+                           </div>
+                        </div>
+                     `;
+                  }).join('');
+               }
+            } catch (error) {
+               console.error('Error loading role distribution:', error);
+               document.getElementById('roleDistribution').innerHTML = `
+                  <div class="text-center text-red-500 py-8">
+                     <p>Failed to load role distribution</p>
+                  </div>
+               `;
+            }
+         }
+
+         async function loadRecentActivity() {
+            try {
+               // Get recent users (created in last 30 days)
+               const usersResponse = await fetch('../backend/api/users.php?action=all');
+               const usersResult = await usersResponse.json();
+               
+               const container = document.getElementById('recentActivity');
+               
+               if (usersResult.success && usersResult.data.length > 0) {
+                  // Sort by CreatedAt and get the 5 most recent
+                  const recentUsers = usersResult.data
+                     .sort((a, b) => new Date(b.CreatedAt) - new Date(a.CreatedAt))
+                     .slice(0, 5);
+
+                  const activities = recentUsers.map(user => {
+                     const roleColors = {
+                        'Admin': { bg: 'bg-red-100 dark:bg-red-900/30', icon: 'text-red-600 dark:text-red-400' },
+                        'Adviser': { bg: 'bg-green-100 dark:bg-green-900/30', icon: 'text-green-600 dark:text-green-400' },
+                        'Key_Teacher': { bg: 'bg-yellow-100 dark:bg-yellow-900/30', icon: 'text-yellow-600 dark:text-yellow-400' },
+                        'ICT_Coordinator': { bg: 'bg-blue-100 dark:bg-blue-900/30', icon: 'text-blue-600 dark:text-blue-400' },
+                        'Registrar': { bg: 'bg-purple-100 dark:bg-purple-900/30', icon: 'text-purple-600 dark:text-purple-400' },
+                        'Subject_Teacher': { bg: 'bg-orange-100 dark:bg-orange-900/30', icon: 'text-orange-600 dark:text-orange-400' }
+                     };
+
+                     const colors = roleColors[user.Role] || roleColors['Subject_Teacher'];
+
+                     return {
+                        icon: 'person_add',
+                        bgColor: colors.bg,
+                        iconColor: colors.icon,
+                        text: `New ${user.Role.replace('_', ' ')} account created for ${user.FirstName} ${user.LastName}`,
+                        time: getRelativeTime(user.CreatedAt)
+                     };
+                  });
+
+                  container.innerHTML = activities.map(activity => `
+                     <div class="flex gap-4">
+                        <div class="w-10 h-10 rounded-full ${activity.bgColor} flex items-center justify-center shrink-0">
+                           <span class="material-icons-outlined ${activity.iconColor} text-sm">${activity.icon}</span>
+                        </div>
+                        <div>
+                           <p class="text-sm font-medium text-gray-900 dark:text-gray-200">${activity.text}</p>
+                           <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${activity.time}</p>
+                        </div>
+                     </div>
+                  `).join('');
+               } else {
+                  container.innerHTML = `
+                     <div class="text-center text-gray-500 py-8">
+                        <span class="material-symbols-outlined text-4xl mb-2">inbox</span>
+                        <p>No recent activity</p>
+                     </div>
+                  `;
+               }
+            } catch (error) {
+               console.error('Error loading recent activity:', error);
+               document.getElementById('recentActivity').innerHTML = `
+                  <div class="text-center text-red-500 py-8">
+                     <p>Failed to load recent activity</p>
+                  </div>
+               `;
+            }
+         }
+
+         function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+               localStorage.removeItem('isLoggedIn');
+               localStorage.removeItem('user');
+               window.location.href = '../login.html';
+            }
+         }
+      </script>
    </body>
 </html>
