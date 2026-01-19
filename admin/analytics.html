@@ -55,6 +55,18 @@
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #085019;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="font-display bg-background-light dark:bg-background-dark">
@@ -89,7 +101,7 @@
                 </div>
                 <div class="p-4 border-t border-gray-200 dark:border-gray-700">
                     <div class="flex items-center gap-3 mb-4 px-2">
-                        <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm" id="userInitials">IC</div>
+                        <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm" id="userInitials">AD</div>
                         <div class="flex-1 min-w-0">
                             <p class="text-sm font-medium text-gray-900 dark:text-white truncate" id="userName">Admin Name</p>
                             <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Admin</p>
@@ -139,109 +151,125 @@
                         </button>
                     </div>
 
-                    <!-- Stats Cards -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                        <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 shadow-sm">
-                            <p class="text-slate-600 dark:text-slate-400 text-sm font-medium">Total Enrolled Students</p>
-                            <p class="text-slate-900 dark:text-white text-3xl font-bold" id="totalStudents">0</p>
-                            <p class="text-sm font-medium flex items-center gap-1" id="studentsTrend">
-                                <span class="material-symbols-outlined text-base">trending_flat</span>
-                                <span>No change</span>
-                            </p>
-                        </div>
-                        <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 shadow-sm">
-                            <p class="text-slate-600 dark:text-slate-400 text-sm font-medium">Dropout Rate</p>
-                            <p class="text-slate-900 dark:text-white text-3xl font-bold" id="dropoutRate">0%</p>
-                            <p class="text-sm font-medium flex items-center gap-1" id="dropoutTrend">
-                                <span class="material-symbols-outlined text-base">trending_flat</span>
-                                <span>No data</span>
-                            </p>
-                        </div>
-                        <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 shadow-sm">
-                            <p class="text-slate-600 dark:text-slate-400 text-sm font-medium">PWD Students</p>
-                            <p class="text-slate-900 dark:text-white text-3xl font-bold" id="pwdCount">0</p>
-                            <p class="text-slate-500 dark:text-slate-400 text-sm" id="pwdPercentage">0% of total</p>
-                        </div>
-                        <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 shadow-sm">
-                            <p class="text-slate-600 dark:text-slate-400 text-sm font-medium">Balik-Aral Students</p>
-                            <p class="text-slate-900 dark:text-white text-3xl font-bold" id="balikAralCount">0</p>
-                            <p class="text-slate-500 dark:text-slate-400 text-sm" id="balikAralPercentage">0% of total</p>
-                        </div>
+                    <!-- Loading State -->
+                    <div id="loadingState" class="flex items-center justify-center py-20">
+                        <div class="loading-spinner"></div>
                     </div>
 
-                    <!-- Charts -->
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                        <!-- Enrollment Trends -->
-                        <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 h-[400px]"> <div class="flex justify-between items-center">
-                              <div>
-                                    <p class="text-slate-800 dark:text-white text-base font-medium">Enrollment Trends</p>
-                                    <p class="text-slate-500 dark:text-slate-400 text-sm">Year-over-year comparison</p>
-                              </div>
-                           </div>
-                           <div class="relative flex-1 min-h-0"> <canvas id="enrollmentTrendsChart"></canvas>
-                           </div>
+                    <!-- Analytics Content -->
+                    <div id="analyticsContent" style="display: none;">
+                        <!-- Stats Cards -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                            <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 shadow-sm">
+                                <p class="text-slate-600 dark:text-slate-400 text-sm font-medium">Total Enrolled Students</p>
+                                <p class="text-slate-900 dark:text-white text-3xl font-bold" id="totalStudents">0</p>
+                                <p class="text-sm font-medium flex items-center gap-1" id="studentsTrend">
+                                    <span class="material-symbols-outlined text-base">trending_flat</span>
+                                    <span>No change</span>
+                                </p>
+                            </div>
+                            <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 shadow-sm">
+                                <p class="text-slate-600 dark:text-slate-400 text-sm font-medium">Dropout Rate</p>
+                                <p class="text-slate-900 dark:text-white text-3xl font-bold" id="dropoutRate">0%</p>
+                                <p class="text-sm font-medium flex items-center gap-1" id="dropoutTrend">
+                                    <span class="material-symbols-outlined text-base">trending_flat</span>
+                                    <span>No data</span>
+                                </p>
+                            </div>
+                            <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 shadow-sm">
+                                <p class="text-slate-600 dark:text-slate-400 text-sm font-medium">PWD Students</p>
+                                <p class="text-slate-900 dark:text-white text-3xl font-bold" id="pwdCount">0</p>
+                                <p class="text-slate-500 dark:text-slate-400 text-sm" id="pwdPercentage">0% of total</p>
+                            </div>
+                            <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 shadow-sm">
+                                <p class="text-slate-600 dark:text-slate-400 text-sm font-medium">Balik-Aral Students</p>
+                                <p class="text-slate-900 dark:text-white text-3xl font-bold" id="balikAralCount">0</p>
+                                <p class="text-slate-500 dark:text-slate-400 text-sm" id="balikAralPercentage">0% of total</p>
+                            </div>
                         </div>
 
-                        <!-- Gender Distribution -->
-                        <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 h-[500px]">
-                            <div class="flex justify-between items-center">
-                                <div>
-                                    <p class="text-slate-800 dark:text-white text-base font-medium">Gender Distribution</p>
-                                    <p class="text-slate-500 dark:text-slate-400 text-sm">Current enrollment</p>
+                        <!-- Charts -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                            <!-- Enrollment Trends -->
+                            <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 h-[400px]">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="text-slate-800 dark:text-white text-base font-medium">Enrollment Trends</p>
+                                        <p class="text-slate-500 dark:text-slate-400 text-sm">Year-over-year comparison</p>
+                                    </div>
+                                </div>
+                                <div class="relative flex-1 min-h-0">
+                                    <canvas id="enrollmentTrendsChart"></canvas>
                                 </div>
                             </div>
-                            <canvas id="genderChart" class="w-full" style="height: 250px;"></canvas>
-                        </div>
-                    </div>
 
-                    <!-- Additional Charts -->
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                        <!-- Learner Type Distribution -->
-                        <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 h-[500px]">
-                            <div class="flex justify-between items-center">
-                                <div>
-                                    <p class="text-slate-800 dark:text-white text-base font-medium">Learner Type Distribution</p>
-                                    <p class="text-slate-500 dark:text-slate-400 text-sm">Current school year</p>
+                            <!-- Gender Distribution -->
+                            <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 h-[400px]">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="text-slate-800 dark:text-white text-base font-medium">Gender Distribution</p>
+                                        <p class="text-slate-500 dark:text-slate-400 text-sm">Current enrollment</p>
+                                    </div>
+                                </div>
+                                <div class="relative flex-1 min-h-0">
+                                    <canvas id="genderChart"></canvas>
                                 </div>
                             </div>
-                            <canvas id="learnerTypeChart" class="w-full" style="height: 250px;"></canvas>
                         </div>
 
-                        <!-- Grade Level Distribution -->
-                        <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 h-[500px]">
-                            <div class="flex justify-between items-center">
-                                <div>
-                                    <p class="text-slate-800 dark:text-white text-base font-medium">Grade Level Distribution</p>
-                                    <p class="text-slate-500 dark:text-slate-400 text-sm">Student distribution per grade</p>
+                        <!-- Additional Charts -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                            <!-- Learner Type Distribution -->
+                            <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 h-[400px]">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="text-slate-800 dark:text-white text-base font-medium">Learner Type Distribution</p>
+                                        <p class="text-slate-500 dark:text-slate-400 text-sm">Current school year</p>
+                                    </div>
+                                </div>
+                                <div class="relative flex-1 min-h-0">
+                                    <canvas id="learnerTypeChart"></canvas>
                                 </div>
                             </div>
-                            <canvas id="gradeLevelChart" class="w-full" style="height: 250px;"></canvas>
-                        </div>
-                    </div>
 
-                    <!-- Detailed Stats Table -->
-                    <div class="rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 overflow-x-auto">
-                        <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
-                            <div>
-                                <h3 class="text-slate-800 dark:text-white text-base font-medium">Detailed Statistics</h3>
-                                <p class="text-slate-500 dark:text-slate-400 text-sm">Breakdown by grade level</p>
+                            <!-- Grade Level Distribution -->
+                            <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 h-[400px]">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="text-slate-800 dark:text-white text-base font-medium">Grade Level Distribution</p>
+                                        <p class="text-slate-500 dark:text-slate-400 text-sm">Student distribution per grade</p>
+                                    </div>
+                                </div>
+                                <div class="relative flex-1 min-h-0">
+                                    <canvas id="gradeLevelChart"></canvas>
+                                </div>
                             </div>
                         </div>
-                        <table class="w-full text-left">
-                            <thead>
-                                <tr class="border-b border-slate-200 dark:border-slate-700">
-                                    <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Grade Level</th>
-                                    <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Total</th>
-                                    <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Male</th>
-                                    <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Female</th>
-                                    <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">PWD</th>
-                                    <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Balik-Aral</th>
-                                </tr>
-                            </thead>
-                            <tbody id="statsTableBody" class="divide-y divide-slate-100 dark:divide-slate-700">
-                                <tr><td colspan="6" class="p-3 text-center text-slate-500">Loading data...</td></tr>
-                            </tbody>
-                        </table>
+
+                        <!-- Detailed Stats Table -->
+                        <div class="rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 overflow-x-auto">
+                            <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+                                <div>
+                                    <h3 class="text-slate-800 dark:text-white text-base font-medium">Detailed Statistics</h3>
+                                    <p class="text-slate-500 dark:text-slate-400 text-sm">Breakdown by grade level</p>
+                                </div>
+                            </div>
+                            <table class="w-full text-left">
+                                <thead>
+                                    <tr class="border-b border-slate-200 dark:border-slate-700">
+                                        <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Grade Level</th>
+                                        <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Total</th>
+                                        <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Male</th>
+                                        <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Female</th>
+                                        <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">PWD</th>
+                                        <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Balik-Aral</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="statsTableBody" class="divide-y divide-slate-100 dark:divide-slate-700">
+                                    <tr><td colspan="6" class="p-3 text-center text-slate-500">Loading data...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </main>
@@ -256,7 +284,6 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             initializeCharts();
-            loadAnalyticsData();
             loadSchoolYears();
             setupEventListeners();
             displayUserInfo();
@@ -291,20 +318,31 @@
                 const data = await response.json();
                 
                 const syFilter = document.getElementById('syFilter');
-                if (data.success && data.schoolYears) {
+                if (data.success && data.schoolYears && data.schoolYears.length > 0) {
+                    // Keep "All School Years" option and add the rest
                     data.schoolYears.forEach(sy => {
                         const option = document.createElement('option');
                         option.value = sy;
                         option.textContent = `S.Y. ${sy}`;
                         syFilter.appendChild(option);
                     });
+                    
+                    // Auto-load data after populating dropdown
+                    loadAnalyticsData();
+                } else {
+                    loadAnalyticsData(); // Load anyway with "all" filter
                 }
             } catch (error) {
                 console.error('Error loading school years:', error);
+                loadAnalyticsData(); // Load anyway with "all" filter
             }
         }
 
         async function loadAnalyticsData() {
+            // Show loading state
+            document.getElementById('loadingState').style.display = 'flex';
+            document.getElementById('analyticsContent').style.display = 'none';
+            
             const sy = document.getElementById('syFilter').value;
             const grade = document.getElementById('gradeFilter').value;
             
@@ -315,6 +353,8 @@
                 if (data.success) {
                     analyticsData = data.data;
                     updateDashboard();
+                    document.getElementById('loadingState').style.display = 'none';
+                    document.getElementById('analyticsContent').style.display = 'block';
                 } else {
                     console.error('Error:', data.message);
                     alert('Failed to load analytics data: ' + data.message);
@@ -353,7 +393,7 @@
             const studentsTrend = document.getElementById('studentsTrend');
             const dropoutTrend = document.getElementById('dropoutTrend');
             
-            if (analyticsData.previousYearTotal) {
+            if (analyticsData.previousYearTotal !== undefined) {
                 const change = analyticsData.totalStudents - analyticsData.previousYearTotal;
                 const icon = change > 0 ? 'arrow_upward' : change < 0 ? 'arrow_downward' : 'trending_flat';
                 const color = change > 0 ? 'text-green-600' : change < 0 ? 'text-red-600' : 'text-slate-500';
@@ -394,17 +434,16 @@
                         fill: true
                     }]
                 },
-                  options: {
-                     responsive: true,
-                     maintainAspectRatio: false,
-                     resizeDelay: 200, // Helps with layout shifts
-                     plugins: {
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
                         legend: {
-                              display: true,
-                              position: 'bottom', // Keeps layout consistent
+                            display: true,
+                            position: 'bottom',
                         }
-                     }
-                  }
+                    }
+                }
             });
 
             // Gender Chart
@@ -415,7 +454,7 @@
                     labels: ['Male', 'Female'],
                     datasets: [{
                         data: [0, 0],
-                        backgroundColor: ['#1109FF', '#EC13DE']
+                        backgroundColor: ['#3B82F6', '#EC4899']
                     }]
                 },
                 options: {
@@ -467,7 +506,7 @@
         function updateCharts() {
             // Update Enrollment Trends
             if (analyticsData.enrollmentTrends) {
-                enrollmentTrendsChart.data.labels = analyticsData.enrollmentTrends.map(t => t.year);
+                enrollmentTrendsChart.data.labels = analyticsData.enrollmentTrends.map(t => 'S.Y. ' + t.year);
                 enrollmentTrendsChart.data.datasets[0].data = analyticsData.enrollmentTrends.map(t => t.count);
                 enrollmentTrendsChart.update();
             }
@@ -500,7 +539,7 @@
             const tbody = document.getElementById('statsTableBody');
             tbody.innerHTML = '';
 
-            if (analyticsData.detailedStats) {
+            if (analyticsData.detailedStats && analyticsData.detailedStats.length > 0) {
                 analyticsData.detailedStats.forEach(stat => {
                     const row = document.createElement('tr');
                     row.className = 'hover:bg-slate-50 dark:hover:bg-slate-800/50';

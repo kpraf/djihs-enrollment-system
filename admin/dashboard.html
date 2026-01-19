@@ -1,259 +1,514 @@
 <!DOCTYPE html>
 <html class="light" lang="en">
-   <head>
-      <meta charset="utf-8"/>
-      <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-      <title>Admin | Dashboard</title>
-      <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
-      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
-      <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Admin | Dashboard</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
 
-      <!-- AUTHENTICATION PROTECTION - MUST BE FIRST -->
-      <script src="../js/auth.js"></script>
-      <script>
-         // Protect this page - only Admin role can access
-         // This runs before page renders
-         (function() {
+    <!-- AUTHENTICATION PROTECTION -->
+    <script src="../js/auth.js"></script>
+    <script>
+        (function() {
             const isLoggedIn = localStorage.getItem('isLoggedIn');
             const userDataString = localStorage.getItem('user');
             
             if (!isLoggedIn || !userDataString) {
-               window.location.href = '../login.html';
-               return;
+                window.location.href = '../login.html';
+                return;
             }
             
             try {
-               const user = JSON.parse(userDataString);
-               if (user.Role !== 'Admin') {
-                  alert('Access denied. Admin access required.');
-                  window.location.href = '../login.html';
-               }
+                const user = JSON.parse(userDataString);
+                if (user.Role !== 'Admin') {
+                    alert('Access denied. Admin access required.');
+                    window.location.href = '../login.html';
+                }
             } catch (e) {
-               window.location.href = '../login.html';
+                window.location.href = '../login.html';
             }
-         })();
-      </script>
+        })();
+    </script>
 
-      <script>
-         tailwind.config = {
-           darkMode: "class",
-           theme: {
-             extend: {
-               colors: {
-                 "primary": "#085019",
-                 "background-light": "#F4F7FA",
-                 "background-dark": "#101922",
-               },
-               fontFamily: {
-                 "display": ["Inter", "sans-serif"]
-               },
-               borderRadius: {
-                 "DEFAULT": "0.25rem",
-                 "lg": "0.5rem",
-                 "xl": "0.75rem",
-                 "full": "9999px"
-               },
-             },
-           },
-         }
-      </script>
-      <style>
-         body {
-         font-family: 'Inter', sans-serif;
-         }
-         .material-symbols-outlined {
-         font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-         }
-      </style>
-   </head>
-   <body class="font-display bg-background-light dark:bg-background-dark">
-      <div class="relative flex min-h-screen w-full">
-         <!-- SideNavBar -->
-            <aside class="w-72 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex transition-colors duration-200">
-               <div>
-                  <div class="p-6">
-                     <div class="flex items-center gap-3 mb-1">
-                        <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center overflow-hidden shrink-0 border border-yellow-200 dark:border-yellow-700">
-                           <img alt="School Logo" class="w-full h-full object-cover opacity-90" src="../assets/images/djihs-logo-small.png"/>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#085019",
+                        "background-light": "#F4F7FA",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #085019;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="font-display bg-background-light dark:bg-background-dark">
+    <div class="relative flex min-h-screen w-full">
+        <!-- Sidebar -->
+        <aside class="w-72 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex">
+            <div>
+                <div class="p-6">
+                    <div class="flex items-center gap-3 mb-1">
+                        <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center overflow-hidden shrink-0 border border-yellow-200">
+                            <img alt="School Logo" class="w-full h-full object-cover opacity-90" src="../assets/images/djihs-logo-small.png"/>
                         </div>
-                     </div>
-                     <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS Admin</h1>
-                     <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
-                  </div>
-                  <nav class="px-4 space-y-1">
-                     <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm" href="../admin/dashboard.html">
-                     <span class="material-icons-outlined text-[20px]">dashboard</span>
-                     <span class="text-sm font-medium">Dashboard</span>
-                     </a>
-                     <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="../admin/analytics.html">
-                     <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">analytics</span>
-                     <span class="text-sm font-medium">Analytics</span>
-                     </a>
-                     <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="../admin/settings.html">
-                     <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">settings</span>
-                     <span class="text-sm font-medium">Settings</span>
-                     </a>
-                  </nav>
-               </div>
-               <div class="p-4 border-t border-gray-200 dark:border-gray-700">
-                  <div class="flex items-center gap-3 mb-4 px-2">
-                     <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm">
-                        IC
-                     </div>
-                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate">Admin Name</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Admin</p>
-                     </div>
-                  </div>
-                  <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors logout-btn">
-                  <span class="material-icons-outlined text-[18px]">logout</span>
-                  Logout
-                  </button>
-               </div>
-            </aside>
-         <!-- Main Content -->
-         <main class="flex-1">
-            <!-- Content Area -->
-            <div class="p-6 md:p-8">
-               <!-- PageHeading -->
-               <div class="flex flex-wrap justify-between gap-3 mb-6">
-                  <div class="flex flex-col gap-1">
-                     <p class="text-slate-900 dark:text-white text-2xl md:text-3xl font-bold leading-tight tracking-tight">Admin Dashboard</p>
-                     <p class="text-slate-600 dark:text-slate-400 text-base font-normal leading-normal">Welcome back, Admin! Here's an overview of the system.</p>
-                  </div>
-               </div>
-               <!-- Stats -->
-               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                  <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                     <div class="flex items-center justify-between">
-                        <p class="text-slate-600 dark:text-slate-400 text-base font-medium leading-normal">Total Students</p>
-                        <span class="material-symbols-outlined text-primary">school</span>
-                     </div>
-                     <p class="text-slate-900 dark:text-white tracking-tight text-3xl font-bold leading-tight">1,250</p>
-                  </div>
-                  <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                     <div class="flex items-center justify-between">
-                        <p class="text-slate-600 dark:text-slate-400 text-base font-medium leading-normal">Active Teachers</p>
-                        <span class="material-symbols-outlined text-primary">co_present</span>
-                     </div>
-                     <p class="text-slate-900 dark:text-white tracking-tight text-3xl font-bold leading-tight">85</p>
-                  </div>
-                  <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                     <div class="flex items-center justify-between">
-                        <p class="text-slate-600 dark:text-slate-400 text-base font-medium leading-normal">Pending Applications</p>
-                        <span class="material-symbols-outlined text-amber-500">pending_actions</span>
-                     </div>
-                     <p class="text-slate-900 dark:text-white tracking-tight text-3xl font-bold leading-tight">32</p>
-                  </div>
-                  <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                     <div class="flex items-center justify-between">
-                        <p class="text-slate-600 dark:text-slate-400 text-base font-medium leading-normal">System Status</p>
-                        <span class="material-symbols-outlined text-green-500">cloud_done</span>
-                     </div>
-                     <div class="flex items-center gap-2">
-                        <p class="text-slate-900 dark:text-white tracking-tight text-3xl font-bold leading-tight">Online</p>
-                     </div>
-                  </div>
-               </div>
-               <!-- Charts -->
-               <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
-                  <div class="lg:col-span-3 flex flex-col gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
-                     <p class="text-slate-800 dark:text-slate-200 text-base font-medium leading-normal">Students by Grade Level</p>
-                     <div class="flex h-64 gap-6 items-end justify-items-center px-3">
-                        <div class="flex flex-col items-center gap-2 w-full h-full justify-end">
-                           <div class="bg-primary w-full rounded-t-lg" style="height: 25%;"></div>
-                           <p class="text-slate-500 dark:text-slate-400 text-xs font-medium leading-normal">Grade 9</p>
-                        </div>
-                        <div class="flex flex-col items-center gap-2 w-full h-full justify-end">
-                           <div class="bg-primary w-full rounded-t-lg" style="height: 60%;"></div>
-                           <p class="text-slate-500 dark:text-slate-400 text-xs font-medium leading-normal">Grade 10</p>
-                        </div>
-                        <div class="flex flex-col items-center gap-2 w-full h-full justify-end">
-                           <div class="bg-primary w-full rounded-t-lg" style="height: 80%;"></div>
-                           <p class="text-slate-500 dark:text-slate-400 text-xs font-medium leading-normal">Grade 11</p>
-                        </div>
-                        <div class="flex flex-col items-center gap-2 w-full h-full justify-end">
-                           <div class="bg-primary w-full rounded-t-lg" style="height: 50%;"></div>
-                           <p class="text-slate-500 dark:text-slate-400 text-xs font-medium leading-normal">Grade 12</p>
-                        </div>
-                     </div>
-                  </div>
-                  <div class="lg:col-span-2 flex flex-col gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
-                     <p class="text-slate-800 dark:text-slate-200 text-base font-medium leading-normal">Enrollment Status Breakdown</p>
-                     <div class="flex items-center justify-center h-64">
-                        <div class="relative w-48 h-48">
-                           <svg class="size-full" height="36" viewbox="0 0 36 36" width="36" xmlns="http://www.w3.org/2000/svg">
-                              <circle cx="18" cy="18" fill="transparent" r="15.91549430918954" stroke="#E0E0E0" stroke-width="4"></circle>
-                              <circle cx="18" cy="18" fill="transparent" r="15.91549430918954" stroke="#085019" stroke-dasharray="80 20" stroke-dashoffset="25" stroke-width="4"></circle>
-                              <circle cx="18" cy="18" fill="transparent" r="15.91549430918954" stroke="#0277FF" stroke-dasharray="15 85" stroke-dashoffset="105" stroke-width="4"></circle>
-                              <circle cx="18" cy="18" fill="transparent" r="15.91549430918954" stroke="#FF0000" stroke-dasharray="5 95" stroke-dashoffset="90" stroke-width="4"></circle>
-                           </svg>
-                           <div class="absolute inset-0 flex flex-col items-center justify-center">
-                              <span class="text-3xl font-bold text-slate-800 dark:text-slate-200">1300</span>
-                              <span class="text-sm text-slate-500 dark:text-slate-400">Total</span>
-                           </div>
-                        </div>
-                     </div>
-                     <div class="flex justify-center gap-4 text-sm">
-                        <div class="flex items-center gap-2"><span class="size-3 rounded-full bg-[#50E3C2]"></span><span class="text-slate-600 dark:text-slate-400">Enrolled (80%)</span></div>
-                        <div class="flex items-center gap-2"><span class="size-3 rounded-full bg-[#4A90E2]"></span><span class="text-slate-600 dark:text-slate-400">Pending (15%)</span></div>
-                        <div class="flex items-center gap-2"><span class="size-3 rounded-full bg-red-400"></span><span class="text-slate-600 dark:text-slate-400">Rejected (5%)</span></div>
-                     </div>
-                  </div>
-               </div>
-               <!-- Quick Actions & Recent Activity -->
-               <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div class="lg:col-span-1 flex flex-col gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
-                     <h3 class="text-slate-800 dark:text-slate-200 text-base font-medium leading-normal">Quick Actions</h3>
-                     <div class="flex flex-col gap-3">
-                        <button class="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary/90">
-                        <span class="material-symbols-outlined">checklist</span> Manage Pending Applications
-                        </button>
-                        <button class="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700">
-                        <span class="material-symbols-outlined">person_add</span> Add New User
-                        </button>
-                        <button class="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700">
-                        <span class="material-symbols-outlined">assessment</span> View System Reports
-                        </button>
-                     </div>
-                  </div>
-                  <div class="lg:col-span-2 flex flex-col gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
-                     <h3 class="text-slate-800 dark:text-slate-200 text-base font-medium leading-normal">Recent Activity</h3>
-                     <ul class="flex flex-col divide-y divide-slate-200 dark:divide-slate-800">
-                        <li class="flex items-center gap-4 py-3">
-                           <div class="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/50"><span class="material-symbols-outlined text-green-500">check_circle</span></div>
-                           <div class="flex-1">
-                              <p class="text-sm text-slate-800 dark:text-slate-200">John Doe's application was <span class="font-semibold text-green-600 dark:text-green-400">approved</span>.</p>
-                              <p class="text-xs text-slate-500 dark:text-slate-400">2 minutes ago</p>
-                           </div>
-                        </li>
-                        <li class="flex items-center gap-4 py-3">
-                           <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/50"><span class="material-symbols-outlined text-blue-500">mail</span></div>
-                           <div class="flex-1">
-                              <p class="text-sm text-slate-800 dark:text-slate-200">New application from Jane Smith received.</p>
-                              <p class="text-xs text-slate-500 dark:text-slate-400">15 minutes ago</p>
-                           </div>
-                        </li>
-                        <li class="flex items-center gap-4 py-3">
-                           <div class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800"><span class="material-symbols-outlined text-slate-500">edit</span></div>
-                           <div class="flex-1">
-                              <p class="text-sm text-slate-800 dark:text-slate-200">Teacher profile updated for Mr. Anderson.</p>
-                              <p class="text-xs text-slate-500 dark:text-slate-400">1 hour ago</p>
-                           </div>
-                        </li>
-                        <li class="flex items-center gap-4 py-3">
-                           <div class="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/50"><span class="material-symbols-outlined text-red-500">cancel</span></div>
-                           <div class="flex-1">
-                              <p class="text-sm text-slate-800 dark:text-slate-200">Mike Ross's application was <span class="font-semibold text-red-600 dark:text-red-400">rejected</span>.</p>
-                              <p class="text-xs text-slate-500 dark:text-slate-400">3 hours ago</p>
-                           </div>
-                        </li>
-                     </ul>
-                  </div>
-               </div>
+                    </div>
+                    <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS Admin</h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
+                </div>
+                <nav class="px-4 space-y-1">
+                    <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg shadow-sm" href="dashboard.html">
+                        <span class="material-icons-outlined text-[20px]">dashboard</span>
+                        <span class="text-sm font-medium">Dashboard</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="analytics.html">
+                        <span class="material-icons-outlined text-[20px]">analytics</span>
+                        <span class="text-sm font-medium">Analytics</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="settings.html">
+                        <span class="material-icons-outlined text-[20px]">settings</span>
+                        <span class="text-sm font-medium">Settings</span>
+                    </a>
+                </nav>
             </div>
-         </main>
-      </div>
-   </body>
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                <div class="flex items-center gap-3 mb-4 px-2">
+                    <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm" id="userInitials">AD</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate" id="userName">Admin Name</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Admin</p>
+                    </div>
+                </div>
+                <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors logout-btn">
+                    <span class="material-icons-outlined text-[18px]">logout</span>
+                    Logout
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1">
+            <div class="p-6 md:p-8">
+                <!-- Page Heading -->
+                <div class="flex flex-wrap justify-between gap-3 mb-6">
+                    <div class="flex flex-col gap-1">
+                        <p class="text-slate-900 dark:text-white text-2xl md:text-3xl font-bold leading-tight">Admin Dashboard</p>
+                        <p class="text-slate-600 dark:text-slate-400 text-base">Welcome back! Here's an overview of the system.</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <select id="schoolYearFilter" onchange="applyFilter()" class="h-10 px-4 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300">
+                            <option value="">Loading...</option>
+                        </select>
+                        <button onclick="refreshData()" class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
+                            <span class="material-icons-outlined text-[20px]">refresh</span>
+                            <span class="text-sm font-medium hidden sm:inline">Refresh</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="loadingState" class="flex items-center justify-center py-20">
+                    <div class="loading-spinner"></div>
+                </div>
+
+                <!-- Dashboard Content -->
+                <div id="dashboardContent" style="display: none;">
+                    <!-- Stats Cards -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                            <div class="flex items-center justify-between">
+                                <p class="text-slate-600 dark:text-slate-400 text-base font-medium">Total Students</p>
+                                <span class="material-symbols-outlined text-primary">school</span>
+                            </div>
+                            <p class="text-slate-900 dark:text-white text-3xl font-bold" id="totalStudents">0</p>
+                            <p class="text-xs text-slate-500">
+                                <span id="deptBreakdown">JHS: 0 | SHS: 0</span><br>
+                                <span class="text-primary font-medium" id="syDisplay">S.Y. 2025-2026</span>
+                            </p>
+                        </div>
+                        <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                            <div class="flex items-center justify-between">
+                                <p class="text-slate-600 dark:text-slate-400 text-base font-medium">Active Teachers</p>
+                                <span class="material-symbols-outlined text-primary">co_present</span>
+                            </div>
+                            <p class="text-slate-900 dark:text-white text-3xl font-bold" id="activeTeachers">0</p>
+                            <p class="text-xs text-slate-500" id="totalEmployees">Total Staff: 0</p>
+                        </div>
+                        <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                            <div class="flex items-center justify-between">
+                                <p class="text-slate-600 dark:text-slate-400 text-base font-medium">Pending Enrollments</p>
+                                <span class="material-symbols-outlined text-amber-500">pending_actions</span>
+                            </div>
+                            <p class="text-slate-900 dark:text-white text-3xl font-bold" id="pendingEnrollments">0</p>
+                            <a href="../registrar/review-enrollments.html" class="text-xs text-primary hover:underline">Review Applications →</a>
+                        </div>
+                        <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                            <div class="flex items-center justify-between">
+                                <p class="text-slate-600 dark:text-slate-400 text-base font-medium">System Status</p>
+                                <span class="material-symbols-outlined text-green-500">cloud_done</span>
+                            </div>
+                            <p class="text-slate-900 dark:text-white text-3xl font-bold" id="systemStatus">Online</p>
+                            <p class="text-xs text-slate-500" id="activeUsers">Active Users: 0</p>
+                        </div>
+                    </div>
+
+                    <!-- Charts Section -->
+                    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
+                        <!-- Grade Distribution Bar Chart -->
+                        <div class="lg:col-span-3 flex flex-col gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+                            <p class="text-slate-800 dark:text-slate-200 text-base font-medium">Students by Grade Level</p>
+                            <div id="gradeChart" class="flex h-64 gap-4 items-end justify-items-center px-3">
+                                <!-- Will be populated by JavaScript -->
+                            </div>
+                        </div>
+
+                        <!-- Enrollment Status Pie Chart -->
+                        <div class="lg:col-span-2 flex flex-col gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+                            <p class="text-slate-800 dark:text-slate-200 text-base font-medium">Enrollment Status</p>
+                            <div class="flex items-center justify-center h-64">
+                                <div class="relative w-48 h-48">
+                                    <svg id="statusPieChart" class="size-full" height="36" viewBox="0 0 36 36" width="36">
+                                        <circle cx="18" cy="18" fill="transparent" r="15.91549430918954" stroke="#E0E0E0" stroke-width="4"></circle>
+                                        <!-- Dynamic circles will be added here -->
+                                    </svg>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                        <span class="text-3xl font-bold text-slate-800 dark:text-slate-200" id="totalEnrollments">0</span>
+                                        <span class="text-sm text-slate-500 dark:text-slate-400">Total</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="statusLegend" class="flex flex-wrap justify-center gap-3 text-xs">
+                                <!-- Will be populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions & Recent Activity -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-1 flex flex-col gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+                            <h3 class="text-slate-800 dark:text-slate-200 text-base font-medium">Quick Actions</h3>
+                            <div class="flex flex-col gap-3">
+                                <a href="../registrar/review-enrollments.html" class="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary/90">
+                                    <span class="material-symbols-outlined">checklist</span> Review Enrollments
+                                </a>
+                                <a href="../ict-coordinator/user-account-management.html" class="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700">
+                                    <span class="material-symbols-outlined">person_add</span> Manage Users
+                                </a>
+                                <a href="analytics.html" class="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700">
+                                    <span class="material-symbols-outlined">assessment</span> View Analytics
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="lg:col-span-2 flex flex-col gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+                            <h3 class="text-slate-800 dark:text-slate-200 text-base font-medium">Recent Activity</h3>
+                            <ul id="recentActivityList" class="flex flex-col divide-y divide-slate-200 dark:divide-slate-800">
+                                <!-- Will be populated by JavaScript -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let dashboardData = {};
+        let selectedYear = '';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            displayUserInfo();
+            setupEventListeners();
+            loadSchoolYears();
+        });
+
+        function displayUserInfo() {
+            const userData = JSON.parse(localStorage.getItem('user') || '{}');
+            const userNameEl = document.getElementById('userName');
+            const userInitialsEl = document.getElementById('userInitials');
+            
+            if (userData.FirstName && userData.LastName) {
+                userNameEl.textContent = `${userData.FirstName} ${userData.LastName}`;
+                userInitialsEl.textContent = `${userData.FirstName[0]}${userData.LastName[0]}`.toUpperCase();
+            }
+        }
+
+        function setupEventListeners() {
+            document.querySelectorAll('.logout-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    if (confirm('Are you sure you want to logout?')) {
+                        localStorage.removeItem('isLoggedIn');
+                        localStorage.removeItem('user');
+                        window.location.href = '../login.html';
+                    }
+                });
+            });
+        }
+
+        async function loadSchoolYears() {
+            try {
+                const response = await fetch('../backend/api/get-school-years.php');
+                const data = await response.json();
+                
+                const syFilter = document.getElementById('schoolYearFilter');
+                syFilter.innerHTML = '';
+                
+                if (data.success && data.schoolYears && data.schoolYears.length > 0) {
+                    data.schoolYears.forEach((sy, index) => {
+                        const option = document.createElement('option');
+                        option.value = sy;
+                        option.textContent = `S.Y. ${sy}`;
+                        syFilter.appendChild(option);
+                        
+                        // Select the first (most recent) by default
+                        if (index === 0) {
+                            selectedYear = sy;
+                        }
+                    });
+                    
+                    // Load data for the default selected year
+                    loadDashboardData();
+                } else {
+                    syFilter.innerHTML = '<option value="">No data available</option>';
+                }
+            } catch (error) {
+                console.error('Error loading school years:', error);
+                const syFilter = document.getElementById('schoolYearFilter');
+                syFilter.innerHTML = '<option value="">Error loading years</option>';
+            }
+        }
+
+        function applyFilter() {
+            selectedYear = document.getElementById('schoolYearFilter').value;
+            loadDashboardData();
+        }
+
+        async function loadDashboardData() {
+            // Show loading state
+            document.getElementById('loadingState').style.display = 'flex';
+            document.getElementById('dashboardContent').style.display = 'none';
+            
+            try {
+                const url = selectedYear 
+                    ? `../backend/api/get-dashboard-stats.php?year=${encodeURIComponent(selectedYear)}`
+                    : '../backend/api/get-dashboard-stats.php';
+                    
+                const response = await fetch(url);
+                const result = await response.json();
+                
+                if (result.success) {
+                    dashboardData = result.data;
+                    updateDashboard();
+                    document.getElementById('loadingState').style.display = 'none';
+                    document.getElementById('dashboardContent').style.display = 'block';
+                } else {
+                    console.error('Error:', result.message);
+                    alert('Failed to load dashboard data: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                alert('Failed to load dashboard data. Please check your connection.');
+            }
+        }
+
+        function updateDashboard() {
+            // Update school year display
+            document.getElementById('syDisplay').textContent = `S.Y. ${dashboardData.currentYear}`;
+
+            // Update stats cards
+            document.getElementById('totalStudents').textContent = dashboardData.totalStudents;
+            document.getElementById('activeTeachers').textContent = dashboardData.activeTeachers;
+            document.getElementById('pendingEnrollments').textContent = dashboardData.pendingEnrollments;
+            document.getElementById('systemStatus').textContent = dashboardData.systemStatus;
+            document.getElementById('totalEmployees').textContent = `Total Staff: ${dashboardData.totalEmployees}`;
+            document.getElementById('activeUsers').textContent = `Active Users: ${dashboardData.activeUsers}`;
+            document.getElementById('deptBreakdown').textContent = 
+                `JHS: ${dashboardData.departmentBreakdown.JHS} | SHS: ${dashboardData.departmentBreakdown.SHS}`;
+
+            // Update grade distribution chart
+            updateGradeChart();
+
+            // Update status pie chart
+            updateStatusChart();
+
+            // Update recent activity
+            updateRecentActivity();
+        }
+
+        function updateGradeChart() {
+            const chartContainer = document.getElementById('gradeChart');
+            chartContainer.innerHTML = '';
+
+            if (!dashboardData.gradeDistribution || dashboardData.gradeDistribution.length === 0) {
+                chartContainer.innerHTML = '<p class="text-slate-500 text-sm">No grade data available</p>';
+                return;
+            }
+
+            dashboardData.gradeDistribution.forEach(grade => {
+                const bar = document.createElement('div');
+                bar.className = 'flex flex-col items-center gap-2 w-full h-full justify-end';
+                bar.innerHTML = `
+                    <div class="bg-primary w-full rounded-t-lg transition-all hover:opacity-80" 
+                         style="height: ${grade.percentage}%;"
+                         title="${grade.name}: ${grade.count} students"></div>
+                    <div class="text-center">
+                        <p class="text-slate-700 dark:text-slate-300 text-xs font-medium">${grade.name}</p>
+                        <p class="text-slate-500 dark:text-slate-400 text-xs">${grade.count}</p>
+                    </div>
+                `;
+                chartContainer.appendChild(bar);
+            });
+        }
+
+        function updateStatusChart() {
+            const sb = dashboardData.statusBreakdown;
+            document.getElementById('totalEnrollments').textContent = sb.total;
+
+            // Create SVG circles for pie chart
+            const svg = document.getElementById('statusPieChart');
+            
+            // Clear existing circles except the base one
+            while (svg.children.length > 1) {
+                svg.removeChild(svg.lastChild);
+            }
+
+            let offset = 25; // Starting offset
+            const colors = {
+                confirmed: '#085019',
+                pending: '#3B82F6',
+                cancelled: '#EF4444'
+            };
+
+            // Add confirmed segment
+            if (sb.confirmed > 0) {
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', '18');
+                circle.setAttribute('cy', '18');
+                circle.setAttribute('r', '15.91549430918954');
+                circle.setAttribute('fill', 'transparent');
+                circle.setAttribute('stroke', colors.confirmed);
+                circle.setAttribute('stroke-width', '4');
+                circle.setAttribute('stroke-dasharray', `${sb.confirmed_percent} ${100 - sb.confirmed_percent}`);
+                circle.setAttribute('stroke-dashoffset', offset);
+                svg.appendChild(circle);
+                offset += sb.confirmed_percent;
+            }
+
+            // Add pending segment
+            if (sb.pending > 0) {
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', '18');
+                circle.setAttribute('cy', '18');
+                circle.setAttribute('r', '15.91549430918954');
+                circle.setAttribute('fill', 'transparent');
+                circle.setAttribute('stroke', colors.pending);
+                circle.setAttribute('stroke-width', '4');
+                circle.setAttribute('stroke-dasharray', `${sb.pending_percent} ${100 - sb.pending_percent}`);
+                circle.setAttribute('stroke-dashoffset', offset);
+                svg.appendChild(circle);
+                offset += sb.pending_percent;
+            }
+
+            // Add cancelled segment
+            if (sb.cancelled > 0) {
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', '18');
+                circle.setAttribute('cy', '18');
+                circle.setAttribute('r', '15.91549430918954');
+                circle.setAttribute('fill', 'transparent');
+                circle.setAttribute('stroke', colors.cancelled);
+                circle.setAttribute('stroke-width', '4');
+                circle.setAttribute('stroke-dasharray', `${sb.cancelled_percent} ${100 - sb.cancelled_percent}`);
+                circle.setAttribute('stroke-dashoffset', offset);
+                svg.appendChild(circle);
+            }
+
+            // Update legend
+            const legend = document.getElementById('statusLegend');
+            legend.innerHTML = `
+                <div class="flex items-center gap-1.5">
+                    <span class="size-3 rounded-full" style="background-color: ${colors.confirmed}"></span>
+                    <span class="text-slate-600 dark:text-slate-400">Confirmed (${sb.confirmed_percent}%)</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="size-3 rounded-full" style="background-color: ${colors.pending}"></span>
+                    <span class="text-slate-600 dark:text-slate-400">Pending (${sb.pending_percent}%)</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="size-3 rounded-full" style="background-color: ${colors.cancelled}"></span>
+                    <span class="text-slate-600 dark:text-slate-400">Cancelled (${sb.cancelled_percent}%)</span>
+                </div>
+            `;
+        }
+
+        function updateRecentActivity() {
+            const activityList = document.getElementById('recentActivityList');
+            
+            if (!dashboardData.recentActivity || dashboardData.recentActivity.length === 0) {
+                activityList.innerHTML = '<li class="py-4 text-center text-slate-500">No recent activity</li>';
+                return;
+            }
+
+            activityList.innerHTML = '';
+            dashboardData.recentActivity.forEach(activity => {
+                const li = document.createElement('li');
+                li.className = 'flex items-center gap-4 py-3';
+                
+                const colorClasses = {
+                    green: 'bg-green-100 dark:bg-green-900/50 text-green-500',
+                    blue: 'bg-blue-100 dark:bg-blue-900/50 text-blue-500',
+                    red: 'bg-red-100 dark:bg-red-900/50 text-red-500',
+                    amber: 'bg-amber-100 dark:bg-amber-900/50 text-amber-500',
+                    gray: 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                };
+                
+                li.innerHTML = `
+                    <div class="flex h-10 w-10 items-center justify-center rounded-full ${colorClasses[activity.color]}">
+                        <span class="material-symbols-outlined">${activity.icon}</span>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm text-slate-800 dark:text-slate-200">${activity.description}</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">${activity.time_ago}</p>
+                    </div>
+                `;
+                activityList.appendChild(li);
+            });
+        }
+
+        function refreshData() {
+            // Maintain the currently selected year
+            selectedYear = document.getElementById('schoolYearFilter').value;
+            document.getElementById('dashboardContent').style.display = 'none';
+            document.getElementById('loadingState').style.display = 'flex';
+            loadDashboardData();
+        }
+    </script>
+</body>
 </html>
