@@ -7,6 +7,14 @@
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+      <link rel="icon" type="image/png" href="../assets/favicons/favicon-96x96.png" sizes="96x96" />
+      <link rel="icon" type="image/svg+xml" href="../assets/favicons/favicon.svg" />
+      <link rel="shortcut icon" href="../assets/favicons/favicon.ico" />
+      <link rel="apple-touch-icon" sizes="180x180" href="../assets/favicons/apple-touch-icon.png" />
+      <meta name="apple-mobile-web-app-title" content="DJIHS" />
+      <link rel="manifest" href="../assets/favicons/site.webmanifest" />
+
     <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
@@ -33,12 +41,28 @@
             vertical-align: middle;
         }
         body { font-family: 'Inter', sans-serif; }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
     </style>
 </head>
 <body class="bg-surface-light dark:bg-background-dark font-display text-[#212529] dark:text-gray-100">
     <div class="flex min-h-screen">
         <!-- Sidebar Navigation -->
-        <aside class="w-72 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex transition-colors duration-200">
+        <aside class="w-72 h-screen sticky top-0 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex transition-colors duration-200">
             <div>
                <div class="p-6">
                   <div class="flex items-center gap-3 mb-1">
@@ -56,20 +80,24 @@
                     </a>
                     <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm" href="employee-management.html">
                         <span class="material-symbols-outlined">group</span>
-                        <span class="text-sm font-semibold">Employee Management</span>
-                    </a>
-                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="manage-access.html">
-                        <span class="material-symbols-outlined">admin_panel_settings</span>
-                        <span class="text-sm font-medium">System Access</span>
+                        <span class="text-sm font-medium">Employee Management</span>
                     </a>
                     <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="user-account-management.html">
                         <span class="material-symbols-outlined">person_add</span>
                         <span class="text-sm font-medium">Create User Accounts</span>
                     </a>
-                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="enrollment-management.html">
-                        <span class="material-symbols-outlined">school</span>
-                        <span class="text-sm font-medium">Enrollment</span>
-                    </a>
+                     <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="enrollment-management.html">
+                        <span class="material-icons-outlined text-[20px]">how_to_reg</span>
+                        <span class="text-sm font-medium">New Enrollment</span>
+                     </a>
+                     <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="review-enrollments.html">
+                        <span class="material-icons-outlined text-[20px]">rate_review</span>
+                        <span class="text-sm font-medium">Review Enrollments</span>
+                     </a>
+                     <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="student-management.html">
+                        <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">groups</span>
+                        <span class="text-sm font-medium">Student Management</span>
+                     </a>
                 </nav>
             </div>
             <div class="mt-auto p-6 border-t border-gray-100 dark:border-gray-800">
@@ -97,6 +125,12 @@
                 <div id="errorAlert" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
                     <strong class="font-bold">Error!</strong>
                     <span id="errorMessage" class="block sm:inline"></span>
+                </div>
+
+                <!-- Success Alert -->
+                <div id="successAlert" class="hidden bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4">
+                    <strong class="font-bold">Success!</strong>
+                    <span id="successMessage" class="block sm:inline"></span>
                 </div>
 
                 <div class="flex flex-wrap items-center justify-between gap-6 mb-8">
@@ -187,22 +221,207 @@
         </main>
     </div>
 
+    <!-- Add/Edit Employee Modal -->
+    <div id="employeeModal" class="modal">
+        <div class="bg-white dark:bg-surface-dark rounded-xl shadow-2xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white dark:bg-surface-dark border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+                <h2 id="modalTitle" class="text-2xl font-bold text-gray-900 dark:text-white">Add New Employee</h2>
+                <button onclick="closeEmployeeModal()" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            
+            <form id="employeeForm" class="p-6">
+                <input type="hidden" id="employeeId" name="employeeId">
+                
+                <!-- Personal Information -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="material-symbols-outlined">person</span>
+                        Personal Information
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Employee Number</label>
+                            <input type="text" id="employeeNumber" name="employeeNumber" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-gray-700" placeholder="EMP-001">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name <span class="text-red-500">*</span></label>
+                            <input type="text" id="lastName" name="lastName" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-gray-700">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First Name <span class="text-red-500">*</span></label>
+                            <input type="text" id="firstName" name="firstName" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-gray-700">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Middle Name</label>
+                            <input type="text" id="middleName" name="middleName" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-gray-700">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Gender <span class="text-red-500">*</span></label>
+                            <select id="gender" name="gender" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-gray-700">
+                                <option value="">Select Gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date of Birth</label>
+                            <input type="date" id="dateOfBirth" name="dateOfBirth" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-gray-700">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contact Information -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="material-symbols-outlined">contact_phone</span>
+                        Contact Information
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contact Number</label>
+                            <input type="tel" id="contactNumber" name="contactNumber" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-gray-700" placeholder="09XX-XXX-XXXX">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
+                            <input type="email" id="email" name="email" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-gray-700" placeholder="employee@example.com">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Address Information -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="material-symbols-outlined">home</span>
+                        Address Information
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">House Number</label>
+                            <input type="text" id="houseNumber" name="houseNumber" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-gray-700">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sitio/Street</label>
+                            <input type="text" id="sitioStreet" name="sitioStreet" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-gray-700">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Barangay</label>
+                            <input type="text" id="barangay" name="barangay" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-gray-700">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Municipality</label>
+                            <input type="text" id="municipality" name="municipality" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-gray-700">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Province</label>
+                            <input type="text" id="province" name="province" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-gray-700">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Employment Information -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="material-symbols-outlined">work</span>
+                        Employment Information
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Employment Type <span class="text-red-500">*</span></label>
+                            <select id="employmentType" name="employmentType" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-gray-700">
+                                <option value="">Select Type</option>
+                                <option value="Teaching">Teaching</option>
+                                <option value="Non_Teaching">Non-Teaching</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Department</label>
+                            <select id="department" name="department" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-gray-700">
+                                <option value="">Select Department</option>
+                                <option value="JHS">JHS</option>
+                                <option value="SHS">SHS</option>
+                                <option value="Both">Both</option>
+                                <option value="Admin">Admin</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Position <span class="text-red-500">*</span></label>
+                            <input type="text" id="position" name="position" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-gray-700" placeholder="e.g., Teacher III, Admin Assistant">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date Hired</label>
+                            <input type="date" id="dateHired" name="dateHired" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-gray-700">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Employment Status</label>
+                            <select id="employmentStatus" name="employmentStatus" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-gray-700">
+                                <option value="Active">Active</option>
+                                <option value="On_Leave">On Leave</option>
+                                <option value="Inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="flex items-center justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
+                    <button type="button" onclick="closeEmployeeModal()" class="px-6 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors font-medium">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-bold">
+                        <span id="submitBtnText">Add Employee</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- View Employee Details Modal -->
+    <div id="viewEmployeeModal" class="modal">
+        <div class="bg-white dark:bg-surface-dark rounded-xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white dark:bg-surface-dark border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Employee Details</h2>
+                <button onclick="closeViewModal()" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            
+            <div id="viewEmployeeContent" class="p-6">
+                <!-- Content will be populated dynamically -->
+            </div>
+        </div>
+    </div>
+
     <script src="../js/auth.js"></script>
     <script>
         let allEmployees = [];
         let currentUser = null;
 
-        // Show/hide error
+        // Show/hide alerts
         function showError(message) {
             const errorAlert = document.getElementById('errorAlert');
             const errorMessage = document.getElementById('errorMessage');
             errorMessage.textContent = message;
             errorAlert.classList.remove('hidden');
             console.error('ERROR:', message);
+            setTimeout(() => hideError(), 5000);
         }
 
         function hideError() {
             document.getElementById('errorAlert').classList.add('hidden');
+        }
+
+        function showSuccess(message) {
+            const successAlert = document.getElementById('successAlert');
+            const successMessage = document.getElementById('successMessage');
+            successMessage.textContent = message;
+            successAlert.classList.remove('hidden');
+            setTimeout(() => hideSuccess(), 5000);
+        }
+
+        function hideSuccess() {
+            document.getElementById('successAlert').classList.add('hidden');
         }
 
         // Get initials
@@ -294,22 +513,6 @@
                 const colors = ['blue', 'indigo', 'purple', 'pink', 'green', 'yellow'];
                 const color = colors[emp.EmployeeID % colors.length];
                 
-                // Status badge
-                let statusBadge = '';
-                if (emp.EmploymentStatus === 'Active') {
-                    statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Active
-                    </span>`;
-                } else if (emp.EmploymentStatus === 'On_Leave') {
-                    statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">
-                        <span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>On Leave
-                    </span>`;
-                } else {
-                    statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-500">
-                        <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>${emp.EmploymentStatus}
-                    </span>`;
-                }
-                
                 return `
                     <tr class="hover:bg-gray-50/50 dark:hover:bg-background-dark/20 transition-colors">
                         <td class="px-6 py-4">
@@ -384,27 +587,230 @@
             displayEmployees(filtered);
         }
 
+        // Modal functions
         function openAddModal() {
-            alert('Add employee form coming soon!');
+            document.getElementById('modalTitle').textContent = 'Add New Employee';
+            document.getElementById('submitBtnText').textContent = 'Add Employee';
+            document.getElementById('employeeForm').reset();
+            document.getElementById('employeeId').value = '';
+            document.getElementById('employeeModal').classList.add('active');
         }
 
+        function closeEmployeeModal() {
+            document.getElementById('employeeModal').classList.remove('active');
+        }
+
+        function closeViewModal() {
+            document.getElementById('viewEmployeeModal').classList.remove('active');
+        }
+
+        // View employee details
         function viewEmployee(id) {
             const employee = allEmployees.find(e => e.EmployeeID == id);
-            if (employee) {
-                alert(`Employee Details:\n\nName: ${employee.FullName}\nGender: ${employee.Gender}\nPosition: ${employee.Position}\nDepartment: ${employee.Department || 'N/A'}\nType: ${employee.EmploymentType}\nContact: ${employee.ContactNumber || 'N/A'}\nEmail: ${employee.Email || 'N/A'}\nStatus: ${employee.EmploymentStatus}`);
-            }
+            if (!employee) return;
+
+            const content = `
+                <div class="space-y-6">
+                    <!-- Header with Avatar -->
+                    <div class="flex items-center gap-4 pb-6 border-b border-gray-200 dark:border-gray-700">
+                        <div class="w-20 h-20 rounded-full bg-primary flex items-center justify-center text-white font-bold text-2xl">
+                            ${getInitials(employee.FirstName, employee.LastName)}
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white">${employee.FullName}</h3>
+                            <p class="text-gray-500 dark:text-gray-400">${employee.Position}</p>
+                            ${employee.EmployeeNumber ? `<p class="text-sm text-gray-500">ID: ${employee.EmployeeNumber}</p>` : ''}
+                        </div>
+                    </div>
+
+                    <!-- Personal Information -->
+                    <div>
+                        <h4 class="text-lg font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                            <span class="material-symbols-outlined">person</span>
+                            Personal Information
+                        </h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm text-gray-500">Gender</p>
+                                <p class="font-medium text-gray-900 dark:text-white">${employee.Gender}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Date of Birth</p>
+                                <p class="font-medium text-gray-900 dark:text-white">${employee.DateOfBirth || 'N/A'}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contact Information -->
+                    <div>
+                        <h4 class="text-lg font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                            <span class="material-symbols-outlined">contact_phone</span>
+                            Contact Information
+                        </h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm text-gray-500">Contact Number</p>
+                                <p class="font-medium text-gray-900 dark:text-white">${employee.ContactNumber || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Email</p>
+                                <p class="font-medium text-gray-900 dark:text-white">${employee.Email || 'N/A'}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Address -->
+                    <div>
+                        <h4 class="text-lg font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                            <span class="material-symbols-outlined">home</span>
+                            Address
+                        </h4>
+                        <p class="text-gray-700 dark:text-gray-300">
+                            ${[employee.HouseNumber, employee.SitioStreet, employee.Barangay, employee.Municipality, employee.Province].filter(Boolean).join(', ') || 'N/A'}
+                        </p>
+                    </div>
+
+                    <!-- Employment Information -->
+                    <div>
+                        <h4 class="text-lg font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                            <span class="material-symbols-outlined">work</span>
+                            Employment Information
+                        </h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm text-gray-500">Employment Type</p>
+                                <p class="font-medium text-gray-900 dark:text-white">${employee.EmploymentType === 'Teaching' ? 'Teaching' : 'Non-Teaching'}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Department</p>
+                                <p class="font-medium text-gray-900 dark:text-white">${employee.Department || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Date Hired</p>
+                                <p class="font-medium text-gray-900 dark:text-white">${employee.DateHired || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Employment Status</p>
+                                <p class="font-medium text-gray-900 dark:text-white">${employee.EmploymentStatus.replace('_', ' ')}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">System Access</p>
+                                <p class="font-medium text-gray-900 dark:text-white">${employee.HasSystemAccess ? 'Yes' : 'No'}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex items-center justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
+                        <button onclick="closeViewModal(); editEmployee(${employee.EmployeeID});" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-bold">
+                            Edit Employee
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('viewEmployeeContent').innerHTML = content;
+            document.getElementById('viewEmployeeModal').classList.add('active');
         }
 
+        // Edit employee
         function editEmployee(id) {
-            alert('Edit employee form coming soon!');
+            const employee = allEmployees.find(e => e.EmployeeID == id);
+            if (!employee) return;
+
+            document.getElementById('modalTitle').textContent = 'Edit Employee';
+            document.getElementById('submitBtnText').textContent = 'Update Employee';
+            
+            // Populate form
+            document.getElementById('employeeId').value = employee.EmployeeID;
+            document.getElementById('employeeNumber').value = employee.EmployeeNumber || '';
+            document.getElementById('lastName').value = employee.LastName;
+            document.getElementById('firstName').value = employee.FirstName;
+            document.getElementById('middleName').value = employee.MiddleName || '';
+            document.getElementById('gender').value = employee.Gender;
+            document.getElementById('dateOfBirth').value = employee.DateOfBirth || '';
+            document.getElementById('contactNumber').value = employee.ContactNumber || '';
+            document.getElementById('email').value = employee.Email || '';
+            document.getElementById('houseNumber').value = employee.HouseNumber || '';
+            document.getElementById('sitioStreet').value = employee.SitioStreet || '';
+            document.getElementById('barangay').value = employee.Barangay || '';
+            document.getElementById('municipality').value = employee.Municipality || '';
+            document.getElementById('province').value = employee.Province || '';
+            document.getElementById('employmentType').value = employee.EmploymentType;
+            document.getElementById('department').value = employee.Department || '';
+            document.getElementById('position').value = employee.Position;
+            document.getElementById('dateHired').value = employee.DateHired || '';
+            document.getElementById('employmentStatus').value = employee.EmploymentStatus;
+
+            document.getElementById('employeeModal').classList.add('active');
         }
+
+        // Handle form submission
+        document.getElementById('employeeForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const employeeId = document.getElementById('employeeId').value;
+            const isEdit = !!employeeId;
+            
+            const formData = {
+                EmployeeID: employeeId || undefined,
+                EmployeeNumber: document.getElementById('employeeNumber').value,
+                LastName: document.getElementById('lastName').value,
+                FirstName: document.getElementById('firstName').value,
+                MiddleName: document.getElementById('middleName').value,
+                Gender: document.getElementById('gender').value,
+                DateOfBirth: document.getElementById('dateOfBirth').value || null,
+                ContactNumber: document.getElementById('contactNumber').value,
+                Email: document.getElementById('email').value,
+                HouseNumber: document.getElementById('houseNumber').value,
+                SitioStreet: document.getElementById('sitioStreet').value,
+                Barangay: document.getElementById('barangay').value,
+                Municipality: document.getElementById('municipality').value,
+                Province: document.getElementById('province').value,
+                EmploymentType: document.getElementById('employmentType').value,
+                Department: document.getElementById('department').value,
+                Position: document.getElementById('position').value,
+                DateHired: document.getElementById('dateHired').value || null,
+                EmploymentStatus: document.getElementById('employmentStatus').value,
+                CreatedBy: currentUser.UserID,
+                UpdatedBy: currentUser.UserID
+            };
+
+            try {
+                const url = isEdit 
+                    ? '../backend/api/employees.php?action=update'
+                    : '../backend/api/employees.php?action=create';
+                
+                const response = await fetch(url, {
+                    method: isEdit ? 'PUT' : 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showSuccess(isEdit ? 'Employee updated successfully!' : 'Employee added successfully!');
+                    closeEmployeeModal();
+                    await loadEmployees();
+                    await loadEmployeeStats();
+                } else {
+                    showError(result.message || 'Failed to save employee');
+                }
+            } catch (error) {
+                console.error('Error saving employee:', error);
+                showError('Error saving employee: ' + error.message);
+            }
+        });
 
         function createUserAccount(id) {
             const employee = allEmployees.find(e => e.EmployeeID == id);
             if (employee) {
                 const confirmed = confirm(`Create user account for ${employee.FullName}?`);
                 if (confirmed) {
-                    alert('User account creation coming soon!');
+                    window.location.href = `user-account-management.html?employeeId=${id}`;
                 }
             }
         }
@@ -414,6 +820,13 @@
                 localStorage.removeItem('isLoggedIn');
                 localStorage.removeItem('user');
                 window.location.href = '../login.html';
+            }
+        }
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.classList.remove('active');
             }
         }
     </script>

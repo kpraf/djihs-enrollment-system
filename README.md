@@ -21,7 +21,9 @@ Bugs Detected:
 - Some filters dropdown does not work right
 - Registrar dashboard confirmed enrollment is still zero despite I have accepted students as confirmed. How come its like that?
 - There is a bug too if I logout the localhost is asking "Are you sure you want to logout?" 2-3 times. I think its being duplicated because there is inside in auth.js and inside that page particularly in the script. Should I choose the auth.js or separate pages for each?
+- Bugs many bugs in csv feature
 
 Added Feature:
 - Already added dashboard functionality that pulls the api of employees.php and users.php, so it know all the active users, how many employees and more.
 - Added feature of registrar dashboard, it would be important to add a school year dropdown
+- Added CSV import in Registrar, enrollment form

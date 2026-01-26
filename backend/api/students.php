@@ -256,6 +256,27 @@ class StudentsAPI {
             ];
         }
     }
+
+    public function getStrands() {
+        try {
+            $stmt = $this->conn->prepare("
+                SELECT StrandID, StrandCode, StrandName
+                FROM Strand
+                ORDER BY StrandCode
+            ");
+            $stmt->execute();
+
+            return [
+                'success' => true,
+                'strands' => $stmt->fetchAll(PDO::FETCH_ASSOC)
+            ];
+        } catch (PDOException $e) {
+            return [
+                'success' => false,
+                'message' => 'Error fetching strands: ' . $e->getMessage()
+            ];
+        }
+    }
 }
 
 // =====================================================
@@ -311,6 +332,10 @@ try {
                 
             } elseif ($action === 'stats') {
                 $result = $api->getStatistics();
+                echo json_encode($result);
+
+            } elseif ($action === 'get_strands') {
+                $result = $api->getStrands();
                 echo json_encode($result);
                 
             } else {

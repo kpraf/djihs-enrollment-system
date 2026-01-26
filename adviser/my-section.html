@@ -1,185 +1,556 @@
 <!DOCTYPE html>
 <html class="light" lang="en">
-   <head>
-      <meta charset="utf-8"/>
-      <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-      <title>Adviser | My Section</title>
-      <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-      <link href="https://fonts.googleapis.com" rel="preconnect"/>
-      <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
-      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
-      <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
-         
-      <script src="/js/tailwind-config.js"></script>
-
-            <!-- AUTHENTICATION PROTECTION - MUST BE FIRST -->
-      <script src="../js/auth.js"></script>
-      <script>
-         // Protect this page - only Admin role can access
-         // This runs before page renders
-         (function() {
-            const isLoggedIn = localStorage.getItem('isLoggedIn');
-            const userDataString = localStorage.getItem('user');
-            
-            if (!isLoggedIn || !userDataString) {
-               window.location.href = '../login.html';
-               return;
-            }
-            
-            try {
-               const user = JSON.parse(userDataString);
-               if (user.Role !== 'Adviser') {
-                  alert('Access denied. Adviser access required.');
-                  window.location.href = '../login.html';
-               }
-            } catch (e) {
-               window.location.href = '../login.html';
-            }
-         })();
-      </script>
-   </head>
-   <body class="font-display bg-background-light dark:bg-background-dark">
-      <div class="relative flex min-h-screen w-full">
-            <!-- SideNavBar -->
-            <aside class="w-72 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex transition-colors duration-200">
-               <div>
-                  <div class="p-6">
-                     <div class="flex items-center gap-3 mb-1">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Adviser | My Sections</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+    
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- jsPDF for PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#085019",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                        "success": "#50E3C2",
+                        "warning": "#F5A623",
+                        "danger": "#D0021B",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+</head>
+<body class="font-display bg-background-light dark:bg-background-dark">
+    <div class="relative flex min-h-screen w-full">
+        <!-- Sidebar -->
+        <aside class="w-72 h-screen sticky top-0 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex transition-colors duration-200">
+            <div>
+                <div class="p-6">
+                    <div class="flex items-center gap-3 mb-1">
                         <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center overflow-hidden shrink-0 border border-yellow-200 dark:border-yellow-700">
-                           <img alt="School Logo" class="w-full h-full object-cover opacity-90" src="../assets/images/djihs-logo-small.png"/>
+                            <img alt="School Logo" class="w-full h-full object-cover opacity-90" src="../assets/images/djihs-logo-small.png"/>
                         </div>
-                     </div>
-                     <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS Adviser</h1>
-                     <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
-                  </div>
-                  <nav class="px-4 space-y-1">
-                  <!-- Dashboard -->
-                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group"
-                     href="../adviser/dashboard.html">
-                     <span class="material-icons-outlined text-[20px]">dashboard</span>
-                     <span class="text-sm font-medium">Dashboard</span>
-                  </a>
-
-                  <!-- Manage Sections -->
-                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group"
-                     href="../adviser/automatic-sectioning.html">
-                     <span class="material-icons-outlined text-[20px]">view_quilt</span>
-                     <span class="text-sm font-medium">Manage Sections</span>
-                  </a>
-
-                  <!-- All Sections -->
-                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group"
-                     href="../adviser/all-sections.html">
-                     <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">list_alt</span>
-                     <span class="text-sm font-medium">All Sections</span>
-                  </a>
-
-                  <!-- My Section -->
-                  <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm"
-                     href="/adviser/my-section.html">
-                     <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">account_tree</span>
-                     <span class="text-sm font-medium">My Section</span>
-                  </a>
-                  </nav>
-               </div>
-               <div class="p-4 border-t border-gray-200 dark:border-gray-700">
-                  <div class="flex items-center gap-3 mb-4 px-2">
-                     <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm">
-                        IC
-                     </div>
-                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate">Adviser Name</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Adviser</p>
-                     </div>
-                  </div>
-                  <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors logout-btn">
-                  <span class="material-icons-outlined text-[18px]">logout</span>
-                  Logout
-                  </button>
-               </div>
-            </aside>
-            <!-- Main Content -->
-         <main class="flex-1 p-8">
-            <div class="mx-auto max-w-7xl">
-               <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-                  <div class="flex flex-col gap-1">
-                     <h1 class="text-slate-900 dark:text-white text-3xl font-bold tracking-tight">Grade 11 - A | STEM</h1>
-                     <p class="text-slate-500 dark:text-slate-400 text-base font-normal leading-normal">List of all students enrolled in this section.</p>
-                  </div>
-               </div>
-               <div class="flex justify-end gap-3 mb-4">
-                  <button class="flex h-12 shrink-0 items-center justify-center gap-x-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700">
-                     <span class="material-symbols-outlined text-xl">print</span>
-                     <p class="text-sm font-medium leading-normal">Print</p>
-                  </button>
-                  <button class="flex h-12 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-primary text-white px-4">
-                     <span class="material-symbols-outlined text-xl">download</span>
-                     <p class="text-sm font-medium leading-normal">Export to CSV</p>
-                  </button>
-               </div>
-               <div class="overflow-x-auto bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800">
-                  <table class="w-full text-left text-sm">
-                     <thead class="bg-slate-50 dark:bg-slate-800/50 text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        <tr>
-                           <th class="px-6 py-4 font-medium" scope="col">Student Name</th>
-                           <th class="px-6 py-4 font-medium" scope="col">Learner Reference Number (LRN)</th>
-                        </tr>
-                     </thead>
-                     <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                           <td class="px-6 py-4 font-medium text-slate-900 dark:text-white whitespace-nowrap">John Michael Dela Cruz</td>
-                           <td class="px-6 py-4 text-slate-600 dark:text-slate-300">109876543210</td>
-                        </tr>
-                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                           <td class="px-6 py-4 font-medium text-slate-900 dark:text-white whitespace-nowrap">Maria Clara Santos</td>
-                           <td class="px-6 py-4 text-slate-600 dark:text-slate-300">109876543211</td>
-                        </tr>
-                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                           <td class="px-6 py-4 font-medium text-slate-900 dark:text-white whitespace-nowrap">Peter James Rodriguez</td>
-                           <td class="px-6 py-4 text-slate-600 dark:text-slate-300">109876543212</td>
-                        </tr>
-                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                           <td class="px-6 py-4 font-medium text-slate-900 dark:text-white whitespace-nowrap">Angela Mae Reyes</td>
-                           <td class="px-6 py-4 text-slate-600 dark:text-slate-300">109876543213</td>
-                        </tr>
-                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                           <td class="px-6 py-4 font-medium text-slate-900 dark:text-white whitespace-nowrap">Christian Paul Gonzales</td>
-                           <td class="px-6 py-4 text-slate-600 dark:text-slate-300">109876543214</td>
-                        </tr>
-                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                           <td class="px-6 py-4 font-medium text-slate-900 dark:text-white whitespace-nowrap">Samantha Nicole Garcia</td>
-                           <td class="px-6 py-4 text-slate-600 dark:text-slate-300">109876543215</td>
-                        </tr>
-                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                           <td class="px-6 py-4 font-medium text-slate-900 dark:text-white whitespace-nowrap">Luis Miguel Fernandez</td>
-                           <td class="px-6 py-4 text-slate-600 dark:text-slate-300">109876543216</td>
-                        </tr>
-                     </tbody>
-                  </table>
-               </div>
-               <div class="flex items-center justify-between mt-6">
-                  <p class="text-sm text-slate-500 dark:text-slate-400">Showing 1 to 7 of 45 results</p>
-                  <div class="flex items-center gap-2">
-                     <button class="flex items-center justify-center p-2 h-9 w-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
-                     <span class="material-symbols-outlined text-xl">chevron_left</span>
-                     </button>
-                     <button class="flex items-center justify-center p-2 h-9 w-9 rounded-lg border border-transparent bg-primary text-white">
-                     <span class="text-sm font-medium">1</span>
-                     </button>
-                     <button class="flex items-center justify-center p-2 h-9 w-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
-                     <span class="text-sm font-medium">2</span>
-                     </button>
-                     <button class="flex items-center justify-center p-2 h-9 w-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
-                     <span class="text-sm font-medium">3</span>
-                     </button>
-                     <button class="flex items-center justify-center p-2 h-9 w-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
-                     <span class="material-symbols-outlined text-xl">chevron_right</span>
-                     </button>
-                  </div>
-               </div>
+                    </div>
+                    <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS Adviser</h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
+                </div>
+                <nav class="px-4 space-y-1">
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="../adviser/dashboard.html">
+                        <span class="material-icons-outlined text-[20px]">dashboard</span>
+                        <span class="text-sm font-medium">Dashboard</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm" href="../adviser/my-section.html">
+                        <span class="material-icons-outlined text-[20px]">account_tree</span>
+                        <span class="text-sm font-medium">My Sections</span>
+                    </a>
+                     <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="enrollment-management.html">
+                        <span class="material-icons-outlined text-[20px]">how_to_reg</span>
+                        <span class="text-sm font-medium">New Enrollment</span>
+                     </a>
+                     <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="review-enrollments.html">
+                        <span class="material-icons-outlined text-[20px]">rate_review</span>
+                        <span class="text-sm font-medium">Review Enrollments</span>
+                     </a>
+                     <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="student-management.html">
+                        <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">groups</span>
+                        <span class="text-sm font-medium">Student Management</span>
+                     </a>
+                </nav>
             </div>
-         </main>
-      </div>
-   </body>
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                <div class="flex items-center gap-3 mb-4 px-2">
+                    <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm" id="userInitials">AD</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate" id="userName">Adviser</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Adviser</p>
+                    </div>
+                </div>
+                <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors logout-btn">
+                    <span class="material-icons-outlined text-[18px]">logout</span>
+                    Logout
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-8">
+            <div class="mx-auto max-w-7xl">
+                <!-- Page Heading -->
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+                    <div class="flex flex-col gap-1">
+                        <h1 class="text-slate-900 dark:text-white text-3xl font-bold tracking-tight">My Sections</h1>
+                        <p class="text-slate-500 dark:text-slate-400 text-base font-normal leading-normal">View and manage your assigned sections and students.</p>
+                    </div>
+                    
+                    <!-- Academic Year Filter -->
+                    <div class="flex items-center gap-2">
+                        <label for="academicYearFilter" class="text-sm font-medium text-slate-700 dark:text-slate-300">Academic Year:</label>
+                        <select id="academicYearFilter" class="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary text-sm min-w-[140px]">
+                            <!-- Options will be populated dynamically -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="loadingState" class="flex items-center justify-center py-12">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                </div>
+
+                <!-- No Section State -->
+                <div id="noSectionState" class="hidden bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-12 text-center">
+                    <span class="material-icons-outlined text-6xl text-slate-300 dark:text-slate-600 mb-4">folder_off</span>
+                    <h3 class="text-xl font-semibold text-slate-900 dark:text-white mb-2">No Section Assigned</h3>
+                    <p class="text-slate-500 dark:text-slate-400">You don't have any section assigned for this academic year yet.</p>
+                </div>
+
+                <!-- Section Tabs -->
+                <div id="sectionTabs" class="hidden mb-6">
+                    <div class="border-b border-slate-200 dark:border-slate-700">
+                        <nav class="flex space-x-4 overflow-x-auto" id="sectionTabsList">
+                            <!-- Tabs will be inserted here -->
+                        </nav>
+                    </div>
+                </div>
+
+                <!-- Section Content -->
+                <div id="sectionContent" class="hidden space-y-6">
+                    <!-- Section Info Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="sectionInfoCards">
+                        <!-- Cards will be inserted here -->
+                    </div>
+
+                    <!-- Student List Section -->
+                    <div class="bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                            <h2 class="text-xl font-bold text-slate-900 dark:text-white">Students List</h2>
+                            
+                            <!-- Export Buttons -->
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="exportToExcel()" class="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm">
+                                    <span class="material-icons-outlined text-[18px]">description</span>
+                                    Export Excel
+                                </button>
+                                <button onclick="exportToCSV()" class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm">
+                                    <span class="material-icons-outlined text-[18px]">table_chart</span>
+                                    Export CSV
+                                </button>
+                                <button onclick="exportToPDF()" class="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm">
+                                    <span class="material-icons-outlined text-[18px]">picture_as_pdf</span>
+                                    Export PDF
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Search Bar -->
+                        <div class="mb-4">
+                            <input type="text" id="searchInput" placeholder="Search by name or LRN..." 
+                                class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary">
+                        </div>
+
+                        <!-- Students Table -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm" id="studentsTable">
+                                <thead class="bg-slate-50 dark:bg-slate-800/50 text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                    <tr>
+                                        <th class="px-6 py-4 font-medium">#</th>
+                                        <th class="px-6 py-4 font-medium">LRN</th>
+                                        <th class="px-6 py-4 font-medium">Student Name</th>
+                                        <th class="px-6 py-4 font-medium">Gender</th>
+                                        <th class="px-6 py-4 font-medium">Contact Number</th>
+                                        <th class="px-6 py-4 font-medium">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 dark:divide-slate-800" id="studentsTableBody">
+                                    <!-- Students will be inserted here -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Empty State -->
+                        <div id="emptyState" class="hidden text-center py-12">
+                            <span class="material-icons-outlined text-6xl text-slate-300 dark:text-slate-600 mb-4">person_off</span>
+                            <p class="text-slate-500 dark:text-slate-400">No students found in this section.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let allSections = [];
+        let allSectionsData = []; // Store all sections across all years
+        let currentSection = null;
+        let allStudents = [];
+        let filteredStudents = [];
+        let sectionStudentsMap = {}; // Store students for each section
+        let availableYears = [];
+        let currentAcademicYear = null;
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', async () => {
+            initializeUserDisplay();
+            await loadMySections();
+            setupEventListeners();
+        });
+
+        function initializeUserDisplay() {
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (user) {
+                const initials = (user.FirstName[0] + user.LastName[0]).toUpperCase();
+                document.getElementById('userInitials').textContent = initials;
+                document.getElementById('userName').textContent = `${user.FirstName} ${user.LastName}`;
+            }
+        }
+
+        function setupEventListeners() {
+            // Logout button
+            document.querySelector('.logout-btn').addEventListener('click', logout);
+
+            // Search input
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                filteredStudents = allStudents.filter(student => 
+                    student.StudentName.toLowerCase().includes(searchTerm) ||
+                    student.LRN.includes(searchTerm)
+                );
+                renderStudents();
+            });
+            
+            // Academic year filter
+            document.getElementById('academicYearFilter').addEventListener('change', (e) => {
+                filterByAcademicYear(e.target.value);
+            });
+        }
+
+        async function loadMySections() {
+            try {
+                const user = JSON.parse(localStorage.getItem('user'));
+                
+                // Fetch adviser's sections (all academic years)
+                const response = await fetch(`../backend/api/adviser-sections.php?user_id=${user.UserID}`);
+                const result = await response.json();
+
+                if (!result.success || !result.data || result.data.length === 0) {
+                    showNoSection();
+                    return;
+                }
+
+                allSectionsData = result.data;
+                
+                // Extract unique academic years and sort them (newest first)
+                availableYears = [...new Set(allSectionsData.map(s => s.AcademicYear))].sort((a, b) => {
+                    const yearA = parseInt(a.split('-')[0]);
+                    const yearB = parseInt(b.split('-')[0]);
+                    return yearB - yearA;
+                });
+                
+                // Populate academic year dropdown
+                populateAcademicYearDropdown();
+                
+                // Set current academic year to the most recent
+                currentAcademicYear = availableYears[0];
+                document.getElementById('academicYearFilter').value = currentAcademicYear;
+                
+                // Filter sections by current academic year
+                allSections = allSectionsData.filter(s => s.AcademicYear === currentAcademicYear);
+                
+                // Load students for all sections in current year
+                for (const section of allSections) {
+                    await loadStudentsForSection(section.SectionID);
+                }
+                
+                // Display section tabs if multiple sections
+                if (allSections.length > 1) {
+                    displaySectionTabs();
+                }
+                
+                // Select first section by default
+                selectSection(allSections[0].SectionID);
+                
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('sectionContent').classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Error loading sections:', error);
+                showNoSection();
+            }
+        }
+        
+        function populateAcademicYearDropdown() {
+            const dropdown = document.getElementById('academicYearFilter');
+            dropdown.innerHTML = availableYears.map(year => 
+                `<option value="${year}">${year}</option>`
+            ).join('');
+        }
+        
+        async function filterByAcademicYear(academicYear) {
+            currentAcademicYear = academicYear;
+            
+            // Filter sections by selected academic year
+            allSections = allSectionsData.filter(s => s.AcademicYear === academicYear);
+            
+            if (allSections.length === 0) {
+                showNoSection();
+                return;
+            }
+            
+            // Load students for sections in this year if not already loaded
+            for (const section of allSections) {
+                if (!sectionStudentsMap[section.SectionID]) {
+                    await loadStudentsForSection(section.SectionID);
+                }
+            }
+            
+            // Update tabs
+            if (allSections.length > 1) {
+                displaySectionTabs();
+                document.getElementById('sectionTabs').classList.remove('hidden');
+            } else {
+                document.getElementById('sectionTabs').classList.add('hidden');
+            }
+            
+            // Select first section of this year
+            document.getElementById('sectionContent').classList.remove('hidden');
+            document.getElementById('noSectionState').classList.add('hidden');
+            selectSection(allSections[0].SectionID);
+        }
+
+        async function loadStudentsForSection(sectionId) {
+            try {
+                const response = await fetch(`../backend/api/adviser-sections.php?section_id=${sectionId}`);
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    sectionStudentsMap[sectionId] = result.data;
+                } else {
+                    sectionStudentsMap[sectionId] = [];
+                }
+            } catch (error) {
+                console.error(`Error loading students for section ${sectionId}:`, error);
+                sectionStudentsMap[sectionId] = [];
+            }
+        }
+
+        function displaySectionTabs() {
+            const tabsList = document.getElementById('sectionTabsList');
+            const tabsContainer = document.getElementById('sectionTabs');
+            
+            const tabsHTML = allSections.map(section => `
+                <button 
+                    class="section-tab px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors"
+                    data-section-id="${section.SectionID}"
+                    onclick="selectSection(${section.SectionID})">
+                    ${section.SectionName}
+                </button>
+            `).join('');
+            
+            tabsList.innerHTML = tabsHTML;
+            tabsContainer.classList.remove('hidden');
+        }
+
+        function selectSection(sectionId) {
+            // Find the section
+            currentSection = allSections.find(s => s.SectionID === sectionId);
+            if (!currentSection) return;
+            
+            // Update tab styles
+            document.querySelectorAll('.section-tab').forEach(tab => {
+                if (parseInt(tab.dataset.sectionId) === sectionId) {
+                    tab.classList.remove('border-transparent', 'text-slate-500', 'dark:text-slate-400', 'hover:text-slate-700', 'dark:hover:text-slate-300');
+                    tab.classList.add('border-primary', 'text-primary');
+                } else {
+                    tab.classList.remove('border-primary', 'text-primary');
+                    tab.classList.add('border-transparent', 'text-slate-500', 'dark:text-slate-400', 'hover:text-slate-700', 'dark:hover:text-slate-300');
+                }
+            });
+            
+            // Load students for this section
+            allStudents = sectionStudentsMap[sectionId] || [];
+            filteredStudents = [...allStudents];
+            
+            // Update display
+            displaySectionInfo();
+            renderStudents();
+            
+            // Clear search
+            document.getElementById('searchInput').value = '';
+        }
+
+        function showNoSection() {
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('noSectionState').classList.remove('hidden');
+        }
+
+        function displaySectionInfo() {
+            const cardsHTML = `
+                <div class="bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
+                    <div class="flex items-center gap-3 mb-2">
+                        <span class="material-icons-outlined text-primary text-2xl">account_tree</span>
+                        <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Section</h3>
+                    </div>
+                    <p class="text-2xl font-bold text-slate-900 dark:text-white">${currentSection.SectionName}</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">${currentSection.GradeLevelName}${currentSection.StrandName ? ' - ' + currentSection.StrandName : ''}</p>
+                </div>
+
+                <div class="bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
+                    <div class="flex items-center gap-3 mb-2">
+                        <span class="material-icons-outlined text-blue-600 text-2xl">groups</span>
+                        <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Enrolled Students</h3>
+                    </div>
+                    <p class="text-2xl font-bold text-slate-900 dark:text-white">${currentSection.CurrentEnrollment}</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Capacity: ${currentSection.Capacity}</p>
+                </div>
+
+                <div class="bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
+                    <div class="flex items-center gap-3 mb-2">
+                        <span class="material-icons-outlined text-orange-600 text-2xl">event</span>
+                        <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Academic Year</h3>
+                    </div>
+                    <p class="text-2xl font-bold text-slate-900 dark:text-white">${currentSection.AcademicYear}</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Current Year</p>
+                </div>
+            `;
+            
+            document.getElementById('sectionInfoCards').innerHTML = cardsHTML;
+        }
+
+        function renderStudents() {
+            const tbody = document.getElementById('studentsTableBody');
+            const emptyState = document.getElementById('emptyState');
+
+            if (filteredStudents.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            const html = filteredStudents.map((student, index) => `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                    <td class="px-6 py-4 text-slate-600 dark:text-slate-300">${index + 1}</td>
+                    <td class="px-6 py-4 font-medium text-slate-900 dark:text-white">${student.LRN}</td>
+                    <td class="px-6 py-4 text-slate-600 dark:text-slate-300">${student.StudentName}</td>
+                    <td class="px-6 py-4 text-slate-600 dark:text-slate-300">${student.Gender || 'N/A'}</td>
+                    <td class="px-6 py-4 text-slate-600 dark:text-slate-300">${student.ContactNumber || 'N/A'}</td>
+                    <td class="px-6 py-4">
+                        <span class="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2 py-1 text-xs font-medium text-green-700 dark:text-success">
+                            <span class="size-1.5 rounded-full bg-success"></span>
+                            Active
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+
+            tbody.innerHTML = html;
+        }
+
+        // Export Functions
+        function exportToExcel() {
+            const exportData = filteredStudents.map((student, index) => ({
+                'No.': index + 1,
+                'LRN': student.LRN,
+                'Student Name': student.StudentName,
+                'Gender': student.Gender || 'N/A',
+                'Contact Number': student.ContactNumber || 'N/A',
+                'Status': 'Active'
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Students');
+            
+            const fileName = `${currentSection.SectionName}_Students_${new Date().toISOString().split('T')[0]}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+        }
+
+        function exportToCSV() {
+            const headers = ['No.', 'LRN', 'Student Name', 'Gender', 'Contact Number', 'Status'];
+            const rows = filteredStudents.map((student, index) => [
+                index + 1,
+                student.LRN,
+                student.StudentName,
+                student.Gender || 'N/A',
+                student.ContactNumber || 'N/A',
+                'Active'
+            ]);
+
+            let csvContent = headers.join(',') + '\n';
+            rows.forEach(row => {
+                csvContent += row.map(cell => `"${cell}"`).join(',') + '\n';
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', `${currentSection.SectionName}_Students_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Add title
+            doc.setFontSize(16);
+            doc.text(`${currentSection.SectionName} - Student List`, 14, 20);
+            
+            doc.setFontSize(10);
+            doc.text(`${currentSection.GradeLevelName}${currentSection.StrandName ? ' - ' + currentSection.StrandName : ''}`, 14, 28);
+            doc.text(`Academic Year: ${currentSection.AcademicYear}`, 14, 34);
+            doc.text(`Total Students: ${filteredStudents.length}`, 14, 40);
+
+            // Prepare table data
+            const tableData = filteredStudents.map((student, index) => [
+                index + 1,
+                student.LRN,
+                student.StudentName,
+                student.Gender || 'N/A',
+                student.ContactNumber || 'N/A',
+                'Active'
+            ]);
+
+            // Add table
+            doc.autoTable({
+                startY: 45,
+                head: [['No.', 'LRN', 'Student Name', 'Gender', 'Contact Number', 'Status']],
+                body: tableData,
+                theme: 'striped',
+                headStyles: { fillColor: [8, 80, 25] },
+                margin: { top: 45 }
+            });
+
+            const fileName = `${currentSection.SectionName}_Students_${new Date().toISOString().split('T')[0]}.pdf`;
+            doc.save(fileName);
+        }
+
+        function logout() {
+            localStorage.removeItem('isLoggedIn');
+            localStorage.removeItem('user');
+            window.location.href = '../login.html';
+        }
+    </script>
+</body>
 </html>

@@ -37,6 +37,8 @@ try {
                 assignStudent($conn);
             } elseif ($action === 'auto-assign') {
                 autoAssignStudents($conn);
+            } elseif ($action === 'clear-section') {
+                clearSection($conn);
             }
             break;
             
@@ -58,6 +60,7 @@ function getUnassignedStudents($conn) {
     $academicYear = isset($_GET['year']) ? $_GET['year'] : null;
     $gradeLevel = isset($_GET['grade']) ? $_GET['grade'] : null;
     $strand = isset($_GET['strand']) ? $_GET['strand'] : null;
+    $search = isset($_GET['search']) ? $_GET['search'] : null;
     
     if (!$academicYear || !$gradeLevel) {
         throw new Exception('Academic year and grade level are required');
@@ -73,10 +76,14 @@ function getUnassignedStudents($conn) {
                 s.Barangay,
                 e.EnrollmentID,
                 e.LearnerType,
-                gl.GradeLevelName
+                e.StrandID,
+                gl.GradeLevelName,
+                st.StrandCode,
+                st.StrandName
               FROM student s
               INNER JOIN enrollment e ON s.StudentID = e.StudentID
               INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
+              LEFT JOIN strand st ON e.StrandID = st.StrandID
               WHERE e.AcademicYear = :year
               AND gl.GradeLevelNumber = :grade
               AND e.Status IN ('Confirmed', 'Pending')
@@ -95,6 +102,11 @@ function getUnassignedStudents($conn) {
     if ($strand) {
         $query .= " AND e.StrandID = :strand";
         $params[':strand'] = $strand;
+    }
+    
+    if ($search) {
+        $query .= " AND (s.LRN LIKE :search OR s.FirstName LIKE :search OR s.LastName LIKE :search OR CONCAT(s.LastName, ', ', s.FirstName) LIKE :search)";
+        $params[':search'] = "%{$search}%";
     }
     
     $query .= " ORDER BY e.EnrollmentDate ASC, s.LastName, s.FirstName";
@@ -157,6 +169,7 @@ function getSectionStudents($conn) {
 function getSectionsWithStudents($conn) {
     $academicYear = isset($_GET['year']) ? $_GET['year'] : null;
     $gradeLevel = isset($_GET['grade']) ? $_GET['grade'] : null;
+    $strand = isset($_GET['strand']) ? $_GET['strand'] : null;
     
     if (!$academicYear || !$gradeLevel) {
         throw new Exception('Academic year and grade level are required');
@@ -167,6 +180,8 @@ function getSectionsWithStudents($conn) {
                 sec.SectionName,
                 sec.Capacity,
                 sec.CurrentEnrollment,
+                sec.StrandID,
+                sec.CreatedAt,
                 gl.GradeLevelName,
                 st.StrandCode,
                 st.StrandName,
@@ -179,12 +194,26 @@ function getSectionsWithStudents($conn) {
               LEFT JOIN user u ON sec.AdviserID = u.UserID
               WHERE sec.AcademicYear = :year
               AND gl.GradeLevelNumber = :grade
-              AND sec.IsActive = 1
-              ORDER BY sec.SectionName";
+              AND sec.IsActive = 1";
+    
+    $params = [
+        ':year' => $academicYear,
+        ':grade' => $gradeLevel
+    ];
+    
+    // Apply strand filter to sections
+    if ($strand) {
+        $query .= " AND sec.StrandID = :strand";
+        $params[':strand'] = $strand;
+    }
+    
+    // Order by creation date (oldest first) to prioritize first sections
+    $query .= " ORDER BY sec.CreatedAt ASC, sec.SectionName ASC";
     
     $stmt = $conn->prepare($query);
-    $stmt->bindValue(':year', $academicYear);
-    $stmt->bindValue(':grade', $gradeLevel);
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
     $stmt->execute();
     
     $sections = [];
@@ -207,8 +236,10 @@ function assignStudent($conn) {
     
     $userId = isset($data['assignedBy']) ? $data['assignedBy'] : null;
     
-    // Check section capacity
-    $checkQuery = "SELECT Capacity, CurrentEnrollment FROM section WHERE SectionID = :sectionId";
+    // Check section capacity and strand
+    $checkQuery = "SELECT sec.Capacity, sec.CurrentEnrollment, sec.StrandID, sec.GradeLevelID
+                   FROM section sec
+                   WHERE sec.SectionID = :sectionId";
     $stmt = $conn->prepare($checkQuery);
     $stmt->bindValue(':sectionId', $data['sectionId']);
     $stmt->execute();
@@ -220,6 +251,26 @@ function assignStudent($conn) {
     
     if ($section['CurrentEnrollment'] >= $section['Capacity']) {
         throw new Exception('Section is already full');
+    }
+    
+    // Get student's enrollment details
+    $studentQuery = "SELECT e.StrandID, e.GradeLevelID
+                     FROM enrollment e
+                     WHERE e.EnrollmentID = :enrollmentId";
+    $stmt = $conn->prepare($studentQuery);
+    $stmt->bindValue(':enrollmentId', $data['enrollmentId']);
+    $stmt->execute();
+    $enrollment = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$enrollment) {
+        throw new Exception('Enrollment not found');
+    }
+    
+    // Validate strand matching (only for Grade 11-12)
+    if ($section['StrandID'] !== null && $enrollment['StrandID'] !== null) {
+        if ($section['StrandID'] != $enrollment['StrandID']) {
+            throw new Exception('Student strand does not match section strand');
+        }
     }
     
     // Check if student is already assigned to an active section
@@ -310,18 +361,18 @@ function autoAssignStudents($conn) {
     $conn->beginTransaction();
     
     try {
-        // Get available sections for this grade/year
-        $sectionsQuery = "SELECT SectionID, Capacity, CurrentEnrollment 
-                          FROM section 
-                          WHERE AcademicYear = :year 
-                          AND GradeLevelID = (SELECT GradeLevelID FROM gradelevel WHERE GradeLevelNumber = :grade)
-                          AND IsActive = 1";
+        // Get available sections for this grade/year (ordered by creation date - oldest first)
+        $sectionsQuery = "SELECT sec.SectionID, sec.Capacity, sec.CurrentEnrollment, sec.StrandID
+                          FROM section sec
+                          WHERE sec.AcademicYear = :year 
+                          AND sec.GradeLevelID = (SELECT GradeLevelID FROM gradelevel WHERE GradeLevelNumber = :grade)
+                          AND sec.IsActive = 1";
         
         if ($strandId) {
-            $sectionsQuery .= " AND StrandID = :strand";
+            $sectionsQuery .= " AND sec.StrandID = :strand";
         }
         
-        $sectionsQuery .= " ORDER BY SectionName";
+        $sectionsQuery .= " ORDER BY sec.CreatedAt ASC, sec.SectionName ASC";
         
         $stmt = $conn->prepare($sectionsQuery);
         $stmt->bindValue(':year', $data['academicYear']);
@@ -338,7 +389,7 @@ function autoAssignStudents($conn) {
         }
         
         // Get unassigned students (first come, first served - ordered by enrollment date)
-        $studentsQuery = "SELECT DISTINCT s.StudentID, e.EnrollmentID
+        $studentsQuery = "SELECT DISTINCT s.StudentID, e.EnrollmentID, e.StrandID
                           FROM student s
                           INNER JOIN enrollment e ON s.StudentID = e.StudentID
                           INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
@@ -377,14 +428,20 @@ function autoAssignStudents($conn) {
         $assignedCount = 0;
         
         foreach ($students as $student) {
-            // Find next available section
+            // Find next available section that matches student's strand
             $assigned = false;
             $attempts = 0;
             
             while (!$assigned && $attempts < count($sections)) {
                 $section = $sections[$currentSectionIndex];
                 
-                if ($section['CurrentEnrollment'] < $section['Capacity']) {
+                // Check strand compatibility
+                $strandMatch = true;
+                if ($section['StrandID'] !== null && $student['StrandID'] !== null) {
+                    $strandMatch = ($section['StrandID'] == $student['StrandID']);
+                }
+                
+                if ($strandMatch && $section['CurrentEnrollment'] < $section['Capacity']) {
                     // Check if there's an old inactive assignment
                     $checkOld = "SELECT AssignmentID FROM sectionassignment 
                                  WHERE StudentID = :studentId 
@@ -490,8 +547,8 @@ function unassignStudent($conn) {
     $conn->beginTransaction();
     
     try {
-        // Get section ID before updating
-        $getQuery = "SELECT SectionID FROM sectionassignment WHERE AssignmentID = :id AND IsActive = 1";
+        // Get assignment details before deleting
+        $getQuery = "SELECT SectionID, StudentID, EnrollmentID FROM sectionassignment WHERE AssignmentID = :id AND IsActive = 1";
         $stmt = $conn->prepare($getQuery);
         $stmt->bindValue(':id', $assignmentId);
         $stmt->execute();
@@ -502,12 +559,34 @@ function unassignStudent($conn) {
         }
         
         $sectionId = $result['SectionID'];
+        $studentId = $result['StudentID'];
+        $enrollmentId = $result['EnrollmentID'];
         
-        // Soft delete assignment
-        $deleteQuery = "UPDATE sectionassignment SET IsActive = 0 WHERE AssignmentID = :id";
-        $stmt = $conn->prepare($deleteQuery);
-        $stmt->bindValue(':id', $assignmentId);
+        // Check if there's already an inactive record with same student/enrollment
+        $checkInactive = "SELECT AssignmentID FROM sectionassignment 
+                          WHERE StudentID = :studentId 
+                          AND EnrollmentID = :enrollmentId 
+                          AND IsActive = 0 
+                          LIMIT 1";
+        $stmt = $conn->prepare($checkInactive);
+        $stmt->bindValue(':studentId', $studentId);
+        $stmt->bindValue(':enrollmentId', $enrollmentId);
         $stmt->execute();
+        $inactiveExists = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($inactiveExists) {
+            // If inactive record exists, hard delete the current assignment to avoid constraint violation
+            $deleteQuery = "DELETE FROM sectionassignment WHERE AssignmentID = :id";
+            $stmt = $conn->prepare($deleteQuery);
+            $stmt->bindValue(':id', $assignmentId);
+            $stmt->execute();
+        } else {
+            // No inactive record exists, safe to soft delete
+            $deleteQuery = "UPDATE sectionassignment SET IsActive = 0 WHERE AssignmentID = :id";
+            $stmt = $conn->prepare($deleteQuery);
+            $stmt->bindValue(':id', $assignmentId);
+            $stmt->execute();
+        }
         
         // Update section enrollment count
         $updateQuery = "UPDATE section 
@@ -523,6 +602,77 @@ function unassignStudent($conn) {
         echo json_encode([
             'success' => true,
             'message' => 'Student unassigned successfully'
+        ]);
+    } catch (Exception $e) {
+        $conn->rollBack();
+        throw $e;
+    }
+}
+
+function clearSection($conn) {
+    $data = json_decode(file_get_contents('php://input'), true);
+    
+    if (!isset($data['sectionId'])) {
+        throw new Exception('Section ID is required');
+    }
+    
+    $conn->beginTransaction();
+    
+    try {
+        // Get all active assignments for this section
+        $getAssignments = "SELECT AssignmentID, StudentID, EnrollmentID 
+                           FROM sectionassignment 
+                           WHERE SectionID = :sectionId AND IsActive = 1";
+        $stmt = $conn->prepare($getAssignments);
+        $stmt->bindValue(':sectionId', $data['sectionId']);
+        $stmt->execute();
+        $assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $removedCount = count($assignments);
+        
+        // Process each assignment
+        foreach ($assignments as $assignment) {
+            // Check if there's already an inactive record for this student/enrollment
+            $checkInactive = "SELECT AssignmentID FROM sectionassignment 
+                              WHERE StudentID = :studentId 
+                              AND EnrollmentID = :enrollmentId 
+                              AND IsActive = 0 
+                              LIMIT 1";
+            $stmt = $conn->prepare($checkInactive);
+            $stmt->bindValue(':studentId', $assignment['StudentID']);
+            $stmt->bindValue(':enrollmentId', $assignment['EnrollmentID']);
+            $stmt->execute();
+            $inactiveExists = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($inactiveExists) {
+                // Hard delete to avoid constraint violation
+                $deleteQuery = "DELETE FROM sectionassignment WHERE AssignmentID = :id";
+                $stmt = $conn->prepare($deleteQuery);
+                $stmt->bindValue(':id', $assignment['AssignmentID']);
+                $stmt->execute();
+            } else {
+                // Soft delete
+                $updateQuery = "UPDATE sectionassignment SET IsActive = 0 WHERE AssignmentID = :id";
+                $stmt = $conn->prepare($updateQuery);
+                $stmt->bindValue(':id', $assignment['AssignmentID']);
+                $stmt->execute();
+            }
+        }
+        
+        // Reset section enrollment count
+        $updateQuery = "UPDATE section 
+                        SET CurrentEnrollment = 0 
+                        WHERE SectionID = :sectionId";
+        $stmt = $conn->prepare($updateQuery);
+        $stmt->bindValue(':sectionId', $data['sectionId']);
+        $stmt->execute();
+        
+        $conn->commit();
+        
+        echo json_encode([
+            'success' => true,
+            'message' => "Removed $removedCount student(s) from section",
+            'removedCount' => $removedCount
         ]);
     } catch (Exception $e) {
         $conn->rollBack();

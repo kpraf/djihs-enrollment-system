@@ -1,5 +1,5 @@
 <?php
-// backend/api/get-analytics.php
+// backend/api/get-analytics.php - ADD STRAND DISTRIBUTION
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -18,7 +18,6 @@ try {
         throw new Exception('Database connection failed');
     }
 
-    // Get filters
     $schoolYear = isset($_GET['sy']) && $_GET['sy'] !== 'all' ? $_GET['sy'] : null;
     $gradeLevel = isset($_GET['grade']) && $_GET['grade'] !== 'all' ? intval($_GET['grade']) : null;
 
@@ -33,26 +32,38 @@ try {
             'enrollmentTrends' => [],
             'learnerTypeDistribution' => [],
             'gradeLevelDistribution' => [0, 0, 0, 0, 0, 0],
+            'strandDistribution' => [], // NEW
             'detailedStats' => []
         ]
     ];
 
-    // Build WHERE clause for filters
-    $whereConditions = ["e.Status IN ('Confirmed', 'Pending')"];
-    $params = [];
-
-    if ($schoolYear) {
-        $whereConditions[] = "e.AcademicYear = :schoolYear";
-        $params[':schoolYear'] = $schoolYear;
+    function buildWhereClause($baseConditions, $schoolYear, $gradeLevel) {
+        $conditions = $baseConditions;
+        $params = [];
+        
+        if ($schoolYear) {
+            $conditions[] = "e.AcademicYear = :schoolYear";
+            $params[':schoolYear'] = $schoolYear;
+        }
+        
+        if ($gradeLevel) {
+            $conditions[] = "e.GradeLevelID = :gradeLevel";
+            $params[':gradeLevel'] = $gradeLevel;
+        }
+        
+        return [
+            'clause' => implode(' AND ', $conditions),
+            'params' => $params
+        ];
     }
 
-    if ($gradeLevel) {
-        $whereConditions[] = "e.GradeLevelID = :gradeLevel";
-        $params[':gradeLevel'] = $gradeLevel;
-    }
+    $baseConditions = ["e.Status IN ('Confirmed', 'Pending')"];
+    $where = buildWhereClause($baseConditions, $schoolYear, $gradeLevel);
+    $whereClause = $where['clause'];
+    $params = $where['params'];
 
-    $whereClause = implode(' AND ', $whereConditions);
-
+    // [Previous queries remain the same - totalStudents, dropoutRate, etc.]
+    
     // 1. TOTAL STUDENTS
     $query = "SELECT COUNT(DISTINCT e.StudentID) as total 
               FROM Enrollment e 
@@ -67,20 +78,31 @@ try {
     $totalStudents = intval($result['total']);
     $response['data']['totalStudents'] = $totalStudents;
 
-    // Previous year total for comparison
     if ($schoolYear) {
         $prevYear = getPreviousSchoolYear($schoolYear);
+        $prevConditions = ["e.Status IN ('Confirmed', 'Pending')", "e.AcademicYear = :prevYear"];
+        $prevParams = [':prevYear' => $prevYear];
+        
+        if ($gradeLevel) {
+            $prevConditions[] = "e.GradeLevelID = :gradeLevel";
+            $prevParams[':gradeLevel'] = $gradeLevel;
+        }
+        
         $prevQuery = "SELECT COUNT(DISTINCT e.StudentID) as total 
                       FROM Enrollment e 
-                      WHERE e.Status IN ('Confirmed', 'Pending') 
-                      AND e.AcademicYear = :prevYear";
+                      WHERE " . implode(' AND ', $prevConditions);
+        
         $prevStmt = $conn->prepare($prevQuery);
-        $prevStmt->bindValue(':prevYear', $prevYear);
+        foreach ($prevParams as $key => $value) {
+            $prevStmt->bindValue($key, $value);
+        }
         $prevStmt->execute();
         $prevResult = $prevStmt->fetch(PDO::FETCH_ASSOC);
         $response['data']['previousYearTotal'] = intval($prevResult['total']);
     }
 
+    // 2-8. [Previous queries remain the same]
+    
     // 2. DROPOUT RATE
     $droppedQuery = "SELECT COUNT(DISTINCT s.StudentID) as dropped 
                      FROM Student s
@@ -100,16 +122,26 @@ try {
         round(($droppedCount / ($totalStudents + $droppedCount)) * 100, 2) : 0;
     $response['data']['dropoutRate'] = $dropoutRate;
 
-    // Previous year dropout rate
     if ($schoolYear) {
+        $prevDropConditions = ["e.AcademicYear = :prevYear"];
+        $prevDropParams = [':prevYear' => $prevYear];
+        
+        if ($gradeLevel) {
+            $prevDropConditions[] = "e.GradeLevelID = :gradeLevel";
+            $prevDropParams[':gradeLevel'] = $gradeLevel;
+        }
+        
         $prevDropQuery = "SELECT 
                             COUNT(CASE WHEN s.EnrollmentStatus = 'Dropped' THEN 1 END) as dropped,
                             COUNT(*) as total
                           FROM Student s
                           INNER JOIN Enrollment e ON s.StudentID = e.StudentID
-                          WHERE e.AcademicYear = :prevYear";
+                          WHERE " . implode(' AND ', $prevDropConditions);
+        
         $prevStmt = $conn->prepare($prevDropQuery);
-        $prevStmt->bindValue(':prevYear', $prevYear);
+        foreach ($prevDropParams as $key => $value) {
+            $prevStmt->bindValue($key, $value);
+        }
         $prevStmt->execute();
         $prevResult = $prevStmt->fetch(PDO::FETCH_ASSOC);
         $prevDropRate = $prevResult['total'] > 0 ? 
@@ -168,22 +200,27 @@ try {
     }
     $response['data']['genderDistribution'] = $genderDist;
 
-    // 6. ENROLLMENT TRENDS (last 5 years)
+    // 6. ENROLLMENT TRENDS
+    $trendsConditions = ["e.Status IN ('Confirmed', 'Pending')"];
+    $trendsParams = [];
+    
+    if ($gradeLevel) {
+        $trendsConditions[] = "e.GradeLevelID = :gradeLevel";
+        $trendsParams[':gradeLevel'] = $gradeLevel;
+    }
+    
     $trendsQuery = "SELECT 
                         e.AcademicYear as year,
                         COUNT(DISTINCT e.StudentID) as count
                     FROM Enrollment e
-                    WHERE e.Status IN ('Confirmed', 'Pending')";
-    
-    if ($gradeLevel) {
-        $trendsQuery .= " AND e.GradeLevelID = :gradeLevel";
-    }
-    
-    $trendsQuery .= " GROUP BY e.AcademicYear ORDER BY e.AcademicYear DESC LIMIT 5";
+                    WHERE " . implode(' AND ', $trendsConditions) . "
+                    GROUP BY e.AcademicYear 
+                    ORDER BY e.AcademicYear DESC 
+                    LIMIT 5";
     
     $stmt = $conn->prepare($trendsQuery);
-    if ($gradeLevel) {
-        $stmt->bindValue(':gradeLevel', $gradeLevel);
+    foreach ($trendsParams as $key => $value) {
+        $stmt->bindValue($key, $value);
     }
     $stmt->execute();
     
@@ -217,23 +254,30 @@ try {
     $response['data']['learnerTypeDistribution'] = $learnerTypes;
 
     // 8. GRADE LEVEL DISTRIBUTION
+    $gradeLevelConditions = ["e.Status IN ('Confirmed', 'Pending')"];
+    $gradeLevelParams = [];
+    
+    if ($schoolYear) {
+        $gradeLevelConditions[] = "e.AcademicYear = :schoolYear";
+        $gradeLevelParams[':schoolYear'] = $schoolYear;
+    }
+    
+    if ($gradeLevel) {
+        $gradeLevelConditions[] = "e.GradeLevelID = :gradeLevel";
+        $gradeLevelParams[':gradeLevel'] = $gradeLevel;
+    }
+    
     $gradeLevelQuery = "SELECT 
                             gl.GradeLevelNumber,
                             COUNT(DISTINCT e.StudentID) as count
                         FROM Enrollment e
                         INNER JOIN GradeLevel gl ON e.GradeLevelID = gl.GradeLevelID
-                        WHERE e.Status IN ('Confirmed', 'Pending')";
-    
-    $glParams = [];
-    if ($schoolYear) {
-        $gradeLevelQuery .= " AND e.AcademicYear = :schoolYear";
-        $glParams[':schoolYear'] = $schoolYear;
-    }
-    
-    $gradeLevelQuery .= " GROUP BY gl.GradeLevelNumber ORDER BY gl.GradeLevelNumber";
+                        WHERE " . implode(' AND ', $gradeLevelConditions) . "
+                        GROUP BY gl.GradeLevelNumber 
+                        ORDER BY gl.GradeLevelNumber";
     
     $stmt = $conn->prepare($gradeLevelQuery);
-    foreach ($glParams as $key => $value) {
+    foreach ($gradeLevelParams as $key => $value) {
         $stmt->bindValue($key, $value);
     }
     $stmt->execute();
@@ -247,7 +291,42 @@ try {
     }
     $response['data']['gradeLevelDistribution'] = $gradeDist;
 
-    // 9. DETAILED STATS BY GRADE LEVEL
+    // 9. STRAND DISTRIBUTION (Grade 11 & 12 only)
+    $strandConditions = ["e.Status IN ('Confirmed', 'Pending')", "e.GradeLevelID IN (5, 6)"];
+    $strandParams = [];
+    
+    if ($schoolYear) {
+        $strandConditions[] = "e.AcademicYear = :schoolYear";
+        $strandParams[':schoolYear'] = $schoolYear;
+    }
+    
+    $strandQuery = "SELECT 
+                        str.StrandCode,
+                        str.StrandName,
+                        COUNT(DISTINCT e.StudentID) as count
+                    FROM Enrollment e
+                    LEFT JOIN Strand str ON e.StrandID = str.StrandID
+                    WHERE " . implode(' AND ', $strandConditions) . "
+                    GROUP BY str.StrandCode, str.StrandName
+                    ORDER BY count DESC";
+    
+    $stmt = $conn->prepare($strandQuery);
+    foreach ($strandParams as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
+    $stmt->execute();
+    
+    $strands = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $strands[] = [
+            'code' => $row['StrandCode'] ?: 'Unknown',
+            'name' => $row['StrandName'] ?: 'Not Assigned',
+            'count' => intval($row['count'])
+        ];
+    }
+    $response['data']['strandDistribution'] = $strands;
+
+    // 10. DETAILED STATS BY GRADE LEVEL
     $detailedQuery = "SELECT 
                         gl.GradeLevelNumber as grade,
                         COUNT(DISTINCT e.StudentID) as total,

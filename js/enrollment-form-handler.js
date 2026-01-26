@@ -1,5 +1,5 @@
 // =====================================================
-// Enrollment Form Handler - Updated for New Schema
+// Enhanced Enrollment Form Handler with LRN Validation
 // File: js/enrollment-form-handler.js
 // =====================================================
 
@@ -8,11 +8,13 @@ class EnrollmentFormHandler {
         this.formData = {};
         this.currentUser = null;
         this.submitBtn = null;
+        this.lrnSearchTimeout = null;
+        this.studentEnrollmentHistory = [];
+        this.latestEnrollment = null;
         this.init();
     }
 
     init() {
-        // Get current logged-in user
         this.currentUser = this.getCurrentUser();
         
         if (!this.currentUser) {
@@ -28,6 +30,7 @@ class EnrollmentFormHandler {
         this.setupFormValidation();
         this.setupAutoCalculateAge();
         this.setupTrackVisibility();
+        this.setupLRNAutofill();
     }
 
     getCurrentUser() {
@@ -43,7 +46,6 @@ class EnrollmentFormHandler {
     }
 
     bindEventListeners() {
-        // Find buttons using a more reliable method
         const allButtons = document.querySelectorAll('button');
         console.log('Found buttons:', allButtons.length);
 
@@ -63,7 +65,6 @@ class EnrollmentFormHandler {
             }
         });
 
-        // Bind submit button
         if (submitBtn) {
             this.submitBtn = submitBtn;
             submitBtn.addEventListener('click', (e) => {
@@ -75,7 +76,6 @@ class EnrollmentFormHandler {
             console.error('Submit button not found!');
         }
 
-        // Bind reset button
         if (resetBtn) {
             resetBtn.addEventListener('click', (e) => {
                 console.log('Reset button clicked!');
@@ -86,11 +86,367 @@ class EnrollmentFormHandler {
             console.error('Reset button not found!');
         }
 
-        // Grade level change
         const gradeLevelSelect = document.querySelectorAll('select')[0];
         if (gradeLevelSelect) {
             gradeLevelSelect.addEventListener('change', (e) => this.handleGradeLevelChange(e));
             console.log('Grade level change listener attached');
+        }
+    }
+
+    setupLRNAutofill() {
+        const lrnInput = document.getElementById('lrn');
+        
+        if (!lrnInput) {
+            console.error('LRN input not found!');
+            return;
+        }
+
+        // Create loading indicator
+        const loadingIndicator = document.createElement('div');
+        loadingIndicator.id = 'lrnLoadingIndicator';
+        loadingIndicator.className = 'hidden absolute right-3 top-1/2 -translate-y-1/2';
+        loadingIndicator.innerHTML = '<div class="loading-spinner w-5 h-5"></div>';
+        
+        // Make parent relative
+        const lrnParent = lrnInput.parentElement;
+        lrnParent.style.position = 'relative';
+        lrnParent.appendChild(loadingIndicator);
+
+        // Add event listener for LRN input
+        lrnInput.addEventListener('input', (e) => {
+            const lrn = e.target.value.trim();
+            
+            // Clear previous timeout
+            if (this.lrnSearchTimeout) {
+                clearTimeout(this.lrnSearchTimeout);
+            }
+
+            // Only search if LRN is 12 digits
+            if (lrn.length === 12 && /^\d{12}$/.test(lrn)) {
+                // Debounce the search
+                this.lrnSearchTimeout = setTimeout(() => {
+                    this.searchStudentByLRN(lrn);
+                }, 500);
+            } else {
+                // Clear enrollment history if LRN is incomplete
+                this.studentEnrollmentHistory = [];
+                this.latestEnrollment = null;
+                this.removeEnrollmentHistoryDisplay();
+            }
+        });
+
+        console.log('LRN autofill setup complete');
+    }
+
+    async searchStudentByLRN(lrn) {
+        const loadingIndicator = document.getElementById('lrnLoadingIndicator');
+        
+        try {
+            // Show loading
+            if (loadingIndicator) {
+                loadingIndicator.classList.remove('hidden');
+            }
+
+            console.log('Searching for student with LRN:', lrn);
+
+            const response = await fetch(`../backend/api/student-by-lrn.php?lrn=${lrn}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            if (result.success && result.student) {
+                // Student found - store enrollment history
+                this.studentEnrollmentHistory = result.enrollmentHistory || [];
+                this.latestEnrollment = result.latestEnrollment;
+                
+                console.log('Student found:', result.student);
+                console.log('Enrollment history:', this.studentEnrollmentHistory);
+                
+                // Autofill form
+                this.autofillStudentData(result.student);
+                
+                // Display enrollment history
+                this.displayEnrollmentHistory();
+                
+                // Show notification
+                this.showNotification('Student found! Form autofilled with existing data.', 'success');
+            } else {
+                // Student not found
+                console.log('Student not found with LRN:', lrn);
+                this.studentEnrollmentHistory = [];
+                this.latestEnrollment = null;
+                this.removeEnrollmentHistoryDisplay();
+                this.showNotification('LRN not found in system. Please enter student details.', 'info');
+            }
+
+        } catch (error) {
+            console.error('Error searching for student:', error);
+            this.showNotification('Error searching for student. Please try again.', 'error');
+        } finally {
+            // Hide loading
+            if (loadingIndicator) {
+                loadingIndicator.classList.add('hidden');
+            }
+        }
+    }
+
+    displayEnrollmentHistory() {
+        // Remove existing history display
+        this.removeEnrollmentHistoryDisplay();
+        
+        if (this.studentEnrollmentHistory.length === 0) return;
+
+        // Create history display
+        const historyDiv = document.createElement('div');
+        historyDiv.id = 'enrollmentHistoryDisplay';
+        historyDiv.className = 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4';
+        
+        let historyHTML = `
+            <h4 class="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-3 flex items-center gap-2">
+                <span class="material-icons-outlined text-[20px]">history_edu</span>
+                Enrollment History for this Student
+            </h4>
+            <div class="space-y-2">
+        `;
+
+        this.studentEnrollmentHistory.forEach((enrollment, index) => {
+            const isLatest = index === 0;
+            const statusColor = enrollment.Status === 'Confirmed' ? 'text-green-600' : 
+                               enrollment.Status === 'Pending' ? 'text-yellow-600' : 
+                               'text-gray-600';
+            
+            historyHTML += `
+                <div class="bg-white dark:bg-slate-800 rounded-lg p-3 ${isLatest ? 'border-2 border-blue-400' : ''}">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="font-semibold text-slate-800 dark:text-white">${enrollment.AcademicYear}</span>
+                                ${isLatest ? '<span class="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">Latest</span>' : ''}
+                            </div>
+                            <div class="text-sm text-slate-600 dark:text-slate-300">
+                                <span class="font-medium">${enrollment.GradeLevelName}</span>
+                                ${enrollment.StrandName ? ` - ${enrollment.StrandName}` : ''}
+                            </div>
+                            <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                ${enrollment.LearnerType.replace(/_/g, ' ')} • ${enrollment.EnrollmentType}
+                            </div>
+                        </div>
+                        <span class="text-xs font-semibold ${statusColor}">${enrollment.Status}</span>
+                    </div>
+                </div>
+            `;
+        });
+
+        historyHTML += `</div>`;
+        historyDiv.innerHTML = historyHTML;
+
+        // Insert after LRN notification
+        const pageHeader = document.querySelector('.flex.flex-col.sm\\:flex-row.sm\\:items-center');
+        if (pageHeader) {
+            const existingNotif = document.getElementById('lrnNotification');
+            if (existingNotif) {
+                existingNotif.insertAdjacentElement('afterend', historyDiv);
+            } else {
+                pageHeader.insertAdjacentElement('afterend', historyDiv);
+            }
+        }
+    }
+
+    removeEnrollmentHistoryDisplay() {
+        const existingDisplay = document.getElementById('enrollmentHistoryDisplay');
+        if (existingDisplay) {
+            existingDisplay.remove();
+        }
+    }
+
+    autofillStudentData(student) {
+        console.log('Autofilling form with student data:', student);
+
+        // Learner's Information
+        const inputs = Array.from(document.querySelectorAll('input'));
+        
+        // Name fields
+        const lastNameInput = this.getInputByPlaceholder(inputs, 'Dela Cruz');
+        if (lastNameInput) lastNameInput.value = student.LastName || '';
+        
+        const firstNameInput = this.getInputByPlaceholder(inputs, 'Juan');
+        if (firstNameInput) firstNameInput.value = student.FirstName || '';
+        
+        const middleNameInput = this.getInputByPlaceholder(inputs, 'Santos');
+        if (middleNameInput) middleNameInput.value = student.MiddleName || '';
+        
+        const extensionInput = this.getInputByPlaceholder(inputs, 'Jr.');
+        if (extensionInput) extensionInput.value = student.ExtensionName || '';
+
+        // Birth date and age
+        const birthdateInput = document.querySelector('input[type="date"]');
+        if (birthdateInput && student.BirthDate) {
+            birthdateInput.value = student.BirthDate;
+            birthdateInput.dispatchEvent(new Event('change'));
+        }
+
+        // Sex
+        const sexSelect = document.querySelectorAll('select')[1];
+        if (sexSelect && student.Sex) {
+            sexSelect.value = student.Sex;
+        }
+
+        // Religion
+        const religionInput = this.getInputByPlaceholder(inputs, 'Roman Catholic');
+        if (religionInput) religionInput.value = student.Religion || '';
+
+        // IP Community
+        if (student.IsIPCommunity !== null && student.IsIPCommunity !== undefined) {
+            const ipRadios = document.querySelectorAll('input[name="isIPCommunity"]');
+            ipRadios.forEach(radio => {
+                if ((radio.value === '1' && student.IsIPCommunity) || 
+                    (radio.value === '0' && !student.IsIPCommunity)) {
+                    radio.checked = true;
+                }
+            });
+        }
+
+        // Disability
+        if (student.IsPWD !== null && student.IsPWD !== undefined) {
+            const pwdRadios = document.querySelectorAll('input[name="isPWD"]');
+            pwdRadios.forEach(radio => {
+                if ((radio.value === '1' && student.IsPWD) || 
+                    (radio.value === '0' && !student.IsPWD)) {
+                    radio.checked = true;
+                }
+            });
+        }
+
+        // 4Ps Beneficiary
+        if (student.Is4PsBeneficiary !== null && student.Is4PsBeneficiary !== undefined) {
+            const fourPsRadios = document.querySelectorAll('input[name="is4PsBeneficiary"]');
+            fourPsRadios.forEach(radio => {
+                if ((radio.value === '1' && student.Is4PsBeneficiary) || 
+                    (radio.value === '0' && !student.Is4PsBeneficiary)) {
+                    radio.checked = true;
+                }
+            });
+        }
+
+        // Weight and Height
+        const weightInput = document.getElementById('weight');
+        if (weightInput) weightInput.value = student.Weight || '';
+        
+        const heightInput = document.getElementById('height');
+        if (heightInput) heightInput.value = student.Height || '';
+
+        // Address
+        const houseNumberInput = document.getElementById('houseNumber');
+        if (houseNumberInput) houseNumberInput.value = student.HouseNumber || '';
+        
+        const sitioStreetInput = document.getElementById('sitioStreet');
+        if (sitioStreetInput) sitioStreetInput.value = student.SitioStreet || '';
+        
+        const barangayInput = document.getElementById('barangay');
+        if (barangayInput) barangayInput.value = student.Barangay || '';
+        
+        const municipalityInput = document.getElementById('municipality');
+        if (municipalityInput) municipalityInput.value = student.Municipality || '';
+        
+        const provinceInput = document.getElementById('province');
+        if (provinceInput) provinceInput.value = student.Province || '';
+        
+        const zipCodeInput = document.getElementById('zipCode');
+        if (zipCodeInput) zipCodeInput.value = student.ZipCode || '';
+        
+        const countryInput = document.getElementById('country');
+        if (countryInput) countryInput.value = student.Country || 'Philippines';
+
+        // Parent/Guardian Information
+        const fatherLastNameInput = document.getElementById('fatherLastName');
+        if (fatherLastNameInput) fatherLastNameInput.value = student.FatherLastName || '';
+        
+        const fatherFirstNameInput = document.getElementById('fatherFirstName');
+        if (fatherFirstNameInput) fatherFirstNameInput.value = student.FatherFirstName || '';
+        
+        const fatherMiddleNameInput = document.getElementById('fatherMiddleName');
+        if (fatherMiddleNameInput) fatherMiddleNameInput.value = student.FatherMiddleName || '';
+        
+        const motherLastNameInput = document.getElementById('motherLastName');
+        if (motherLastNameInput) motherLastNameInput.value = student.MotherLastName || '';
+        
+        const motherFirstNameInput = document.getElementById('motherFirstName');
+        if (motherFirstNameInput) motherFirstNameInput.value = student.MotherFirstName || '';
+        
+        const motherMiddleNameInput = document.getElementById('motherMiddleName');
+        if (motherMiddleNameInput) motherMiddleNameInput.value = student.MotherMiddleName || '';
+        
+        const guardianLastNameInput = document.getElementById('guardianLastName');
+        if (guardianLastNameInput) guardianLastNameInput.value = student.GuardianLastName || '';
+        
+        const guardianFirstNameInput = document.getElementById('guardianFirstName');
+        if (guardianFirstNameInput) guardianFirstNameInput.value = student.GuardianFirstName || '';
+        
+        const guardianMiddleNameInput = document.getElementById('guardianMiddleName');
+        if (guardianMiddleNameInput) guardianMiddleNameInput.value = student.GuardianMiddleName || '';
+        
+        const contactNumberInput = document.getElementById('contactNumber');
+        if (contactNumberInput) contactNumberInput.value = student.ContactNumber || '';
+
+        console.log('Form autofill complete');
+    }
+
+    showNotification(message, type = 'info') {
+        const existingNotif = document.getElementById('lrnNotification');
+        if (existingNotif) {
+            existingNotif.remove();
+        }
+
+        const notification = document.createElement('div');
+        notification.id = 'lrnNotification';
+        
+        let bgColor, borderColor, textColor, icon;
+        
+        switch(type) {
+            case 'success':
+                bgColor = 'bg-green-50';
+                borderColor = 'border-green-200';
+                textColor = 'text-green-800';
+                icon = 'check_circle';
+                break;
+            case 'error':
+                bgColor = 'bg-red-50';
+                borderColor = 'border-red-200';
+                textColor = 'text-red-800';
+                icon = 'error';
+                break;
+            default:
+                bgColor = 'bg-blue-50';
+                borderColor = 'border-blue-200';
+                textColor = 'text-blue-800';
+                icon = 'info';
+        }
+
+        notification.className = `${bgColor} ${borderColor} ${textColor} border rounded-lg p-4 mb-4 flex items-center gap-3 transition-all`;
+        notification.innerHTML = `
+            <span class="material-icons-outlined">${icon}</span>
+            <span class="flex-1">${message}</span>
+            <button onclick="this.parentElement.remove()" class="text-gray-400 hover:text-gray-600">
+                <span class="material-icons-outlined text-[20px]">close</span>
+            </button>
+        `;
+
+        const pageHeader = document.querySelector('.flex.flex-col.sm\\:flex-row.sm\\:items-center');
+        if (pageHeader) {
+            pageHeader.insertAdjacentElement('afterend', notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 5000);
         }
     }
 
@@ -124,15 +480,13 @@ class EnrollmentFormHandler {
 
     handleGradeLevelChange(e) {
         const gradeLevel = e.target.value;
-        const trackSection = Array.from(document.querySelectorAll('h3'))
-            .find(h3 => h3.textContent.includes('Track'))?.closest('.space-y-4');
+        const strandSection = document.getElementById('strandSection');
         
-        if (trackSection) {
+        if (strandSection) {
             if (gradeLevel === 'Grade 11' || gradeLevel === 'Grade 12') {
-                trackSection.style.display = 'block';
+                strandSection.classList.remove('hidden');
             } else {
-                trackSection.style.display = 'none';
-                // Clear track selections
+                strandSection.classList.add('hidden');
                 document.querySelectorAll('input[name="track"]').forEach(radio => {
                     radio.checked = false;
                 });
@@ -149,18 +503,10 @@ class EnrollmentFormHandler {
         const formData = {};
         const inputs = document.querySelectorAll('input');
 
-        // Enrollment Details
-        formData.schoolYear = this.getInputByPlaceholder(inputs, '2024-2025')?.value.trim() || '';
+        formData.schoolYear = document.getElementById('schoolYear')?.value.trim() || '';
         formData.gradeLevel = this.getGradeLevelID(document.querySelectorAll('select')[0]?.value);
-        formData.lrn = this.getInputByPlaceholder(inputs, 'LRN')?.value.trim() || null;
+        formData.lrn = document.getElementById('lrn')?.value.trim() || null;
 
-        console.log('Basic enrollment info:', {
-            schoolYear: formData.schoolYear,
-            gradeLevel: formData.gradeLevel,
-            lrn: formData.lrn
-        });
-
-        // Type of Learner
         const learnerTypeRadio = document.querySelector('input[name="learner-type"]:checked');
         if (learnerTypeRadio) {
             const learnerLabel = learnerTypeRadio.nextSibling?.textContent.trim() || 
@@ -172,9 +518,6 @@ class EnrollmentFormHandler {
             formData.learnerType = null;
         }
 
-        console.log('Learner type:', formData.learnerType);
-
-        // Track (for Grade 11 & 12)
         const trackRadio = document.querySelector('input[name="track"]:checked');
         if (trackRadio) {
             const trackLabel = trackRadio.nextSibling?.textContent.trim() || 
@@ -184,83 +527,53 @@ class EnrollmentFormHandler {
             formData.strandID = null;
         }
 
-        // Learner's Information
         const nameInputs = Array.from(inputs);
-        formData.lastName = this.getInputByPlaceholder(nameInputs, 'Dela Cruz')?.value.trim() || '';
-        formData.firstName = this.getInputByPlaceholder(nameInputs, 'Juan')?.value.trim() || '';
-        formData.middleName = this.getInputByPlaceholder(nameInputs, 'Santos')?.value.trim() || null;
-        formData.extensionName = this.getInputByPlaceholder(nameInputs, 'Jr.')?.value.trim() || null;
-        formData.birthdate = document.querySelector('input[type="date"]')?.value || '';
+        formData.lastName = document.getElementById('lastName')?.value.trim() || '';
+        formData.firstName = document.getElementById('firstName')?.value.trim() || '';
+        formData.middleName = document.getElementById('middleName')?.value.trim() || null;
+        formData.extensionName = document.getElementById('extensionName')?.value.trim() || null;
+        formData.birthdate = document.getElementById('birthdate')?.value || '';
         formData.age = parseInt(this.getInputByPlaceholder(nameInputs, '16')?.value) || null;
-        formData.sex = document.querySelectorAll('select')[1]?.value || 'Male';
-        formData.religion = this.getInputByPlaceholder(nameInputs, 'Roman Catholic')?.value.trim() || null;
+        formData.sex = document.getElementById('sex')?.value || 'Male';
+        formData.religion = document.getElementById('religion')?.value.trim() || null;
 
-        console.log('Student name:', formData.firstName, formData.lastName);
+        const ipRadio = document.querySelector('input[name="isIPCommunity"]:checked');
+        formData.isIPCommunity = ipRadio?.value === '1';
+        formData.ipCommunitySpecify = document.getElementById('ipCommunitySpecify')?.value.trim() || null;
 
-        // IP Community
-        const ipRadio = document.querySelector('input[name="ip-community"]:checked');
-        formData.isIPCommunity = ipRadio?.nextSibling?.textContent.trim() === 'Yes';
-        formData.ipCommunitySpecify = null; // Set manually if yes
+        const disabilityRadio = document.querySelector('input[name="isPWD"]:checked');
+        formData.isPWD = disabilityRadio?.value === '1';
+        formData.pwdSpecify = document.getElementById('pwdSpecify')?.value.trim() || null;
 
-        // Disability
-        const disabilityRadio = document.querySelector('input[name="disability"]:checked');
-        formData.isPWD = disabilityRadio?.nextSibling?.textContent.trim() === 'Yes';
-        formData.pwdSpecify = this.getInputByPlaceholder(nameInputs, 'If yes, please specify')?.value.trim() || null;
+        const fourPsRadio = document.querySelector('input[name="is4PsBeneficiary"]:checked');
+        formData.is4PsBeneficiary = fourPsRadio?.value === '1';
 
-        // Current Address
-        formData.houseNumber = this.getInputByPlaceholder(nameInputs, '123')?.value.trim() || null;
-        formData.sitioStreet = this.getInputByPlaceholder(nameInputs, 'Sampaguita St.')?.value.trim() || null;
-        formData.barangay = this.getInputByPlaceholder(nameInputs, 'San Jose')?.value.trim() || '';
-        formData.municipality = this.getInputByPlaceholder(nameInputs, 'Antipolo City')?.value.trim() || '';
-        formData.province = this.getInputByPlaceholder(nameInputs, 'Rizal')?.value.trim() || '';
+        formData.weight = document.getElementById('weight')?.value || null;
+        formData.height = document.getElementById('height')?.value || null;
 
-        // Parent/Guardian Information
-        const parentSection = Array.from(document.querySelectorAll('.space-y-4'))
-            .find(section => section.textContent.includes("Father's Name"));
+        formData.houseNumber = document.getElementById('houseNumber')?.value.trim() || null;
+        formData.sitioStreet = document.getElementById('sitioStreet')?.value.trim() || null;
+        formData.barangay = document.getElementById('barangay')?.value.trim() || '';
+        formData.municipality = document.getElementById('municipality')?.value.trim() || '';
+        formData.province = document.getElementById('province')?.value.trim() || '';
+        formData.zipCode = document.getElementById('zipCode')?.value.trim() || null;
+        formData.country = document.getElementById('country')?.value.trim() || 'Philippines';
 
-        if (parentSection) {
-            const parentInputs = parentSection.querySelectorAll('input');
-            let idx = 0;
-            
-            // Father's Name
-            formData.fatherLastName = parentInputs[idx++]?.value.trim() || null;
-            formData.fatherFirstName = parentInputs[idx++]?.value.trim() || null;
-            formData.fatherMiddleName = parentInputs[idx++]?.value.trim() || null;
-            
-            // Mother's Maiden Name
-            formData.motherLastName = parentInputs[idx++]?.value.trim() || null;
-            formData.motherFirstName = parentInputs[idx++]?.value.trim() || null;
-            formData.motherMiddleName = parentInputs[idx++]?.value.trim() || null;
-            
-            // Legal Guardian
-            formData.guardianLastName = parentInputs[idx++]?.value.trim() || null;
-            formData.guardianFirstName = parentInputs[idx++]?.value.trim() || null;
-            formData.guardianMiddleName = parentInputs[idx++]?.value.trim() || null;
-            
-            // Contact Number
-            formData.contactNumber = parentInputs[idx]?.value.trim() || '';
-        }
+        formData.fatherLastName = document.getElementById('fatherLastName')?.value.trim() || null;
+        formData.fatherFirstName = document.getElementById('fatherFirstName')?.value.trim() || null;
+        formData.fatherMiddleName = document.getElementById('fatherMiddleName')?.value.trim() || null;
+        formData.motherLastName = document.getElementById('motherLastName')?.value.trim() || null;
+        formData.motherFirstName = document.getElementById('motherFirstName')?.value.trim() || null;
+        formData.motherMiddleName = document.getElementById('motherMiddleName')?.value.trim() || null;
+        formData.guardianLastName = document.getElementById('guardianLastName')?.value.trim() || null;
+        formData.guardianFirstName = document.getElementById('guardianFirstName')?.value.trim() || null;
+        formData.guardianMiddleName = document.getElementById('guardianMiddleName')?.value.trim() || null;
+        formData.contactNumber = document.getElementById('contactNumber')?.value.trim() || '';
 
-        console.log('Complete form data:', formData);
-        // Weight & Height (if you add these fields to the form)
-        formData.weight = this.getInputByPlaceholder(nameInputs, 'Weight (kg)')?.value || null;
-        formData.height = this.getInputByPlaceholder(nameInputs, 'Height (m)')?.value || null;
-        
-        // 4Ps Beneficiary
-        const fourPsRadio = document.querySelector('input[name="4ps-beneficiary"]:checked');
-        formData.is4PsBeneficiary = fourPsRadio?.nextSibling?.textContent.trim() === 'Yes';
-        
-        // Zip Code & Country
-        formData.zipCode = this.getInputByPlaceholder(nameInputs, 'Zip Code')?.value.trim() || null;
-        formData.country = this.getInputByPlaceholder(nameInputs, 'Country')?.value.trim() || 'Philippines';
-        
-        // Enrollment Type (Regular/Late/Transferee)
-        // Default to 'Regular' for now - you can add a radio button for this
         formData.enrollmentType = 'Regular';
-        
-        // Set encoded date
         formData.encodedDate = new Date().toISOString();
 
+        console.log('Complete form data:', formData);
         return formData;
     }
 
@@ -283,7 +596,6 @@ class EnrollmentFormHandler {
     }
 
     mapLearnerType(label, isRegular) {
-        // Clean the label
         label = label.replace(/\s+/g, ' ').trim();
         
         const mapping = {
@@ -298,7 +610,6 @@ class EnrollmentFormHandler {
     }
 
     mapTrackToStrandID(trackLabel) {
-        // Clean the label
         trackLabel = trackLabel.replace(/\s+/g, ' ').trim();
         
         const mapping = {
@@ -316,7 +627,17 @@ class EnrollmentFormHandler {
         const errors = [];
 
         // Required fields
-        if (!formData.schoolYear) errors.push('School Year is required');
+        if (!formData.schoolYear) {
+            errors.push('School Year is required');
+        } else if (!/^\d{4}-\d{4}$/.test(formData.schoolYear)) {
+            errors.push('School Year must be in YYYY-YYYY format');
+        } else {
+            const [start, end] = formData.schoolYear.split('-').map(Number);
+            if (end !== start + 1) {
+                errors.push('School Year must be consecutive (e.g., 2025-2026)');
+            }
+        }
+        
         if (!formData.gradeLevel) errors.push('Grade Level is required');
         if (!formData.learnerType) errors.push('Type of Learner must be selected');
         if (!formData.lastName) errors.push('Last Name is required');
@@ -334,96 +655,127 @@ class EnrollmentFormHandler {
             errors.push('Track selection is required for Grade 11 & 12');
         }
 
+        // Validate strand consistency for Senior High students
+        if (this.latestEnrollment && (formData.gradeLevel === 5 || formData.gradeLevel === 6)) {
+            const previousGrade = this.latestEnrollment.GradeLevelID;
+            const previousStrand = this.latestEnrollment.StrandID;
+            
+            // If previous enrollment was Grade 11 and current is Grade 12
+            if (previousGrade === 5 && formData.gradeLevel === 6) {
+                if (previousStrand && formData.strandID && previousStrand !== formData.strandID) {
+                    const strandNames = {
+                        1: 'ABM', 2: 'HUMSS', 3: 'STEM',
+                        4: 'HE-COOKERY', 5: 'ICT-CSS', 6: 'IA-EIM'
+                    };
+                    errors.push(
+                        `Strand mismatch: Student was enrolled in ${strandNames[previousStrand]} for Grade 11. ` +
+                        `Cannot change to ${strandNames[formData.strandID]} for Grade 12.`
+                    );
+                }
+            }
+        }
+
+        // Check for duplicate enrollment in same academic year
+        if (formData.lrn && this.studentEnrollmentHistory.length > 0) {
+            const duplicateEnrollment = this.studentEnrollmentHistory.find(
+                enrollment => enrollment.AcademicYear === formData.schoolYear
+            );
+            
+            if (duplicateEnrollment) {
+                errors.push(
+                    `Duplicate enrollment detected: Student with LRN ${formData.lrn} is already enrolled ` +
+                    `for ${formData.schoolYear} (${duplicateEnrollment.GradeLevelName}${duplicateEnrollment.StrandName ? ' - ' + duplicateEnrollment.StrandName : ''}). ` +
+                    `Status: ${duplicateEnrollment.Status}`
+                );
+            }
+        }
+
         // At least one parent/guardian
         const hasParent = formData.fatherFirstName || formData.motherFirstName || formData.guardianFirstName;
         if (!hasParent) {
             errors.push('At least one parent or guardian name is required');
         }
-        // NEW: Validate enrollment type
+        
         if (!formData.enrollmentType) {
             errors.push('Enrollment Type is required');
         }
 
-        // Validate that enrollmentType matches learnerType logic
         if (formData.learnerType === 'Irregular_Transferee' && formData.enrollmentType !== 'Transferee') {
-            formData.enrollmentType = 'Transferee'; // Auto-correct
+            formData.enrollmentType = 'Transferee';
         }
 
         return errors;
     }
 
-async handleSubmit(e) {
-    e.preventDefault();
-    console.log('=== FORM SUBMISSION STARTED ===');
+    async handleSubmit(e) {
+        e.preventDefault();
+        console.log('=== FORM SUBMISSION STARTED ===');
 
-    const formData = this.collectFormData();
+        const formData = this.collectFormData();
 
-    // 1️Validate first
-    const errors = this.validateForm(formData);
-    if (errors.length > 0) {
-        alert('Please fix the following errors:\n\n' + errors.join('\n'));
-        return;
-    }
-
-    // 2️IP community prompt
-    if (formData.isIPCommunity) {
-        formData.ipCommunitySpecify = prompt('Please specify IP Community:');
-        if (!formData.ipCommunitySpecify) {
-            alert('IP Community specification is required');
+        // Validate first
+        const errors = this.validateForm(formData);
+        if (errors.length > 0) {
+            alert('Please fix the following errors:\n\n' + errors.join('\n'));
             return;
         }
-    }
 
-    // 3️Confirmation
-    const gradeText = ['', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'][formData.gradeLevel];
-    const confirmMsg = `Please confirm enrollment submission:\n\n` +
-        `Name: ${formData.firstName} ${formData.lastName}\n` +
-        `Grade Level: ${gradeText}\n` +
-        `School Year: ${formData.schoolYear}\n\n` +
-        `Submit this enrollment form?`;
-
-    if (!confirm(confirmMsg)) {
-        return;
-    }
-
-    // 4️ ONLY show loading when we are 100% submitting
-    this.showLoading(true);
-
-    try {
-        const submitData = {
-            ...formData,
-            createdBy: this.currentUser.UserID
-        };
-
-        const response = await fetch('../backend/api/enrollment.php?action=submit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(submitData)
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        // IP community prompt
+        if (formData.isIPCommunity && !formData.ipCommunitySpecify) {
+            formData.ipCommunitySpecify = prompt('Please specify IP Community:');
+            if (!formData.ipCommunitySpecify) {
+                alert('IP Community specification is required');
+                return;
+            }
         }
 
-        const result = await response.json();
+        // Confirmation
+        const gradeText = ['', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'][formData.gradeLevel];
+        const confirmMsg = `Please confirm enrollment submission:\n\n` +
+            `Name: ${formData.firstName} ${formData.lastName}\n` +
+            `Grade Level: ${gradeText}\n` +
+            `School Year: ${formData.schoolYear}\n\n` +
+            `Submit this enrollment form?`;
 
-        if (!result.success) {
-            throw new Error(result.message || 'Submission failed');
+        if (!confirm(confirmMsg)) {
+            return;
         }
 
-        alert(`✓ Enrollment Submitted Successfully!\n\nStatus: Pending Approval`);
-        this.handleReset(null);
+        this.showLoading(true);
 
-    } catch (error) {
-        console.error(error);
-        alert('❌ Error submitting enrollment:\n\n' + error.message);
-    } finally {
-        // ALWAYS reset loading
-        this.showLoading(false);
-        console.log('=== FORM SUBMISSION ENDED ===');
+        try {
+            const submitData = {
+                ...formData,
+                createdBy: this.currentUser.UserID
+            };
+
+            const response = await fetch('../backend/api/enrollment.php?action=submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(submitData)
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            if (!result.success) {
+                throw new Error(result.message || 'Submission failed');
+            }
+
+            alert(`✓ Enrollment Submitted Successfully!\n\nStatus: Pending Approval`);
+            this.handleReset(null);
+
+        } catch (error) {
+            console.error(error);
+            alert('❌ Error submitting enrollment:\n\n' + error.message);
+        } finally {
+            this.showLoading(false);
+            console.log('=== FORM SUBMISSION ENDED ===');
+        }
     }
-}
-
 
     handleReset(e) {
         if (e) e.preventDefault();
@@ -443,6 +795,17 @@ async handleSubmit(e) {
             document.querySelectorAll('input[type="radio"]').forEach(radio => {
                 radio.checked = false;
             });
+
+            // Clear enrollment history
+            this.studentEnrollmentHistory = [];
+            this.latestEnrollment = null;
+            this.removeEnrollmentHistoryDisplay();
+
+            // Remove any notifications
+            const notification = document.getElementById('lrnNotification');
+            if (notification) {
+                notification.remove();
+            }
 
             // Scroll to top
             window.scrollTo({ top: 0, behavior: 'smooth' });

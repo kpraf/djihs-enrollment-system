@@ -3,10 +3,12 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>Review Enrollments | DJIHS Registrar</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <title>Review Enrollments | DJIHS Adviser</title>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+      <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+      <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com" rel="preconnect"/>
       <link rel="icon" type="image/png" href="../assets/favicons/favicon-96x96.png" sizes="96x96" />
       <link rel="icon" type="image/svg+xml" href="../assets/favicons/favicon.svg" />
       <link rel="shortcut icon" href="../assets/favicons/favicon.ico" />
@@ -29,8 +31,8 @@
             
             try {
                 const user = JSON.parse(userDataString);
-                if (user.Role !== 'Registrar') {
-                    alert('Access denied. Registrar access required.');
+                if (user.Role !== 'Adviser') {
+                    alert('Access denied. Adviser access required.');
                     window.location.href = '../login.html';
                 }
             } catch (e) {
@@ -87,35 +89,52 @@
                             <img alt="School Logo" class="w-full h-full object-cover opacity-90" src="../assets/images/djihs-logo-small.png"/>
                         </div>
                     </div>
-                    <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS Registrar</h1>
+                    <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS Adviser</h1>
                     <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
                 </div>
                 <nav class="px-4 space-y-1">
-                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="dashboard.html">
-                        <span class="material-icons-outlined text-[20px]">dashboard</span>
-                        <span class="text-sm font-medium">Dashboard</span>
-                    </a>
-                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="enrollment-management.html">
+                  <!-- Dashboard -->
+                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group"
+                     href="../adviser/dashboard.html">
+                     <span class="material-icons-outlined text-[20px]">dashboard</span>
+                     <span class="text-sm font-medium">Dashboard</span>
+                  </a>
+
+                  <!-- My Section -->
+                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group"
+                     href="../adviser/my-section.html">
+                     <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">account_tree</span>
+                     <span class="text-sm font-medium">My Section</span>
+                  </a>
+
+                  <!--
+                  <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm"
+                     href="../adviser/all-sections.html">
+                     <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">list_alt</span>
+                     <span class="text-sm font-medium">All Sections</span>
+                  </a>
+                   -->
+
+                     <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="enrollment-management.html">
                         <span class="material-icons-outlined text-[20px]">how_to_reg</span>
                         <span class="text-sm font-medium">New Enrollment</span>
-                    </a>
-                    <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm" href="review-enrollments.html">
+                     </a>
+                     <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm" href="review-enrollments.html">
                         <span class="material-icons-outlined text-[20px]">rate_review</span>
                         <span class="text-sm font-medium">Review Enrollments</span>
-                        <span id="pendingBadge" class="ml-auto bg-white text-primary text-xs font-bold px-2 py-1 rounded-full hidden">0</span>
-                    </a>
-                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="student-management.html">
-                        <span class="material-icons-outlined text-[20px]">groups</span>
+                     </a>
+                     <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="student-management.html">
+                        <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">groups</span>
                         <span class="text-sm font-medium">Student Management</span>
-                    </a>
-                </nav>
+                     </a>
+                  </nav>
             </div>
             <div class="p-4 border-t border-gray-200 dark:border-gray-700">
                 <div class="flex items-center gap-3 mb-4 px-2">
                     <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm user-initials">RG</div>
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate user-name">Registrar</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate user-role">Registrar</p>
+                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate user-name">Adviser</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate user-role">Adviser</p>
                     </div>
                 </div>
                 <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors logout-btn">

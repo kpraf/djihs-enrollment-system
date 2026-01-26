@@ -8,6 +8,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+      <link rel="icon" type="image/png" href="../assets/favicons/favicon-96x96.png" sizes="96x96" />
+      <link rel="icon" type="image/svg+xml" href="../assets/favicons/favicon.svg" />
+      <link rel="shortcut icon" href="../assets/favicons/favicon.ico" />
+      <link rel="apple-touch-icon" sizes="180x180" href="../assets/favicons/apple-touch-icon.png" />
+      <meta name="apple-mobile-web-app-title" content="DJIHS" />
+      <link rel="manifest" href="../assets/favicons/site.webmanifest" />
+
     
     <!-- AUTHENTICATION PROTECTION -->
     <script src="../js/auth.js"></script>
@@ -59,7 +66,7 @@
 <body class="font-display bg-background-light dark:bg-background-dark">
     <div class="relative flex min-h-screen w-full">
         <!-- Sidebar -->
-        <aside class="w-72 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex">
+        <aside class="w-72 h-screen sticky top-0 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex transition-colors duration-200">
             <div>
                 <div class="p-6">
                     <div class="flex items-center gap-3 mb-1">
@@ -83,10 +90,12 @@
                         <span class="material-icons-outlined text-[20px]">group_add</span>
                         <span class="text-sm font-medium">Assign Students</span>
                     </a>
+                    <!-- 
                     <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="settings.html">
                         <span class="material-icons-outlined text-[20px]">settings</span>
                         <span class="text-sm font-medium">Settings</span>
                     </a>
+                    -->
                 </nav>
             </div>
             <div class="p-4 border-t border-gray-200 dark:border-gray-700">
@@ -127,10 +136,10 @@
                                    class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary"
                                    oninput="filterSections()">
                         </div>
-                        <select id="yearFilter" onchange="filterSections()" class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                        <select id="yearFilter" onchange="filterSections()" class="px-8 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                             <option value="">All School Years</option>
                         </select>
-                        <select id="gradeFilter" onchange="filterSections()" class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                        <select id="gradeFilter" onchange="filterSections()" class="px-8 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                             <option value="">All Grade Levels</option>
                             <option value="7">Grade 7</option>
                             <option value="8">Grade 8</option>
@@ -139,7 +148,7 @@
                             <option value="11">Grade 11</option>
                             <option value="12">Grade 12</option>
                         </select>
-                        <select id="strandFilter" onchange="filterSections()" class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                        <select id="strandFilter" onchange="filterSections()" class="px-8 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                             <option value="">All Strands</option>
                         </select>
                     </div>

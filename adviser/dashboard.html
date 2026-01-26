@@ -1,264 +1,488 @@
 <!DOCTYPE html>
 <html class="light" lang="en">
-   <head>
-      <meta charset="utf-8"/>
-      <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-      <title>Adviser | Dashboard</title>
-      <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-      <link href="https://fonts.googleapis.com" rel="preconnect"/>
-      <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
-      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
-      <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
-
-      <!-- AUTHENTICATION PROTECTION - MUST BE FIRST -->
-      <script src="../js/auth.js"></script>
-      <script>
-         // Protect this page - only Admin role can access
-         // This runs before page renders
-         (function() {
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Adviser | Dashboard</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+    <link rel="icon" type="image/png" href="../assets/favicons/favicon-96x96.png" sizes="96x96"/>
+    
+    <script src="../js/auth.js"></script>
+    <script>
+        (function() {
             const isLoggedIn = localStorage.getItem('isLoggedIn');
             const userDataString = localStorage.getItem('user');
             
             if (!isLoggedIn || !userDataString) {
-               window.location.href = '../login.html';
-               return;
+                window.location.href = '../login.html';
+                return;
             }
             
             try {
-               const user = JSON.parse(userDataString);
-               if (user.Role !== 'Adviser') {
-                  alert('Access denied. Adviser access required.');
-                  window.location.href = '../login.html';
-               }
+                const user = JSON.parse(userDataString);
+                if (user.Role !== 'Adviser') {
+                    alert('Access denied. Adviser access required.');
+                    window.location.href = '../login.html';
+                }
             } catch (e) {
-               window.location.href = '../login.html';
+                window.location.href = '../login.html';
             }
-         })();
-      </script>
-
-      <style>
-         .material-symbols-outlined {
-         font-variation-settings:
-         'FILL' 0,
-         'wght' 400,
-         'GRAD' 0,
-         'opsz' 24
-         }
-      </style>
-      <script>
-         tailwind.config = {
-           darkMode: "class",
-           theme: {
-             extend: {
-               colors: {
-                 "primary": "#085019",
-                 "background-light": "#f6f7f8",
-                 "background-dark": "#101922",
-                 "success": "#28A745",
-                 "warning": "#FFC107",
-                 "danger": "#DC3545",
-               },
-               fontFamily: {
-                 "display": ["Inter", "sans-serif"]
-               },
-               borderRadius: {
-                   "DEFAULT": "0.25rem", 
-                   "lg": "0.5rem",
-                   "xl": "0.75rem",
-                   "full": "9999px"
-               },
-             },
-           },
-         }
-      </script>
-   </head>
-   <body class="font-display bg-background-light dark:bg-background-dark">
-      <div class="relative flex h-auto min-h-screen w-full group/design-root overflow-x-hidden">
-         <div class="flex min-h-screen w-full">
-            <!-- Sidebar -->
-            <aside class="w-72 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex transition-colors duration-200">
-               <div>
-                  <div class="p-6">
-                     <div class="flex items-center gap-3 mb-1">
+        })();
+    </script>
+    
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#085019",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                        "success": "#50E3C2",
+                        "warning": "#F5A623",
+                        "danger": "#D0021B",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+</head>
+<body class="font-display bg-background-light dark:bg-background-dark">
+    <div class="relative flex min-h-screen w-full">
+        <!-- Sidebar -->
+        <aside class="w-72 h-screen sticky top-0 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex transition-colors duration-200">
+            <div>
+                <div class="p-6">
+                    <div class="flex items-center gap-3 mb-1">
                         <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center overflow-hidden shrink-0 border border-yellow-200 dark:border-yellow-700">
-                           <img alt="School Logo" class="w-full h-full object-cover opacity-90" src="../assets/images/djihs-logo-small.png"/>
+                            <img alt="School Logo" class="w-full h-full object-cover opacity-90" src="../assets/images/djihs-logo-small.png"/>
                         </div>
-                     </div>
-                     <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS Adviser</h1>
-                     <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
-                  </div>
-                  <nav class="px-4 space-y-1">
-                  <!-- Dashboard -->
-                  <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm"
-                     href="../adviser/dashboard.html">
-                     <span class="material-icons-outlined text-[20px]">dashboard</span>
-                     <span class="text-sm font-medium">Dashboard</span>
-                  </a>
-
-                  <!-- Manage Sections -->
-                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group"
-                     href="../adviser/automatic-sectioning.html">
-                     <span class="material-icons-outlined text-[20px]">view_quilt</span>
-                     <span class="text-sm font-medium">Manage Sections</span>
-                  </a>
-
-                  <!-- All Sections -->
-                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group"
-                     href="../adviser/all-sections.html">
-                     <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">list_alt</span>
-                     <span class="text-sm font-medium">All Sections</span>
-                  </a>
-
-                  <!-- My Section -->
-                  <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group"
-                     href="../adviser/my-section.html">
-                     <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">account_tree</span>
-                     <span class="text-sm font-medium">My Section</span>
-                  </a>
-                  </nav>
-               </div>
-               <div class="p-4 border-t border-gray-200 dark:border-gray-700">
-                  <div class="flex items-center gap-3 mb-4 px-2">
-                     <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm">
-                        IC
-                     </div>
-                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate">Adviser Name</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Adviser</p>
-                     </div>
-                  </div>
-                  <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors logout-btn">
-                  <span class="material-icons-outlined text-[18px]">logout</span>
-                  Logout
-                  </button>
-               </div>
-            </aside>
-            <!-- Main Content -->
-            <div class="flex-1 flex flex-col">
-               <main class="flex-1 p-6 lg:p-8">
-                  <div class="flex flex-wrap justify-between gap-4 items-end mb-6">
-                     <div class="flex min-w-72 flex-col gap-1">
-                        <p class="text-gray-800 dark:text-gray-100 text-3xl font-bold leading-tight tracking-[-0.033em]">Adviser Dashboard</p>
-                        <p class="text-gray-500 dark:text-gray-400 text-base font-normal leading-normal">Welcome back! Here's your enrollment overview.</p>
-                     </div>
-                     <button class="flex items-center justify-center gap-2 px-6 h-10 rounded-lg bg-primary text-white text-sm font-bold">
-                     <span class="material-symbols-outlined text-lg">add</span>
-                     <span>Create New Section</span>
-                     </button>
-                  </div>
-                  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                     <div class="flex min-w-[158px] flex-1 flex-col gap-2 rounded-xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                        <p class="text-gray-600 dark:text-gray-300 text-base font-medium leading-normal">Total Enrolled Students</p>
-                        <p class="text-gray-800 dark:text-white tracking-light text-3xl font-bold leading-tight">285</p>
-                     </div>
-                     <div class="flex min-w-[158px] flex-1 flex-col gap-2 rounded-xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                        <p class="text-gray-600 dark:text-gray-300 text-base font-medium leading-normal">Total Sections</p>
-                        <p class="text-gray-800 dark:text-white tracking-light text-3xl font-bold leading-tight">7</p>
-                     </div>
-                     <div class="flex min-w-[158px] flex-1 flex-col gap-2 rounded-xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                        <p class="text-gray-600 dark:text-gray-300 text-base font-medium leading-normal">Average Fill Rate</p>
-                        <p class="text-gray-800 dark:text-white tracking-light text-3xl font-bold leading-tight">89%</p>
-                     </div>
-                  </div>
-                  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                     <div class="lg:col-span-2">
-                        <div class="flex justify-between items-center mb-4">
-                           <h2 class="text-gray-800 dark:text-white text-xl font-bold leading-tight tracking-[-0.015em]">Section Overview</h2>
-                           <div class="relative w-full max-w-xs">
-                              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                 <span class="material-symbols-outlined text-gray-400">search</span>
-                              </div>
-                              <input class="block w-full rounded-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 pl-10 pr-4 py-2 text-sm text-gray-800 dark:text-gray-200 focus:ring-primary focus:border-primary" placeholder="Find a section..." type="text"/>
-                           </div>
-                        </div>
-                        <div class="space-y-4">
-                           <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex items-center gap-4">
-                              <div class="flex-1">
-                                 <div class="flex justify-between items-center mb-2">
-                                    <h3 class="font-bold text-gray-800 dark:text-white">Section A - Rizal</h3>
-                                    <span class="text-sm font-medium text-gray-500 dark:text-gray-400">35 / 40 Students</span>
-                                 </div>
-                                 <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                    <div class="bg-success h-2 rounded-full" style="width: 87.5%"></div>
-                                 </div>
-                              </div>
-                              <span class="text-xs font-bold py-1 px-3 rounded-full bg-success/20 text-success">Open</span>
-                           </div>
-                           <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex items-center gap-4">
-                              <div class="flex-1">
-                                 <div class="flex justify-between items-center mb-2">
-                                    <h3 class="font-bold text-gray-800 dark:text-white">Section B - Bonifacio</h3>
-                                    <span class="text-sm font-medium text-gray-500 dark:text-gray-400">38 / 40 Students</span>
-                                 </div>
-                                 <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                    <div class="bg-warning h-2 rounded-full" style="width: 95%"></div>
-                                 </div>
-                              </div>
-                              <span class="text-xs font-bold py-1 px-3 rounded-full bg-warning/20 text-yellow-600 dark:text-yellow-400">Nearing Capacity</span>
-                           </div>
-                           <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex items-center gap-4">
-                              <div class="flex-1">
-                                 <div class="flex justify-between items-center mb-2">
-                                    <h3 class="font-bold text-gray-800 dark:text-white">Section C - Mabini</h3>
-                                    <span class="text-sm font-medium text-gray-500 dark:text-gray-400">40 / 40 Students</span>
-                                 </div>
-                                 <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                    <div class="bg-danger h-2 rounded-full" style="width: 100%"></div>
-                                 </div>
-                              </div>
-                              <span class="text-xs font-bold py-1 px-3 rounded-full bg-danger/20 text-danger">Full</span>
-                           </div>
-                           <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex items-center gap-4">
-                              <div class="flex-1">
-                                 <div class="flex justify-between items-center mb-2">
-                                    <h3 class="font-bold text-gray-800 dark:text-white">Section D - Luna</h3>
-                                    <span class="text-sm font-medium text-gray-500 dark:text-gray-400">32 / 40 Students</span>
-                                 </div>
-                                 <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                    <div class="bg-success h-2 rounded-full" style="width: 80%"></div>
-                                 </div>
-                              </div>
-                              <span class="text-xs font-bold py-1 px-3 rounded-full bg-success/20 text-success">Open</span>
-                           </div>
-                        </div>
-                     </div>
-                     <div class="lg:col-span-1">
-                        <h2 class="text-gray-800 dark:text-white text-xl font-bold leading-tight tracking-[-0.015em] mb-4">Action Required</h2>
-                        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4">
-                           <div class="flex gap-3">
-                              <div class="flex-shrink-0 size-8 rounded-full bg-warning/20 text-yellow-600 dark:text-yellow-400 flex items-center justify-center">
-                                 <span class="material-symbols-outlined text-lg">priority_high</span>
-                              </div>
-                              <div>
-                                 <p class="font-medium text-sm text-gray-800 dark:text-gray-200">Section B is 95% full.</p>
-                                 <p class="text-xs text-gray-500 dark:text-gray-400">Consider closing enrollment soon.</p>
-                              </div>
-                           </div>
-                           <div class="flex gap-3">
-                              <div class="flex-shrink-0 size-8 rounded-full bg-primary/20 text-primary flex items-center justify-center">
-                                 <span class="material-symbols-outlined text-lg">person_add</span>
-                              </div>
-                              <div>
-                                 <p class="font-medium text-sm text-gray-800 dark:text-gray-200">New enrollment pending.</p>
-                                 <p class="text-xs text-gray-500 dark:text-gray-400">1 student is waiting for review.</p>
-                              </div>
-                           </div>
-                           <div class="flex gap-3">
-                              <div class="flex-shrink-0 size-8 rounded-full bg-danger/20 text-danger flex items-center justify-center">
-                                 <span class="material-symbols-outlined text-lg">group</span>
-                              </div>
-                              <div>
-                                 <p class="font-medium text-sm text-gray-800 dark:text-gray-200">Section C is now full.</p>
-                                 <p class="text-xs text-gray-500 dark:text-gray-400">No further enrollments are possible.</p>
-                              </div>
-                           </div>
-                        </div>
-                     </div>
-                  </div>
-               </main>
+                    </div>
+                    <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS Adviser</h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
+                </div>
+                <nav class="px-4 space-y-1">
+                    <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm" href="../adviser/dashboard.html">
+                        <span class="material-icons-outlined text-[20px]">dashboard</span>
+                        <span class="text-sm font-medium">Dashboard</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="../adviser/my-section.html">
+                        <span class="material-icons-outlined text-[20px]">account_tree</span>
+                        <span class="text-sm font-medium">My Sections</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="enrollment-management.html">
+                        <span class="material-icons-outlined text-[20px]">how_to_reg</span>
+                        <span class="text-sm font-medium">New Enrollment</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="review-enrollments.html">
+                        <span class="material-icons-outlined text-[20px]">rate_review</span>
+                        <span class="text-sm font-medium">Review Enrollments</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="student-management.html">
+                        <span class="material-icons-outlined text-[20px]">groups</span>
+                        <span class="text-sm font-medium">Student Management</span>
+                    </a>
+                </nav>
             </div>
-         </div>
-      </div>
-   </body>
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                <div class="flex items-center gap-3 mb-4 px-2">
+                    <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm" id="userInitials">AD</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate" id="userName">Adviser</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Adviser</p>
+                    </div>
+                </div>
+                <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors logout-btn">
+                    <span class="material-icons-outlined text-[18px]">logout</span>
+                    Logout
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-8">
+            <div class="mx-auto max-w-7xl">
+                <!-- Page Heading -->
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+                    <div class="flex flex-col gap-1">
+                        <h1 class="text-slate-900 dark:text-white text-3xl font-bold tracking-tight">Dashboard</h1>
+                        <p class="text-slate-500 dark:text-slate-400 text-base font-normal leading-normal">Welcome back! Here's your section overview.</p>
+                    </div>
+                    
+                    <!-- Academic Year Filter -->
+                    <div class="flex items-center gap-2">
+                        <label for="academicYearFilter" class="text-sm font-medium text-slate-700 dark:text-slate-300">Academic Year:</label>
+                        <select id="academicYearFilter" class="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary text-sm min-w-[140px]">
+                            <!-- Options will be populated dynamically -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="loadingState" class="flex items-center justify-center py-12">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                </div>
+
+                <!-- Dashboard Content -->
+                <div id="dashboardContent" class="hidden space-y-6">
+                    <!-- Stats Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <!-- Total Sections -->
+                        <div class="bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
+                            <div class="flex items-center gap-3 mb-2">
+                                <span class="material-icons-outlined text-primary text-2xl">account_tree</span>
+                                <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">My Sections</h3>
+                            </div>
+                            <p class="text-2xl font-bold text-slate-900 dark:text-white" id="totalSections">0</p>
+                        </div>
+
+                        <!-- Total Students -->
+                        <div class="bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
+                            <div class="flex items-center gap-3 mb-2">
+                                <span class="material-icons-outlined text-blue-600 text-2xl">groups</span>
+                                <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Total Students</h3>
+                            </div>
+                            <p class="text-2xl font-bold text-slate-900 dark:text-white" id="totalStudents">0</p>
+                        </div>
+
+                        <!-- Average Capacity -->
+                        <div class="bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
+                            <div class="flex items-center gap-3 mb-2">
+                                <span class="material-icons-outlined text-orange-600 text-2xl">speed</span>
+                                <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Avg. Fill Rate</h3>
+                            </div>
+                            <p class="text-2xl font-bold text-slate-900 dark:text-white" id="avgCapacity">0%</p>
+                        </div>
+
+                        <!-- Pending Enrollments -->
+                        <div class="bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
+                            <div class="flex items-center gap-3 mb-2">
+                                <span class="material-icons-outlined text-purple-600 text-2xl">pending_actions</span>
+                                <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Pending Review</h3>
+                            </div>
+                            <p class="text-2xl font-bold text-slate-900 dark:text-white" id="pendingEnrollments">0</p>
+                        </div>
+                    </div>
+
+                    <!-- Main Grid -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Section Overview -->
+                        <div class="lg:col-span-2 bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
+                            <div class="flex items-center justify-between mb-6">
+                                <h2 class="text-xl font-bold text-slate-900 dark:text-white">Section Overview</h2>
+                                <a href="my-section.html" class="text-sm text-primary hover:underline">View All →</a>
+                            </div>
+
+                            <div class="space-y-4" id="sectionsContainer">
+                                <!-- Sections will be inserted here -->
+                            </div>
+
+                            <div id="noSections" class="hidden text-center py-12">
+                                <span class="material-icons-outlined text-6xl text-slate-300 dark:text-slate-600 mb-4">folder_off</span>
+                                <p class="text-slate-500 dark:text-slate-400">No sections assigned for this academic year.</p>
+                            </div>
+                        </div>
+
+                        <!-- Action Items & Quick Stats -->
+                        <div class="space-y-6">
+                            <!-- Action Items -->
+                            <div class="bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
+                                <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Action Items</h2>
+                                <div class="space-y-4" id="actionItems">
+                                    <!-- Action items will be inserted here -->
+                                </div>
+                                <div id="noActions" class="hidden text-center py-8">
+                                    <span class="material-icons-outlined text-4xl text-slate-300 dark:text-slate-600 mb-2">check_circle</span>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400">All clear! No actions needed.</p>
+                                </div>
+                            </div>
+
+                            <!-- Quick Actions -->
+                            <div class="bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
+                                <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Quick Actions</h2>
+                                <div class="space-y-3">
+                                    <a href="enrollment-management.html" class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                                        <span class="material-icons-outlined text-primary">person_add</span>
+                                        <span class="text-sm font-medium text-slate-700 dark:text-slate-300">New Enrollment</span>
+                                    </a>
+                                    <a href="review-enrollments.html" class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                                        <span class="material-icons-outlined text-blue-600">rate_review</span>
+                                        <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Review Enrollments</span>
+                                    </a>
+                                    <a href="student-management.html" class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                                        <span class="material-icons-outlined text-orange-600">manage_accounts</span>
+                                        <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Manage Students</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let allSectionsData = [];
+        let currentAcademicYear = null;
+        let availableYears = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            initializeUserDisplay();
+            await loadDashboardData();
+            setupEventListeners();
+        });
+
+        function initializeUserDisplay() {
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (user) {
+                const initials = (user.FirstName[0] + user.LastName[0]).toUpperCase();
+                document.getElementById('userInitials').textContent = initials;
+                document.getElementById('userName').textContent = `${user.FirstName} ${user.LastName}`;
+            }
+        }
+
+        function setupEventListeners() {
+            document.querySelector('.logout-btn').addEventListener('click', logout);
+            document.getElementById('academicYearFilter').addEventListener('change', (e) => {
+                filterByAcademicYear(e.target.value);
+            });
+        }
+
+        async function loadDashboardData() {
+            try {
+                const user = JSON.parse(localStorage.getItem('user'));
+                
+                // Fetch adviser's sections
+                const response = await fetch(`../backend/api/adviser-sections.php?user_id=${user.UserID}`);
+                const result = await response.json();
+
+                if (!result.success || !result.data || result.data.length === 0) {
+                    showNoData();
+                    return;
+                }
+
+                allSectionsData = result.data;
+                
+                // Extract unique academic years
+                availableYears = [...new Set(allSectionsData.map(s => s.AcademicYear))].sort((a, b) => {
+                    const yearA = parseInt(a.split('-')[0]);
+                    const yearB = parseInt(b.split('-')[0]);
+                    return yearB - yearA;
+                });
+                
+                populateAcademicYearDropdown();
+                currentAcademicYear = availableYears[0];
+                document.getElementById('academicYearFilter').value = currentAcademicYear;
+                
+                await displayDashboard();
+                
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('dashboardContent').classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                showNoData();
+            }
+        }
+
+        function populateAcademicYearDropdown() {
+            const dropdown = document.getElementById('academicYearFilter');
+            dropdown.innerHTML = availableYears.map(year => 
+                `<option value="${year}">${year}</option>`
+            ).join('');
+        }
+
+        async function filterByAcademicYear(academicYear) {
+            currentAcademicYear = academicYear;
+            await displayDashboard();
+        }
+
+        async function displayDashboard() {
+            const sections = allSectionsData.filter(s => s.AcademicYear === currentAcademicYear);
+            
+            if (sections.length === 0) {
+                showNoData();
+                return;
+            }
+
+            // Calculate stats
+            const totalStudents = sections.reduce((sum, s) => sum + parseInt(s.CurrentEnrollment), 0);
+            const totalCapacity = sections.reduce((sum, s) => sum + parseInt(s.Capacity), 0);
+            const avgCapacity = totalCapacity > 0 ? ((totalStudents / totalCapacity) * 100).toFixed(1) : 0;
+
+            // Update stats cards
+            document.getElementById('totalSections').textContent = sections.length;
+            document.getElementById('totalStudents').textContent = totalStudents;
+            document.getElementById('avgCapacity').textContent = avgCapacity + '%';
+
+            // Fetch pending enrollments count
+            await loadPendingEnrollments();
+
+            // Display sections
+            displaySections(sections);
+
+            // Generate action items
+            generateActionItems(sections);
+        }
+
+        async function loadPendingEnrollments() {
+            try {
+                const user = JSON.parse(localStorage.getItem('user'));
+                const response = await fetch(`../backend/api/enrollments.php?status=Pending&processed_by=${user.UserID}`);
+                const result = await response.json();
+                
+                const count = result.success ? result.count || 0 : 0;
+                document.getElementById('pendingEnrollments').textContent = count;
+            } catch (error) {
+                console.error('Error loading pending enrollments:', error);
+                document.getElementById('pendingEnrollments').textContent = '0';
+            }
+        }
+
+        function displaySections(sections) {
+            const container = document.getElementById('sectionsContainer');
+            const noSections = document.getElementById('noSections');
+
+            if (sections.length === 0) {
+                container.classList.add('hidden');
+                noSections.classList.remove('hidden');
+                return;
+            }
+
+            container.classList.remove('hidden');
+            noSections.classList.add('hidden');
+
+            const html = sections.map(section => {
+                const fillRate = (parseInt(section.CurrentEnrollment) / parseInt(section.Capacity)) * 100;
+                let statusClass, statusText, barColor;
+
+                if (fillRate >= 100) {
+                    statusClass = 'bg-danger/20 text-danger';
+                    statusText = 'Full';
+                    barColor = 'bg-danger';
+                } else if (fillRate >= 90) {
+                    statusClass = 'bg-warning/20 text-yellow-600 dark:text-yellow-400';
+                    statusText = 'Nearly Full';
+                    barColor = 'bg-warning';
+                } else {
+                    statusClass = 'bg-success/20 text-green-700 dark:text-success';
+                    statusText = 'Open';
+                    barColor = 'bg-success';
+                }
+
+                return `
+                    <div class="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <h3 class="font-bold text-slate-900 dark:text-white">${section.SectionName}</h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">${section.GradeLevelName}${section.StrandName ? ' - ' + section.StrandName : ''}</p>
+                            </div>
+                            <span class="text-xs font-bold py-1 px-3 rounded-full ${statusClass}">${statusText}</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-slate-600 dark:text-slate-300">${section.CurrentEnrollment} / ${section.Capacity} Students</span>
+                            <span class="text-sm font-medium text-slate-500 dark:text-slate-400">${fillRate.toFixed(0)}%</span>
+                        </div>
+                        <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                            <div class="${barColor} h-2 rounded-full transition-all" style="width: ${Math.min(fillRate, 100)}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = html;
+        }
+
+        function generateActionItems(sections) {
+            const container = document.getElementById('actionItems');
+            const noActions = document.getElementById('noActions');
+            const actions = [];
+
+            // Check for nearly full sections
+            const nearlyFull = sections.filter(s => {
+                const fillRate = (parseInt(s.CurrentEnrollment) / parseInt(s.Capacity)) * 100;
+                return fillRate >= 90 && fillRate < 100;
+            });
+
+            nearlyFull.forEach(section => {
+                actions.push({
+                    icon: 'priority_high',
+                    iconClass: 'bg-warning/20 text-yellow-600 dark:text-yellow-400',
+                    title: `${section.SectionName} is ${((parseInt(section.CurrentEnrollment) / parseInt(section.Capacity)) * 100).toFixed(0)}% full`,
+                    description: 'Consider monitoring enrollment closely.'
+                });
+            });
+
+            // Check for full sections
+            const full = sections.filter(s => parseInt(s.CurrentEnrollment) >= parseInt(s.Capacity));
+            
+            full.forEach(section => {
+                actions.push({
+                    icon: 'block',
+                    iconClass: 'bg-danger/20 text-danger',
+                    title: `${section.SectionName} is at capacity`,
+                    description: 'No further enrollments possible.'
+                });
+            });
+
+            // Check pending enrollments
+            const pendingCount = parseInt(document.getElementById('pendingEnrollments').textContent);
+            if (pendingCount > 0) {
+                actions.push({
+                    icon: 'rate_review',
+                    iconClass: 'bg-primary/20 text-primary',
+                    title: `${pendingCount} enrollment${pendingCount > 1 ? 's' : ''} pending review`,
+                    description: 'Review and approve enrollments.',
+                    link: 'review-enrollments.html'
+                });
+            }
+
+            if (actions.length === 0) {
+                container.classList.add('hidden');
+                noActions.classList.remove('hidden');
+                return;
+            }
+
+            container.classList.remove('hidden');
+            noActions.classList.add('hidden');
+
+            const html = actions.map(action => `
+                <div class="flex gap-3 ${action.link ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 p-2 -m-2 rounded-lg transition-colors' : ''}" ${action.link ? `onclick="window.location.href='${action.link}'"` : ''}>
+                    <div class="flex-shrink-0 size-8 rounded-full ${action.iconClass} flex items-center justify-center">
+                        <span class="material-icons-outlined text-lg">${action.icon}</span>
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-medium text-sm text-slate-800 dark:text-slate-200">${action.title}</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">${action.description}</p>
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = html;
+        }
+
+        function showNoData() {
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('noSections').classList.remove('hidden');
+            document.getElementById('totalSections').textContent = '0';
+            document.getElementById('totalStudents').textContent = '0';
+            document.getElementById('avgCapacity').textContent = '0%';
+            document.getElementById('pendingEnrollments').textContent = '0';
+        }
+
+        function logout() {
+            localStorage.removeItem('isLoggedIn');
+            localStorage.removeItem('user');
+            window.location.href = '../login.html';
+        }
+    </script>
+</body>
 </html>

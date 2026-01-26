@@ -9,6 +9,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+      <link rel="icon" type="image/png" href="../assets/favicons/favicon-96x96.png" sizes="96x96" />
+      <link rel="icon" type="image/svg+xml" href="../assets/favicons/favicon.svg" />
+      <link rel="shortcut icon" href="../assets/favicons/favicon.ico" />
+      <link rel="apple-touch-icon" sizes="180x180" href="../assets/favicons/apple-touch-icon.png" />
+      <meta name="apple-mobile-web-app-title" content="DJIHS" />
+      <link rel="manifest" href="../assets/favicons/site.webmanifest" />
+
 
     <!-- AUTHENTICATION PROTECTION -->
     <script src="../js/auth.js"></script>
@@ -67,13 +74,18 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; }
+            .print-page-break { page-break-after: always; }
+        }
     </style>
 </head>
 <body class="font-display bg-background-light dark:bg-background-dark">
     <div class="relative flex h-auto min-h-screen w-full flex-col">
         <div class="flex min-h-screen">
             <!-- Sidebar -->
-            <aside class="w-72 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex">
+            <aside class="w-72 h-screen sticky top-0 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex transition-colors duration-200 no-print">
                 <div>
                     <div class="p-6">
                         <div class="flex items-center gap-3 mb-1">
@@ -92,10 +104,6 @@
                         <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg shadow-sm" href="analytics.html">
                             <span class="material-icons-outlined text-[20px]">analytics</span>
                             <span class="text-sm font-medium">Analytics</span>
-                        </a>
-                        <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="settings.html">
-                            <span class="material-icons-outlined text-[20px]">settings</span>
-                            <span class="text-sm font-medium">Settings</span>
                         </a>
                     </nav>
                 </div>
@@ -118,30 +126,57 @@
             <main class="flex-1 p-6 lg:p-10">
                 <div class="mx-auto max-w-7xl">
                     <!-- Page Heading -->
-                    <div class="flex flex-wrap justify-between gap-4 items-center mb-6">
+                    <div class="flex flex-wrap justify-between gap-4 items-center mb-6 no-print">
                         <div class="flex flex-col gap-1">
-                            <p class="text-slate-900 dark:text-white text-3xl font-black leading-tight">Analytics Dashboard</p>
+                            <p class="text-slate-900 dark:text-white text-3xl font-black leading-tight">Analytics</p>
                             <p class="text-slate-500 dark:text-slate-400 text-base">Comprehensive enrollment and performance insights</p>
                         </div>
-                        <button onclick="exportData()" class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
-                            <span class="material-icons-outlined text-[20px]">download</span>
-                            <span class="text-sm font-medium">Export Report</span>
-                        </button>
+                        <div class="flex gap-2">
+                            <div class="relative">
+                                <button id="exportBtn" class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
+                                    <span class="material-icons-outlined text-[20px]">download</span>
+                                    <span class="text-sm font-medium">Export</span>
+                                </button>
+                                <div id="exportMenu" class="hidden absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-10">
+                                    <button onclick="exportData('csv')" class="w-full text-left px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3 border-b border-slate-200 dark:border-slate-700">
+                                        <span class="material-icons-outlined text-[20px]">description</span>
+                                        <div>
+                                            <div class="text-sm font-medium">Export as CSV</div>
+                                            <div class="text-xs text-slate-500">Spreadsheet data</div>
+                                        </div>
+                                    </button>
+                                    <button onclick="exportData('excel')" class="w-full text-left px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3 border-b border-slate-200 dark:border-slate-700">
+                                        <span class="material-icons-outlined text-[20px]">table_chart</span>
+                                        <div>
+                                            <div class="text-sm font-medium">Export as Excel</div>
+                                            <div class="text-xs text-slate-500">Formatted workbook</div>
+                                        </div>
+                                    </button>
+                                    <button onclick="printVisual()" class="w-full text-left px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3">
+                                        <span class="material-icons-outlined text-[20px]">print</span>
+                                        <div>
+                                            <div class="text-sm font-medium">Print Visual Report</div>
+                                            <div class="text-xs text-slate-500">Charts and graphs</div>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Filters -->
-                    <div class="flex flex-wrap items-center gap-3 mb-6">
-                        <select id="syFilter" class="h-9 px-4 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300">
+                    <div class="flex flex-wrap items-center gap-3 mb-6 no-print">
+                        <select id="syFilter" class="h-9 px-6 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300">
                             <option value="all">All School Years</option>
                         </select>
-                        <select id="gradeFilter" class="h-9 px-4 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300">
+                        <select id="gradeFilter" class="h-9 px-6 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300">
                             <option value="all">All Grade Levels</option>
-                            <option value="7">Grade 7</option>
-                            <option value="8">Grade 8</option>
-                            <option value="9">Grade 9</option>
-                            <option value="10">Grade 10</option>
-                            <option value="11">Grade 11</option>
-                            <option value="12">Grade 12</option>
+                            <option value="1">Grade 7</option>
+                            <option value="2">Grade 8</option>
+                            <option value="3">Grade 9</option>
+                            <option value="4">Grade 10</option>
+                            <option value="5">Grade 11</option>
+                            <option value="6">Grade 12</option>
                         </select>
                         <button onclick="applyFilters()" class="h-9 px-4 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium">
                             Apply Filters
@@ -156,6 +191,14 @@
                         <div class="loading-spinner"></div>
                     </div>
 
+                    <!-- Print Header (hidden on screen) -->
+                    <div class="hidden print:block mb-6">
+                        <h1 class="text-2xl font-bold text-center mb-2">Don Jose Integrated High School</h1>
+                        <h2 class="text-xl text-center mb-1">Enrollment Analytics Report</h2>
+                        <p class="text-sm text-center text-slate-600" id="printDate"></p>
+                        <p class="text-sm text-center text-slate-600" id="printFilters"></p>
+                    </div>
+
                     <!-- Analytics Content -->
                     <div id="analyticsContent" style="display: none;">
                         <!-- Stats Cards -->
@@ -163,7 +206,7 @@
                             <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 shadow-sm">
                                 <p class="text-slate-600 dark:text-slate-400 text-sm font-medium">Total Enrolled Students</p>
                                 <p class="text-slate-900 dark:text-white text-3xl font-bold" id="totalStudents">0</p>
-                                <p class="text-sm font-medium flex items-center gap-1" id="studentsTrend">
+                                <p class="text-sm font-medium flex items-center gap-1 no-print" id="studentsTrend">
                                     <span class="material-symbols-outlined text-base">trending_flat</span>
                                     <span>No change</span>
                                 </p>
@@ -171,7 +214,7 @@
                             <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 shadow-sm">
                                 <p class="text-slate-600 dark:text-slate-400 text-sm font-medium">Dropout Rate</p>
                                 <p class="text-slate-900 dark:text-white text-3xl font-bold" id="dropoutRate">0%</p>
-                                <p class="text-sm font-medium flex items-center gap-1" id="dropoutTrend">
+                                <p class="text-sm font-medium flex items-center gap-1 no-print" id="dropoutTrend">
                                     <span class="material-symbols-outlined text-base">trending_flat</span>
                                     <span>No data</span>
                                 </p>
@@ -187,6 +230,8 @@
                                 <p class="text-slate-500 dark:text-slate-400 text-sm" id="balikAralPercentage">0% of total</p>
                             </div>
                         </div>
+
+                        <div class="print-page-break"></div>
 
                         <!-- Charts -->
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -246,6 +291,23 @@
                             </div>
                         </div>
 
+                        <div class="print-page-break"></div>
+
+                        <!-- Strand Distribution (Grade 11 & 12) -->
+                        <div id="strandSection" class="mb-6" style="display: none;">
+                            <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 h-[400px]">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="text-slate-800 dark:text-white text-base font-medium">Senior High School Strand Distribution</p>
+                                        <p class="text-slate-500 dark:text-slate-400 text-sm">Grade 11 & 12 students by strand</p>
+                                    </div>
+                                </div>
+                                <div class="relative flex-1 min-h-0">
+                                    <canvas id="strandChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Detailed Stats Table -->
                         <div class="rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 overflow-x-auto">
                             <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
@@ -277,11 +339,9 @@
     </div>
 
     <script>
-        // Global variables
-        let enrollmentTrendsChart, genderChart, learnerTypeChart, gradeLevelChart;
+        let enrollmentTrendsChart, genderChart, learnerTypeChart, gradeLevelChart, strandChart;
         let analyticsData = {};
 
-        // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             initializeCharts();
             loadSchoolYears();
@@ -310,6 +370,18 @@
                     }
                 });
             });
+
+            const exportBtn = document.getElementById('exportBtn');
+            const exportMenu = document.getElementById('exportMenu');
+            
+            exportBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                exportMenu.classList.toggle('hidden');
+            });
+
+            document.addEventListener('click', () => {
+                exportMenu.classList.add('hidden');
+            });
         }
 
         async function loadSchoolYears() {
@@ -319,7 +391,6 @@
                 
                 const syFilter = document.getElementById('syFilter');
                 if (data.success && data.schoolYears && data.schoolYears.length > 0) {
-                    // Keep "All School Years" option and add the rest
                     data.schoolYears.forEach(sy => {
                         const option = document.createElement('option');
                         option.value = sy;
@@ -327,19 +398,17 @@
                         syFilter.appendChild(option);
                     });
                     
-                    // Auto-load data after populating dropdown
                     loadAnalyticsData();
                 } else {
-                    loadAnalyticsData(); // Load anyway with "all" filter
+                    loadAnalyticsData();
                 }
             } catch (error) {
                 console.error('Error loading school years:', error);
-                loadAnalyticsData(); // Load anyway with "all" filter
+                loadAnalyticsData();
             }
         }
 
         async function loadAnalyticsData() {
-            // Show loading state
             document.getElementById('loadingState').style.display = 'flex';
             document.getElementById('analyticsContent').style.display = 'none';
             
@@ -361,32 +430,26 @@
                 }
             } catch (error) {
                 console.error('Error loading analytics:', error);
-                alert('Failed to load analytics data. Please check console for details.');
+                alert('Failed to load analytics data.');
             }
         }
 
         function updateDashboard() {
-            // Update stats cards
             document.getElementById('totalStudents').textContent = analyticsData.totalStudents || 0;
             document.getElementById('dropoutRate').textContent = (analyticsData.dropoutRate || 0) + '%';
             document.getElementById('pwdCount').textContent = analyticsData.pwdCount || 0;
             document.getElementById('balikAralCount').textContent = analyticsData.balikAralCount || 0;
             
-            // Update percentages
             const total = analyticsData.totalStudents || 1;
             document.getElementById('pwdPercentage').textContent = 
                 ((analyticsData.pwdCount / total) * 100).toFixed(1) + '% of total';
             document.getElementById('balikAralPercentage').textContent = 
                 ((analyticsData.balikAralCount / total) * 100).toFixed(1) + '% of total';
             
-            // Update trends
             updateTrends();
-            
-            // Update charts
             updateCharts();
-            
-            // Update table
             updateStatsTable();
+            updateStrandChart();
         }
 
         function updateTrends() {
@@ -419,7 +482,6 @@
         }
 
         function initializeCharts() {
-            // Enrollment Trends Chart
             const trendsCtx = document.getElementById('enrollmentTrendsChart').getContext('2d');
             enrollmentTrendsChart = new Chart(trendsCtx, {
                 type: 'line',
@@ -437,16 +499,10 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'bottom',
-                        }
-                    }
+                    plugins: { legend: { display: true, position: 'bottom' } }
                 }
             });
 
-            // Gender Chart
             const genderCtx = document.getElementById('genderChart').getContext('2d');
             genderChart = new Chart(genderCtx, {
                 type: 'doughnut',
@@ -464,7 +520,6 @@
                 }
             });
 
-            // Learner Type Chart
             const learnerCtx = document.getElementById('learnerTypeChart').getContext('2d');
             learnerTypeChart = new Chart(learnerCtx, {
                 type: 'bar',
@@ -483,7 +538,6 @@
                 }
             });
 
-            // Grade Level Chart
             const gradeCtx = document.getElementById('gradeLevelChart').getContext('2d');
             gradeLevelChart = new Chart(gradeCtx, {
                 type: 'bar',
@@ -501,17 +555,36 @@
                     plugins: { legend: { display: false } }
                 }
             });
+
+            const strandCtx = document.getElementById('strandChart').getContext('2d');
+            strandChart = new Chart(strandCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Students',
+                        data: [],
+                        backgroundColor: ['#085019', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
         }
 
         function updateCharts() {
-            // Update Enrollment Trends
             if (analyticsData.enrollmentTrends) {
                 enrollmentTrendsChart.data.labels = analyticsData.enrollmentTrends.map(t => 'S.Y. ' + t.year);
                 enrollmentTrendsChart.data.datasets[0].data = analyticsData.enrollmentTrends.map(t => t.count);
                 enrollmentTrendsChart.update();
             }
 
-            // Update Gender Chart
             if (analyticsData.genderDistribution) {
                 genderChart.data.datasets[0].data = [
                     analyticsData.genderDistribution.male || 0,
@@ -520,7 +593,6 @@
                 genderChart.update();
             }
 
-            // Update Learner Type Chart
             if (analyticsData.learnerTypeDistribution) {
                 const types = analyticsData.learnerTypeDistribution;
                 learnerTypeChart.data.labels = Object.keys(types).map(k => k.replace(/_/g, ' '));
@@ -528,10 +600,26 @@
                 learnerTypeChart.update();
             }
 
-            // Update Grade Level Chart
             if (analyticsData.gradeLevelDistribution) {
                 gradeLevelChart.data.datasets[0].data = analyticsData.gradeLevelDistribution;
                 gradeLevelChart.update();
+            }
+        }
+
+        function updateStrandChart() {
+            const strandSection = document.getElementById('strandSection');
+            
+            if (analyticsData.strandDistribution && analyticsData.strandDistribution.length > 0) {
+                strandSection.style.display = 'block';
+                
+                const labels = analyticsData.strandDistribution.map(s => s.code);
+                const data = analyticsData.strandDistribution.map(s => s.count);
+                
+                strandChart.data.labels = labels;
+                strandChart.data.datasets[0].data = data;
+                strandChart.update();
+            } else {
+                strandSection.style.display = 'none';
             }
         }
 
@@ -568,8 +656,29 @@
             loadAnalyticsData();
         }
 
-        function exportData() {
-            alert('Export functionality will generate a PDF/Excel report with all analytics data.');
+        function exportData(format) {
+            const sy = document.getElementById('syFilter').value;
+            const grade = document.getElementById('gradeFilter').value;
+            const url = `../backend/api/export-analytics.php?format=${format}&sy=${sy}&grade=${grade}`;
+            window.open(url, '_blank');
+        }
+
+        function printVisual() {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-US', { 
+                year: 'numeric', month: 'long', day: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+            
+            const sy = document.getElementById('syFilter').value;
+            const grade = document.getElementById('gradeFilter').value;
+            
+            document.getElementById('printDate').textContent = `Generated: ${dateStr}`;
+            document.getElementById('printFilters').textContent = 
+                `School Year: ${sy === 'all' ? 'All Years' : 'S.Y. ' + sy} | ` +
+                `Grade Level: ${grade === 'all' ? 'All Grades' : 'Grade ' + (parseInt(grade) + 6)}`;
+            
+            window.print();
         }
     </script>
 </body>

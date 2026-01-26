@@ -46,6 +46,11 @@ class EnrollmentReviewHandler {
             this.loadPendingEnrollments();
         });
 
+        // Approve All button
+        document.getElementById('btnApproveAll')?.addEventListener('click', () => {
+            this.approveAllEnrollments();
+        });
+
         // Filters
         document.getElementById('filterGrade')?.addEventListener('change', () => {
             this.applyFilters();
@@ -112,16 +117,22 @@ class EnrollmentReviewHandler {
     updateStats() {
         const pending = this.enrollments.filter(e => e.Status === 'Pending').length;
         
-        document.getElementById('pendingCount').textContent = pending;
-        document.getElementById('approvedCount').textContent = '0'; // TODO: Get from API
-        document.getElementById('totalCount').textContent = '0'; // TODO: Get from API
+        const pendingCountEl = document.getElementById('pendingCount');
+        const approvedCountEl = document.getElementById('approvedCount');
+        const totalCountEl = document.getElementById('totalCount');
+        
+        if (pendingCountEl) pendingCountEl.textContent = pending;
+        if (approvedCountEl) approvedCountEl.textContent = '0'; // TODO: Get from API
+        if (totalCountEl) totalCountEl.textContent = '0'; // TODO: Get from API
 
         const badge = document.getElementById('pendingBadge');
-        if (pending > 0) {
-            badge.textContent = pending;
-            badge.classList.remove('hidden');
-        } else {
-            badge.classList.add('hidden');
+        if (badge) {
+            if (pending > 0) {
+                badge.textContent = pending;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
         }
     }
 
@@ -499,6 +510,83 @@ class EnrollmentReviewHandler {
         } catch (error) {
             console.error('Error approving enrollment:', error);
             alert('Error: ' + error.message);
+        }
+    }
+
+    async approveAllEnrollments() {
+        const pendingEnrollments = this.filteredEnrollments.filter(e => e.Status === 'Pending');
+        
+        if (pendingEnrollments.length === 0) {
+            alert('No pending enrollments to approve');
+            return;
+        }
+
+        const message = `Are you sure you want to approve all ${pendingEnrollments.length} pending enrollment${pendingEnrollments.length > 1 ? 's' : ''}?\n\nThis action cannot be undone.`;
+        
+        if (!confirm(message)) {
+            return;
+        }
+
+        try {
+            // Show loading state
+            const approveAllBtn = document.getElementById('btnApproveAll');
+            const originalText = approveAllBtn.innerHTML;
+            approveAllBtn.disabled = true;
+            approveAllBtn.innerHTML = '<span class="material-icons-outlined text-[18px] animate-spin">sync</span> Processing...';
+
+            let successCount = 0;
+            let failCount = 0;
+
+            // Process each enrollment
+            for (const enrollment of pendingEnrollments) {
+                try {
+                    const response = await fetch('../backend/api/enrollment.php?action=approve', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            enrollmentID: enrollment.EnrollmentID,
+                            reviewerID: this.currentUser.UserID
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        successCount++;
+                    } else {
+                        failCount++;
+                        console.error(`Failed to approve enrollment ${enrollment.EnrollmentID}:`, result.message);
+                    }
+
+                } catch (error) {
+                    failCount++;
+                    console.error(`Error approving enrollment ${enrollment.EnrollmentID}:`, error);
+                }
+            }
+
+            // Show results
+            let resultMessage = `✓ Approved ${successCount} enrollment${successCount !== 1 ? 's' : ''} successfully!`;
+            if (failCount > 0) {
+                resultMessage += `\n⚠ Failed to approve ${failCount} enrollment${failCount !== 1 ? 's' : ''}.`;
+            }
+
+            alert(resultMessage);
+
+            // Restore button and reload
+            approveAllBtn.disabled = false;
+            approveAllBtn.innerHTML = originalText;
+            this.loadPendingEnrollments();
+
+        } catch (error) {
+            console.error('Error in approve all:', error);
+            alert('Error processing approvals: ' + error.message);
+            
+            // Restore button
+            const approveAllBtn = document.getElementById('btnApproveAll');
+            approveAllBtn.disabled = false;
+            approveAllBtn.innerHTML = '<span class="material-icons-outlined text-[18px]">done_all</span> Approve All';
         }
     }
 
