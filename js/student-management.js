@@ -1,6 +1,7 @@
 // =====================================================
 // Enhanced Student Management Handler
 // File: js/student-management.js
+// Uses separate student-update.php for edit operations
 // =====================================================
 
 class StudentManagementHandler {
@@ -12,6 +13,9 @@ class StudentManagementHandler {
         this.itemsPerPage = 10;
         this.selectedStudents = new Set();
         this.strands = [];
+        this.gradeLevels = [];
+        this.sections = [];
+        this.currentEditingStudent = null;
         this.init();
     }
 
@@ -25,8 +29,21 @@ class StudentManagementHandler {
         }
 
         this.bindEventListeners();
+        this.loadGradeLevels();
         this.loadStrands();
         this.loadStudents();
+        this.displayUserInfo();
+    }
+
+    displayUserInfo() {
+        const userData = this.currentUser;
+        const userNameEl = document.querySelector('.user-name');
+        const userInitialsEl = document.querySelector('.user-initials');
+        
+        if (userData.FirstName && userData.LastName && userNameEl && userInitialsEl) {
+            userNameEl.textContent = `${userData.FirstName} ${userData.LastName}`;
+            userInitialsEl.textContent = `${userData.FirstName[0]}${userData.LastName[0]}`.toUpperCase();
+        }
     }
 
     getCurrentUser() {
@@ -70,6 +87,17 @@ class StudentManagementHandler {
         if (clearBtn) clearBtn.addEventListener('click', () => this.clearFilters());
         if (addBtn) addBtn.addEventListener('click', () => this.addNewStudent());
 
+        // Logout button
+        document.querySelectorAll('.logout-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (confirm('Are you sure you want to logout?')) {
+                    localStorage.removeItem('isLoggedIn');
+                    localStorage.removeItem('user');
+                    window.location.href = '../login.html';
+                }
+            });
+        });
+
         // Select all checkbox
         const selectAllCheckbox = document.querySelector('thead input[type="checkbox"]');
         if (selectAllCheckbox) {
@@ -100,6 +128,21 @@ class StudentManagementHandler {
         } else {
             strandContainer.classList.add('hidden');
             if (strandFilter) strandFilter.selectedIndex = 0;
+        }
+    }
+
+    async loadGradeLevels() {
+        try {
+            const response = await fetch('../backend/api/student-update.php?action=get_grade_levels');
+            const result = await response.json();
+
+            if (result.success) {
+                this.gradeLevels = result.gradeLevels || [];
+            } else {
+                console.error('Failed to load grade levels:', result.message);
+            }
+        } catch (error) {
+            console.error('Error loading grade levels:', error);
         }
     }
 
@@ -146,29 +189,10 @@ class StudentManagementHandler {
 
         } catch (error) {
             console.error('Error loading students:', error);
-            this.loadSampleData();
+            alert('Error loading students. Please refresh the page.');
         } finally {
             this.showLoading(false);
         }
-    }
-
-    loadSampleData() {
-        this.students = [
-            {
-                StudentID: 1,
-                LRN: '123456789012',
-                FullName: 'Dela Cruz, Juan Santos',
-                GradeLevel: 'Grade 10',
-                Section: 'A',
-                Status: 'Active',
-                EnrollmentStatus: 'Confirmed',
-                AcademicYear: '2025-2026'
-            }
-        ];
-        this.filteredStudents = [...this.students];
-        this.populateFilterOptions();
-        this.renderTable();
-        this.updatePagination();
     }
 
     populateFilterOptions() {
@@ -193,7 +217,7 @@ class StudentManagementHandler {
             const currentValue = gradeFilter.value;
             gradeFilter.innerHTML = '<option value="">All Grades</option>';
             Array.from(grades).sort((a, b) => Number(a) - Number(b)).forEach(grade => {
-                gradeFilter.innerHTML += `<option value="${grade}">${grade}</option>`;
+                gradeFilter.innerHTML += `<option value="${grade}">Grade ${grade}</option>`;
             });
             if (currentValue) gradeFilter.value = currentValue;
         }
@@ -297,7 +321,7 @@ class StudentManagementHandler {
             results = results.filter(student => student.AcademicYear === yearFilter);
         }
 
-        // Strand filter - FIXED: now using StrandName instead of StrandID
+        // Strand filter
         if (strandFilter) {
             results = results.filter(student => student.StrandName === strandFilter);
         }
@@ -397,20 +421,20 @@ class StudentManagementHandler {
                 <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                     <div class="flex items-center justify-end gap-2">
                         <button 
-                            class="text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
-                            onclick="studentManagement.viewStudent(${student.StudentID})"
+                            class="btn-view text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
+                            data-student-id="${student.StudentID}"
                             title="View Details">
                             <span class="material-symbols-outlined" style="font-size:20px;">visibility</span>
                         </button>
                         <button 
-                            class="text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
-                            onclick="studentManagement.editStudent(${student.StudentID})"
+                            class="btn-edit text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
+                            data-student-id="${student.StudentID}"
                             title="Edit">
                             <span class="material-symbols-outlined" style="font-size:20px;">edit</span>
                         </button>
                         <button 
-                            class="text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-                            onclick="studentManagement.showMoreOptions(${student.StudentID})"
+                            class="btn-more text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                            data-student-id="${student.StudentID}"
                             title="More Options">
                             <span class="material-symbols-outlined" style="font-size:20px;">more_vert</span>
                         </button>
@@ -429,6 +453,28 @@ class StudentManagementHandler {
                     this.selectedStudents.delete(studentId);
                 }
                 this.updateSelectAllCheckbox();
+            });
+        });
+
+        // Bind action button events
+        tbody.querySelectorAll('.btn-view').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const studentId = parseInt(e.currentTarget.dataset.studentId);
+                this.viewStudent(studentId);
+            });
+        });
+
+        tbody.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const studentId = parseInt(e.currentTarget.dataset.studentId);
+                this.editStudent(studentId);
+            });
+        });
+
+        tbody.querySelectorAll('.btn-more').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const studentId = parseInt(e.currentTarget.dataset.studentId);
+                this.showMoreOptions(studentId);
             });
         });
 
@@ -464,7 +510,7 @@ class StudentManagementHandler {
     extractGradeNumber(gradeLevel) {
         if (!gradeLevel) return 'N/A';
         const match = gradeLevel.match(/\d+/);
-        return match ? match[0] : gradeLevel;
+        return match ? `Grade ${match[0]}` : gradeLevel;
     }
 
     getStatusBadge(status) {
@@ -565,7 +611,7 @@ class StudentManagementHandler {
             const result = await response.json();
 
             if (result.success) {
-                this.showStudentDetailsModal(result.data);
+                this.showStudentDetailsModal(result.data, false);
             } else {
                 alert('Failed to load student details');
             }
@@ -575,81 +621,539 @@ class StudentManagementHandler {
         }
     }
 
-    showStudentDetailsModal(student) {
+    async editStudent(studentId) {
+        try {
+            const response = await fetch(`../backend/api/students.php?action=details&id=${studentId}`);
+            const result = await response.json();
+
+            if (result.success) {
+                this.showStudentDetailsModal(result.data, true);
+            } else {
+                alert('Failed to load student details');
+            }
+        } catch (error) {
+            console.error('Error loading student details:', error);
+            alert('Error loading student details');
+        }
+    }
+
+    showStudentDetailsModal(student, editMode = false) {
+        this.currentEditingStudent = student;
+        
+        // Remove existing modal if any
+        const existingModal = document.getElementById('studentDetailsModal');
+        if (existingModal) existingModal.remove();
+
         const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+        modal.id = 'studentDetailsModal';
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+        
         modal.innerHTML = `
-            <div class="bg-white dark:bg-gray-800 rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-                <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
-                    <h2 class="text-xl font-bold text-gray-900 dark:text-white">Student Details</h2>
-                    <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                        <span class="material-symbols-outlined">close</span>
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+                <!-- Header -->
+                <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between z-10">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">
+                        ${editMode ? 'Edit Student Information' : 'Student Details'}
+                    </h3>
+                    <button onclick="document.getElementById('studentDetailsModal').remove()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                        <span class="material-icons-outlined">close</span>
                     </button>
                 </div>
-                <div class="p-6 space-y-6">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">LRN</label>
-                            <p class="text-base text-gray-900 dark:text-white">${student.LRN || 'N/A'}</p>
-                        </div>
-                        <div>
-                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Full Name</label>
-                            <p class="text-base text-gray-900 dark:text-white">${this.formatName(student.FullName || `${student.LastName}, ${student.FirstName}`)}</p>
-                        </div>
-                        <div>
-                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Date of Birth</label>
-                            <p class="text-base text-gray-900 dark:text-white">${student.DateOfBirth || 'N/A'}</p>
-                        </div>
-                        <div>
-                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Age</label>
-                            <p class="text-base text-gray-900 dark:text-white">${student.Age || 'N/A'}</p>
-                        </div>
-                        <div>
-                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Gender</label>
-                            <p class="text-base text-gray-900 dark:text-white">${student.Gender || 'N/A'}</p>
-                        </div>
-                        <div>
-                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Contact Number</label>
-                            <p class="text-base text-gray-900 dark:text-white">${student.ContactNumber || 'N/A'}</p>
-                        </div>
-                        <div>
-                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Grade Level</label>
-                            <p class="text-base text-gray-900 dark:text-white">${student.GradeLevelName || 'N/A'}</p>
-                        </div>
-                        <div>
-                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Section</label>
-                            <p class="text-base text-gray-900 dark:text-white">${student.SectionName || 'Not Assigned'}</p>
-                        </div>
-                        ${student.StrandName ? `
-                        <div>
-                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Strand</label>
-                            <p class="text-base text-gray-900 dark:text-white">${student.StrandCode} - ${student.StrandName}</p>
-                        </div>` : ''}
-                        <div>
-                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Academic Year</label>
-                            <p class="text-base text-gray-900 dark:text-white">${student.AcademicYear || 'N/A'}</p>
-                        </div>
-                        <div>
-                            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Status</label>
-                            <p class="text-base">${this.getStatusBadge(student.EnrollmentStatus)}</p>
-                        </div>
-                    </div>
-                    <div class="flex gap-3 justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
-                        <button onclick="studentManagement.editStudent(${student.StudentID}); this.closest('.fixed').remove();" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-green-700">
+
+                <!-- Content -->
+                <div class="p-6">
+                    ${this.renderStudentForm(student, editMode)}
+                </div>
+
+                <!-- Footer -->
+                <div class="sticky bottom-0 bg-gray-50 dark:bg-gray-900 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex gap-3 justify-end">
+                    ${editMode ? `
+                        <button id="btn-cancel-edit" class="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                            Cancel
+                        </button>
+                        <button id="btn-save-student" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
+                            <span class="material-icons-outlined text-[18px]">save</span>
+                            Save Changes
+                        </button>
+                    ` : `
+                        <button id="btn-edit-student" data-student-id="${student.StudentID}" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
+                            <span class="material-icons-outlined text-[18px]">edit</span>
                             Edit Student
                         </button>
-                        <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
+                        <button onclick="document.getElementById('studentDetailsModal').remove()" class="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
                             Close
                         </button>
-                    </div>
+                    `}
                 </div>
             </div>
         `;
+        
         document.body.appendChild(modal);
+
+        // Bind modal button events
+        if (editMode) {
+            const cancelBtn = document.getElementById('btn-cancel-edit');
+            const saveBtn = document.getElementById('btn-save-student');
+            
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', () => this.cancelEdit());
+            }
+            if (saveBtn) {
+                saveBtn.addEventListener('click', () => this.saveStudent());
+            }
+
+            // Bind grade and strand change handlers
+            const gradeSelect = document.getElementById('edit-grade');
+            const strandSelect = document.getElementById('edit-strand');
+            
+            if (gradeSelect) {
+                gradeSelect.addEventListener('change', () => this.handleGradeChange());
+            }
+            if (strandSelect) {
+                strandSelect.addEventListener('change', () => this.handleStrandChange());
+            }
+
+            // Determine GradeLevelID from GradeLevelName
+            let gradeLevelId = null;
+            if (student.GradeLevelName) {
+                const gradeMatch = student.GradeLevelName.match(/\d+/);
+                if (gradeMatch) {
+                    const gradeNumber = parseInt(gradeMatch[0]);
+                    const gradeLevel = this.gradeLevels.find(g => g.GradeLevelNumber === gradeNumber);
+                    if (gradeLevel) {
+                        gradeLevelId = gradeLevel.GradeLevelID;
+                    }
+                }
+            }
+
+            // Load sections for current grade/strand
+            if (gradeLevelId) {
+                this.loadSectionsForGrade(gradeLevelId, student.StrandID);
+            }
+        } else {
+            const editBtn = document.getElementById('btn-edit-student');
+            if (editBtn) {
+                editBtn.addEventListener('click', (e) => {
+                    const studentId = parseInt(e.currentTarget.dataset.studentId);
+                    this.editStudent(studentId);
+                });
+            }
+        }
     }
 
-    editStudent(studentId) {
-        alert(`Edit functionality for student ${studentId} - This would open an edit form`);
+    renderStudentForm(student, editMode) {
+        const isEditable = editMode ? '' : 'disabled';
+        const inputClass = editMode 
+            ? 'form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white' 
+            : 'form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-100 dark:text-gray-400 cursor-not-allowed';
+
+        // Determine grade level ID from name
+        let selectedGradeId = '';
+        if (student.GradeLevelName) {
+            const gradeMatch = student.GradeLevelName.match(/\d+/);
+            if (gradeMatch) {
+                const gradeNumber = parseInt(gradeMatch[0]);
+                const gradeLevel = this.gradeLevels.find(g => g.GradeLevelNumber === gradeNumber);
+                if (gradeLevel) {
+                    selectedGradeId = gradeLevel.GradeLevelID;
+                }
+            }
+        }
+
+        // Check if grade level is 11 or 12 for strand visibility
+        const showStrand = selectedGradeId >= 5; // GradeLevelID 5 = Grade 11, 6 = Grade 12
+
+        return `
+            <div class="space-y-8">
+                <!-- Personal Information -->
+                <div>
+                    <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="material-icons-outlined text-primary">person</span>
+                        Personal Information
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">LRN</label>
+                            <input type="text" id="edit-lrn" value="${student.LRN || ''}" ${isEditable} class="${inputClass}" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name</label>
+                            <input type="text" id="edit-lastname" value="${student.LastName || ''}" ${isEditable} class="${inputClass}" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First Name</label>
+                            <input type="text" id="edit-firstname" value="${student.FirstName || ''}" ${isEditable} class="${inputClass}" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Middle Name</label>
+                            <input type="text" id="edit-middlename" value="${student.MiddleName || ''}" ${isEditable} class="${inputClass}" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Extension Name</label>
+                            <input type="text" id="edit-extension" value="${student.ExtensionName || ''}" ${isEditable} placeholder="Jr., Sr., III, etc." class="${inputClass}" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date of Birth</label>
+                            <input type="date" id="edit-dob" value="${student.DateOfBirth || ''}" ${isEditable} class="${inputClass}" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Age</label>
+                            <input type="number" id="edit-age" value="${student.Age || ''}" ${isEditable} class="${inputClass}" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Gender</label>
+                            <select id="edit-gender" ${isEditable} class="${inputClass}">
+                                <option value="Male" ${student.Gender === 'Male' ? 'selected' : ''}>Male</option>
+                                <option value="Female" ${student.Gender === 'Female' ? 'selected' : ''}>Female</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Religion</label>
+                            <input type="text" id="edit-religion" value="${student.Religion || ''}" ${isEditable} class="${inputClass}" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contact Number</label>
+                            <input type="tel" id="edit-contact" value="${student.ContactNumber || ''}" ${isEditable} class="${inputClass}" />
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div class="flex items-center gap-3">
+                            <input type="checkbox" id="edit-ip" ${student.IsIPCommunity ? 'checked' : ''} ${isEditable} class="form-checkbox h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                            <label for="edit-ip" class="text-sm font-medium text-gray-700 dark:text-gray-300">Member of Indigenous Peoples Community</label>
+                        </div>
+                        <div>
+                            <input type="text" id="edit-ip-specify" value="${student.IPCommunitySpecify || ''}" ${isEditable} placeholder="Specify IP Community" class="${inputClass}" />
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <input type="checkbox" id="edit-pwd" ${student.IsPWD ? 'checked' : ''} ${isEditable} class="form-checkbox h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                            <label for="edit-pwd" class="text-sm font-medium text-gray-700 dark:text-gray-300">Person with Disability (PWD)</label>
+                        </div>
+                        <div>
+                            <input type="text" id="edit-pwd-specify" value="${student.PWDSpecify || ''}" ${isEditable} placeholder="Specify Disability" class="${inputClass}" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Address Information -->
+                <div>
+                    <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="material-icons-outlined text-primary">home</span>
+                        Address Information
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">House Number</label>
+                            <input type="text" id="edit-house" value="${student.HouseNumber || ''}" ${isEditable} class="${inputClass}" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sitio/Street</label>
+                            <input type="text" id="edit-street" value="${student.SitioStreet || ''}" ${isEditable} class="${inputClass}" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Barangay</label>
+                            <input type="text" id="edit-barangay" value="${student.Barangay || ''}" ${isEditable} class="${inputClass}" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Municipality</label>
+                            <input type="text" id="edit-municipality" value="${student.Municipality || ''}" ${isEditable} class="${inputClass}" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Province</label>
+                            <input type="text" id="edit-province" value="${student.Province || ''}" ${isEditable} class="${inputClass}" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Zip Code</label>
+                            <input type="text" id="edit-zipcode" value="${student.ZipCode || ''}" ${isEditable} class="${inputClass}" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Parent/Guardian Information -->
+                <div>
+                    <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="material-icons-outlined text-primary">family_restroom</span>
+                        Parent/Guardian Information
+                    </h4>
+                    <div class="grid grid-cols-1 gap-6">
+                        <!-- Father -->
+                        <div>
+                            <p class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Father's Information</p>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name</label>
+                                    <input type="text" id="edit-father-last" value="${student.FatherLastName || ''}" ${isEditable} class="${inputClass}" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First Name</label>
+                                    <input type="text" id="edit-father-first" value="${student.FatherFirstName || ''}" ${isEditable} class="${inputClass}" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Middle Name</label>
+                                    <input type="text" id="edit-father-middle" value="${student.FatherMiddleName || ''}" ${isEditable} class="${inputClass}" />
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Mother -->
+                        <div>
+                            <p class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Mother's Information</p>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name</label>
+                                    <input type="text" id="edit-mother-last" value="${student.MotherLastName || ''}" ${isEditable} class="${inputClass}" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First Name</label>
+                                    <input type="text" id="edit-mother-first" value="${student.MotherFirstName || ''}" ${isEditable} class="${inputClass}" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Middle Name</label>
+                                    <input type="text" id="edit-mother-middle" value="${student.MotherMiddleName || ''}" ${isEditable} class="${inputClass}" />
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Guardian -->
+                        <div>
+                            <p class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Guardian's Information (if applicable)</p>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name</label>
+                                    <input type="text" id="edit-guardian-last" value="${student.GuardianLastName || ''}" ${isEditable} class="${inputClass}" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First Name</label>
+                                    <input type="text" id="edit-guardian-first" value="${student.GuardianFirstName || ''}" ${isEditable} class="${inputClass}" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Middle Name</label>
+                                    <input type="text" id="edit-guardian-middle" value="${student.GuardianMiddleName || ''}" ${isEditable} class="${inputClass}" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Enrollment Information -->
+                <div>
+                    <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="material-icons-outlined text-primary">school</span>
+                        Enrollment Information
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Grade Level</label>
+                            <select id="edit-grade" ${isEditable} class="${inputClass}">
+                                <option value="">Select Grade Level</option>
+                                ${this.gradeLevels.map(gl => `
+                                    <option value="${gl.GradeLevelID}" ${selectedGradeId == gl.GradeLevelID ? 'selected' : ''}>
+                                        ${gl.GradeLevelName}
+                                    </option>
+                                `).join('')}
+                            </select>
+                        </div>
+                        <div id="strand-container" class="${showStrand ? '' : 'hidden'}">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Strand</label>
+                            <select id="edit-strand" ${isEditable} class="${inputClass}">
+                                <option value="">Select Strand</option>
+                                ${this.strands.map(s => `
+                                    <option value="${s.StrandID}" ${student.StrandID == s.StrandID ? 'selected' : ''}>
+                                        ${s.StrandCode} - ${s.StrandName}
+                                    </option>
+                                `).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Section</label>
+                            <select id="edit-section" ${isEditable} class="${inputClass}">
+                                <option value="">Select Section</option>
+                                <!-- Sections will be loaded dynamically -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Academic Year</label>
+                            <input type="text" id="edit-academic-year" value="${student.AcademicYear || ''}" ${isEditable} class="${inputClass}" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Enrollment Status</label>
+                            <select id="edit-status" ${isEditable} class="${inputClass}">
+                                <option value="Active" ${student.EnrollmentStatus === 'Active' ? 'selected' : ''}>Active</option>
+                                <option value="Cancelled" ${student.EnrollmentStatus === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                                <option value="Transferred" ${student.EnrollmentStatus === 'Transferred' ? 'selected' : ''}>Transferred</option>
+                                <option value="Graduated" ${student.EnrollmentStatus === 'Graduated' ? 'selected' : ''}>Graduated</option>
+                                <option value="Dropped" ${student.EnrollmentStatus === 'Dropped' ? 'selected' : ''}>Dropped</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                ${editMode ? '' : `
+                    <!-- Additional Information (View Only) -->
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                            <span class="material-icons-outlined text-primary">info</span>
+                            Additional Information
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Transferee</label>
+                                <p class="text-base text-gray-900 dark:text-white">${student.IsTransferee ? 'Yes' : 'No'}</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Created At</label>
+                                <p class="text-base text-gray-900 dark:text-white">${student.CreatedAt || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Updated</label>
+                                <p class="text-base text-gray-900 dark:text-white">${student.UpdatedAt || 'N/A'}</p>
+                            </div>
+                        </div>
+                    </div>
+                `}
+            </div>
+        `;
+    }
+
+    handleGradeChange() {
+        const gradeSelect = document.getElementById('edit-grade');
+        const strandContainer = document.getElementById('strand-container');
+        const sectionSelect = document.getElementById('edit-section');
+        const strandSelect = document.getElementById('edit-strand');
+        
+        if (!gradeSelect) return;
+        
+        const selectedGrade = parseInt(gradeSelect.value);
+        
+        // Show/hide strand based on grade level (5 = Grade 11, 6 = Grade 12)
+        if (selectedGrade >= 5) {
+            strandContainer.classList.remove('hidden');
+        } else {
+            strandContainer.classList.add('hidden');
+            strandSelect.value = '';
+        }
+        
+        // Load sections for selected grade
+        this.loadSectionsForGrade(selectedGrade, strandSelect.value);
+    }
+
+    handleStrandChange() {
+        const gradeSelect = document.getElementById('edit-grade');
+        const strandSelect = document.getElementById('edit-strand');
+        
+        if (!gradeSelect) return;
+        
+        const selectedGrade = parseInt(gradeSelect.value);
+        const selectedStrand = strandSelect.value;
+        
+        this.loadSectionsForGrade(selectedGrade, selectedStrand);
+    }
+
+    async loadSectionsForGrade(gradeLevel, strandId = null) {
+        const sectionSelect = document.getElementById('edit-section');
+        if (!sectionSelect) return;
+        
+        const currentSection = this.currentEditingStudent?.SectionID;
+        
+        try {
+            let url = `../backend/api/student-update.php?action=get_sections&grade_level=${gradeLevel}`;
+            if (strandId) {
+                url += `&strand_id=${strandId}`;
+            }
+            
+            const response = await fetch(url);
+            const result = await response.json();
+            
+            if (result.success) {
+                sectionSelect.innerHTML = '<option value="">Select Section</option>';
+                result.sections.forEach(section => {
+                    sectionSelect.innerHTML += `
+                        <option value="${section.SectionID}" ${currentSection == section.SectionID ? 'selected' : ''}>
+                            ${section.SectionName}
+                        </option>
+                    `;
+                });
+            }
+        } catch (error) {
+            console.error('Error loading sections:', error);
+        }
+    }
+
+    async saveStudent() {
+        try {
+            // Gather form data
+            const formData = {
+                StudentID: this.currentEditingStudent.StudentID,
+                LRN: document.getElementById('edit-lrn')?.value,
+                LastName: document.getElementById('edit-lastname')?.value,
+                FirstName: document.getElementById('edit-firstname')?.value,
+                MiddleName: document.getElementById('edit-middlename')?.value,
+                ExtensionName: document.getElementById('edit-extension')?.value,
+                DateOfBirth: document.getElementById('edit-dob')?.value,
+                Age: document.getElementById('edit-age')?.value,
+                Gender: document.getElementById('edit-gender')?.value,
+                Religion: document.getElementById('edit-religion')?.value,
+                ContactNumber: document.getElementById('edit-contact')?.value,
+                IsIPCommunity: document.getElementById('edit-ip')?.checked ? 1 : 0,
+                IPCommunitySpecify: document.getElementById('edit-ip-specify')?.value,
+                IsPWD: document.getElementById('edit-pwd')?.checked ? 1 : 0,
+                PWDSpecify: document.getElementById('edit-pwd-specify')?.value,
+                HouseNumber: document.getElementById('edit-house')?.value,
+                SitioStreet: document.getElementById('edit-street')?.value,
+                Barangay: document.getElementById('edit-barangay')?.value,
+                Municipality: document.getElementById('edit-municipality')?.value,
+                Province: document.getElementById('edit-province')?.value,
+                ZipCode: document.getElementById('edit-zipcode')?.value,
+                FatherLastName: document.getElementById('edit-father-last')?.value,
+                FatherFirstName: document.getElementById('edit-father-first')?.value,
+                FatherMiddleName: document.getElementById('edit-father-middle')?.value,
+                MotherLastName: document.getElementById('edit-mother-last')?.value,
+                MotherFirstName: document.getElementById('edit-mother-first')?.value,
+                MotherMiddleName: document.getElementById('edit-mother-middle')?.value,
+                GuardianLastName: document.getElementById('edit-guardian-last')?.value,
+                GuardianFirstName: document.getElementById('edit-guardian-first')?.value,
+                GuardianMiddleName: document.getElementById('edit-guardian-middle')?.value,
+                GradeLevelID: document.getElementById('edit-grade')?.value,
+                StrandID: document.getElementById('edit-strand')?.value || null,
+                SectionID: document.getElementById('edit-section')?.value || null,
+                AcademicYear: document.getElementById('edit-academic-year')?.value,
+                EnrollmentStatus: document.getElementById('edit-status')?.value,
+                UpdatedBy: this.currentUser.UserID
+            };
+
+            // Validate required fields
+            if (!formData.LRN || !formData.LastName || !formData.FirstName) {
+                alert('Please fill in all required fields (LRN, Last Name, First Name)');
+                return;
+            }
+
+            const response = await fetch('../backend/api/student-update.php?action=update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('Student information updated successfully!');
+                document.getElementById('studentDetailsModal').remove();
+                this.loadStudents(); // Reload the student list
+            } else {
+                alert('Failed to update student: ' + (result.message || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error saving student:', error);
+            alert('Error saving student information');
+        }
+    }
+
+    cancelEdit() {
+        if (confirm('Are you sure you want to cancel? Any unsaved changes will be lost.')) {
+            document.getElementById('studentDetailsModal').remove();
+        }
     }
 
     showMoreOptions(studentId) {
@@ -661,31 +1165,56 @@ class StudentManagementHandler {
                     <h2 class="text-xl font-bold text-gray-900 dark:text-white">Student Actions</h2>
                 </div>
                 <div class="p-6 space-y-2">
-                    <button onclick="studentManagement.viewStudent(${studentId}); this.closest('.fixed').remove();" class="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-3">
+                    <button class="btn-modal-view w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-3">
                         <span class="material-symbols-outlined text-gray-600 dark:text-gray-400">visibility</span>
                         <span class="text-gray-900 dark:text-white">View Full Details</span>
                     </button>
-                    <button onclick="studentManagement.editStudent(${studentId}); this.closest('.fixed').remove();" class="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-3">
+                    <button class="btn-modal-edit w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-3">
                         <span class="material-symbols-outlined text-gray-600 dark:text-gray-400">edit</span>
                         <span class="text-gray-900 dark:text-white">Edit Information</span>
                     </button>
-                    <button onclick="studentManagement.addRemarks(${studentId}); this.closest('.fixed').remove();" class="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-3">
+                    <button class="btn-modal-remarks w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-3">
                         <span class="material-symbols-outlined text-gray-600 dark:text-gray-400">comment</span>
                         <span class="text-gray-900 dark:text-white">Add Remarks</span>
                     </button>
-                    <button onclick="studentManagement.cancelStudent(${studentId}); this.closest('.fixed').remove();" class="w-full text-left px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg flex items-center gap-3 text-red-600 dark:text-red-400">
+                    <button class="btn-modal-cancel w-full text-left px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg flex items-center gap-3 text-red-600 dark:text-red-400">
                         <span class="material-symbols-outlined">cancel</span>
                         <span>Cancel Enrollment</span>
                     </button>
                 </div>
                 <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-                    <button onclick="this.closest('.fixed').remove()" class="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
+                    <button class="btn-modal-close w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
                         Close
                     </button>
                 </div>
             </div>
         `;
         document.body.appendChild(modal);
+
+        // Bind modal buttons
+        modal.querySelector('.btn-modal-view').addEventListener('click', () => {
+            this.viewStudent(studentId);
+            modal.remove();
+        });
+        
+        modal.querySelector('.btn-modal-edit').addEventListener('click', () => {
+            this.editStudent(studentId);
+            modal.remove();
+        });
+        
+        modal.querySelector('.btn-modal-remarks').addEventListener('click', () => {
+            this.addRemarks(studentId);
+            modal.remove();
+        });
+        
+        modal.querySelector('.btn-modal-cancel').addEventListener('click', () => {
+            this.cancelStudent(studentId);
+            modal.remove();
+        });
+        
+        modal.querySelector('.btn-modal-close').addEventListener('click', () => {
+            modal.remove();
+        });
     }
 
     addRemarks(studentId) {
@@ -701,16 +1230,23 @@ class StudentManagementHandler {
                     <textarea id="remarks-input" rows="4" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary" placeholder="Enter remarks for this student..."></textarea>
                 </div>
                 <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex gap-3 justify-end">
-                    <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
+                    <button class="btn-remarks-cancel px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
                         Cancel
                     </button>
-                    <button onclick="studentManagement.saveRemarks(${studentId}, document.getElementById('remarks-input').value); this.closest('.fixed').remove();" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-green-700">
+                    <button class="btn-remarks-save px-4 py-2 bg-primary text-white rounded-lg hover:bg-green-700">
                         Save Remarks
                     </button>
                 </div>
             </div>
         `;
         document.body.appendChild(modal);
+
+        modal.querySelector('.btn-remarks-cancel').addEventListener('click', () => modal.remove());
+        modal.querySelector('.btn-remarks-save').addEventListener('click', () => {
+            const remarks = document.getElementById('remarks-input').value;
+            this.saveRemarks(studentId, remarks);
+            modal.remove();
+        });
     }
 
     async saveRemarks(studentId, remarks) {
@@ -719,7 +1255,30 @@ class StudentManagementHandler {
             return;
         }
 
-        alert(`Remarks saved for student ${studentId}: ${remarks}\n\nThis would be saved to the database.`);
+        try {
+            const response = await fetch('../backend/api/student-update.php?action=add_remarks', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    StudentID: studentId,
+                    Remarks: remarks,
+                    UserID: this.currentUser.UserID
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('Remarks saved successfully!');
+            } else {
+                alert('Failed to save remarks: ' + (result.message || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error saving remarks:', error);
+            alert('Error saving remarks');
+        }
     }
 
     cancelStudent(studentId) {
@@ -736,16 +1295,23 @@ class StudentManagementHandler {
                     <textarea id="cancel-reason" rows="3" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary" placeholder="Enter reason..."></textarea>
                 </div>
                 <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex gap-3 justify-end">
-                    <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
+                    <button class="btn-cancel-no px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
                         No, Keep Enrollment
                     </button>
-                    <button onclick="studentManagement.confirmCancel(${studentId}, document.getElementById('cancel-reason').value); this.closest('.fixed').remove();" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                    <button class="btn-cancel-yes px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
                         Yes, Cancel Enrollment
                     </button>
                 </div>
             </div>
         `;
         document.body.appendChild(modal);
+
+        modal.querySelector('.btn-cancel-no').addEventListener('click', () => modal.remove());
+        modal.querySelector('.btn-cancel-yes').addEventListener('click', () => {
+            const reason = document.getElementById('cancel-reason').value;
+            this.confirmCancel(studentId, reason);
+            modal.remove();
+        });
     }
 
     async confirmCancel(studentId, reason) {
@@ -754,9 +1320,31 @@ class StudentManagementHandler {
             return;
         }
 
-        alert(`Enrollment cancelled for student ${studentId}\nReason: ${reason}\n\nThis would update the database and reload the student list.`);
-        // In production: call API to update status, then reload
-        this.loadStudents();
+        try {
+            const response = await fetch('../backend/api/student-update.php?action=cancel_enrollment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    StudentID: studentId,
+                    Reason: reason,
+                    UserID: this.currentUser.UserID
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('Enrollment cancelled successfully!');
+                this.loadStudents();
+            } else {
+                alert('Failed to cancel enrollment: ' + (result.message || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error cancelling enrollment:', error);
+            alert('Error cancelling enrollment');
+        }
     }
 
     addNewStudent() {

@@ -21,7 +21,7 @@
       <!-- AUTHENTICATION PROTECTION - MUST BE FIRST -->
       <script src="../js/auth.js"></script>
       <script>
-         // Protect this page - only Admin role can access
+         // Protect this page - only Subject_Teacher role can access
          // This runs before page renders
          (function() {
             const isLoggedIn = localStorage.getItem('isLoggedIn');
@@ -98,11 +98,11 @@
                </div>
                <div class="p-4 border-t border-gray-200 dark:border-gray-700">
                   <div class="flex items-center gap-3 mb-4 px-2">
-                     <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm">
-                        IC
+                     <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm" id="userInitials">
+                        ST
                      </div>
                      <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate">Subject Teacher Name</p>
+                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate" id="userName">Loading...</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Subject Teacher</p>
                      </div>
                   </div>
@@ -116,82 +116,447 @@
             <div class="mx-auto max-w-7xl">
                <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
                   <div class="flex flex-col gap-1">
-                     <h1 class="text-slate-900 dark:text-white text-3xl font-bold tracking-tight">Grade 11 - A | STEM</h1>
-                     <p class="text-slate-500 dark:text-slate-400 text-base font-normal leading-normal">List of all students enrolled in this section.</p>
+                     <h1 class="text-slate-900 dark:text-white text-3xl font-bold tracking-tight">My Classes</h1>
+                     <p class="text-slate-500 dark:text-slate-400 text-base font-normal leading-normal" id="sectionSubtitle">Select a section to view students.</p>
                   </div>
                </div>
-               <div class="flex justify-end gap-3 mb-4">
-                  <button class="flex h-12 shrink-0 items-center justify-center gap-x-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700">
+
+               <!-- Section Selector -->
+               <div class="mb-6">
+                  <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Select Section:</label>
+                  <select id="sectionSelector" class="w-full max-w-md px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary">
+                     <option value="">Loading sections...</option>
+                  </select>
+               </div>
+
+               <!-- Action Buttons -->
+               <div class="flex justify-end gap-3 mb-4" id="actionButtons" style="display: none;">
+                  <button id="printBtn" class="flex h-12 shrink-0 items-center justify-center gap-x-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700">
                      <span class="material-symbols-outlined text-xl">print</span>
                      <p class="text-sm font-medium leading-normal">Print</p>
                   </button>
-                  <button class="flex h-12 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-primary text-white px-4">
+                  <button id="exportBtn" class="flex h-12 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-primary text-white px-4 hover:bg-primary/90">
                      <span class="material-symbols-outlined text-xl">download</span>
                      <p class="text-sm font-medium leading-normal">Export to CSV</p>
                   </button>
                </div>
-               <div class="overflow-x-auto bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800">
+
+               <!-- Loading State -->
+               <div id="loadingState" class="text-center py-12" style="display: none;">
+                  <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                  <p class="mt-4 text-slate-600 dark:text-slate-400">Loading students...</p>
+               </div>
+
+               <!-- Empty State -->
+               <div id="emptyState" class="text-center py-12 bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800" style="display: none;">
+                  <span class="material-symbols-outlined text-6xl text-slate-300 dark:text-slate-700">school</span>
+                  <p class="mt-4 text-slate-600 dark:text-slate-400">No students found in this section.</p>
+               </div>
+
+               <!-- Student Table -->
+               <div id="studentTable" class="overflow-x-auto bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800" style="display: none;">
                   <table class="w-full text-left text-sm">
                      <thead class="bg-slate-50 dark:bg-slate-800/50 text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                         <tr>
                            <th class="px-6 py-4 font-medium" scope="col">Student Name</th>
                            <th class="px-6 py-4 font-medium" scope="col">Learner Reference Number (LRN)</th>
+                           <th class="px-6 py-4 font-medium" scope="col">Gender</th>
                         </tr>
                      </thead>
-                     <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                           <td class="px-6 py-4 font-medium text-slate-900 dark:text-white whitespace-nowrap">John Michael Dela Cruz</td>
-                           <td class="px-6 py-4 text-slate-600 dark:text-slate-300">109876543210</td>
-                        </tr>
-                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                           <td class="px-6 py-4 font-medium text-slate-900 dark:text-white whitespace-nowrap">Maria Clara Santos</td>
-                           <td class="px-6 py-4 text-slate-600 dark:text-slate-300">109876543211</td>
-                        </tr>
-                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                           <td class="px-6 py-4 font-medium text-slate-900 dark:text-white whitespace-nowrap">Peter James Rodriguez</td>
-                           <td class="px-6 py-4 text-slate-600 dark:text-slate-300">109876543212</td>
-                        </tr>
-                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                           <td class="px-6 py-4 font-medium text-slate-900 dark:text-white whitespace-nowrap">Angela Mae Reyes</td>
-                           <td class="px-6 py-4 text-slate-600 dark:text-slate-300">109876543213</td>
-                        </tr>
-                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                           <td class="px-6 py-4 font-medium text-slate-900 dark:text-white whitespace-nowrap">Christian Paul Gonzales</td>
-                           <td class="px-6 py-4 text-slate-600 dark:text-slate-300">109876543214</td>
-                        </tr>
-                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                           <td class="px-6 py-4 font-medium text-slate-900 dark:text-white whitespace-nowrap">Samantha Nicole Garcia</td>
-                           <td class="px-6 py-4 text-slate-600 dark:text-slate-300">109876543215</td>
-                        </tr>
-                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                           <td class="px-6 py-4 font-medium text-slate-900 dark:text-white whitespace-nowrap">Luis Miguel Fernandez</td>
-                           <td class="px-6 py-4 text-slate-600 dark:text-slate-300">109876543216</td>
-                        </tr>
+                     <tbody id="studentTableBody" class="divide-y divide-slate-100 dark:divide-slate-800">
+                        <!-- Students will be loaded here -->
                      </tbody>
                   </table>
                </div>
-               <div class="flex items-center justify-between mt-6">
-                  <p class="text-sm text-slate-500 dark:text-slate-400">Showing 1 to 7 of 45 results</p>
-                  <div class="flex items-center gap-2">
-                     <button class="flex items-center justify-center p-2 h-9 w-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
-                     <span class="material-symbols-outlined text-xl">chevron_left</span>
-                     </button>
-                     <button class="flex items-center justify-center p-2 h-9 w-9 rounded-lg border border-transparent bg-primary text-white">
-                     <span class="text-sm font-medium">1</span>
-                     </button>
-                     <button class="flex items-center justify-center p-2 h-9 w-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
-                     <span class="text-sm font-medium">2</span>
-                     </button>
-                     <button class="flex items-center justify-center p-2 h-9 w-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
-                     <span class="text-sm font-medium">3</span>
-                     </button>
-                     <button class="flex items-center justify-center p-2 h-9 w-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
-                     <span class="material-symbols-outlined text-xl">chevron_right</span>
-                     </button>
+
+               <!-- Pagination -->
+               <div id="paginationContainer" class="flex items-center justify-between mt-6" style="display: none;">
+                  <p class="text-sm text-slate-500 dark:text-slate-400" id="paginationInfo">Showing 0 to 0 of 0 results</p>
+                  <div class="flex items-center gap-2" id="paginationButtons">
+                     <!-- Pagination buttons will be loaded here -->
                   </div>
                </div>
             </div>
          </main>
       </div>
+
+      <script>
+         // Global variables
+         let currentSectionID = null;
+         let currentPage = 1;
+         let sectionsData = [];
+         let currentUser = null;
+         const itemsPerPage = 10;
+
+         // Initialize page
+         document.addEventListener('DOMContentLoaded', function() {
+            currentUser = JSON.parse(localStorage.getItem('user'));
+            loadUserInfo();
+            loadSections();
+            setupEventListeners();
+         });
+
+         // Load user information
+         function loadUserInfo() {
+            if (currentUser) {
+               const fullName = `${currentUser.FirstName} ${currentUser.LastName}`;
+               const initials = `${currentUser.FirstName.charAt(0)}${currentUser.LastName.charAt(0)}`;
+               
+               document.getElementById('userName').textContent = fullName;
+               document.getElementById('userInitials').textContent = initials;
+            }
+         }
+
+         // Load sections - FIXED: send auth via headers
+         async function loadSections() {
+            try {
+               const response = await fetch(`../backend/api/subject-teacher-students.php?action=getSections`, {
+                  headers: {
+                     'X-User-Data': JSON.stringify(currentUser)
+                  }
+               });
+               const data = await response.json();
+               
+               if (data.success && data.sections.length > 0) {
+                  sectionsData = data.sections;
+                  populateSectionSelector(data.sections);
+               } else {
+                  document.getElementById('sectionSelector').innerHTML = '<option value="">No sections assigned</option>';
+                  showEmptyState();
+               }
+            } catch (error) {
+               console.error('Error loading sections:', error);
+               alert('Error loading sections. Please refresh the page.');
+            }
+         }
+
+         // Populate section selector
+         function populateSectionSelector(sections) {
+            const selector = document.getElementById('sectionSelector');
+            selector.innerHTML = '<option value="">-- Select a Section --</option>';
+            
+            sections.forEach(section => {
+               const option = document.createElement('option');
+               option.value = section.SectionID;
+               const strandInfo = section.StrandCode ? ` | ${section.StrandCode}` : '';
+               option.textContent = `${section.GradeLevelName} - ${section.SectionName}${strandInfo} (${section.SubjectName})`;
+               selector.appendChild(option);
+            });
+         }
+
+         // Setup event listeners
+         function setupEventListeners() {
+            // Section selector change
+            document.getElementById('sectionSelector').addEventListener('change', function(e) {
+               const sectionID = e.target.value;
+               if (sectionID) {
+                  currentSectionID = sectionID;
+                  currentPage = 1;
+                  loadSectionDetails(sectionID);
+                  loadStudents(sectionID, currentPage);
+               } else {
+                  hideStudentTable();
+               }
+            });
+
+            // Export button
+            document.getElementById('exportBtn').addEventListener('click', exportToCSV);
+
+            // Print button
+            document.getElementById('printBtn').addEventListener('click', printStudentList);
+
+            // Logout button
+            document.querySelector('.logout-btn').addEventListener('click', function() {
+               localStorage.clear();
+               window.location.href = '../login.html';
+            });
+         }
+
+         // Load section details - FIXED: send auth via headers
+         async function loadSectionDetails(sectionID) {
+            try {
+               const response = await fetch(`../backend/api/subject-teacher-students.php?action=getSectionDetails&sectionID=${sectionID}`, {
+                  headers: {
+                     'X-User-Data': JSON.stringify(currentUser)
+                  }
+               });
+               const data = await response.json();
+               
+               if (data.success) {
+                  const section = data.section;
+                  const strandInfo = section.StrandCode ? ` | ${section.StrandCode}` : '';
+                  document.getElementById('sectionTitle').textContent = 
+                     `${section.GradeLevelName} - ${section.SectionName}${strandInfo}`;
+                  document.getElementById('sectionSubtitle').textContent = 
+                     `${section.SubjectName} - List of all students enrolled in this section.`;
+               }
+            } catch (error) {
+               console.error('Error loading section details:', error);
+            }
+         }
+
+         // Load students - FIXED: send auth via headers
+         async function loadStudents(sectionID, page = 1) {
+            showLoading();
+            
+            try {
+               const response = await fetch(
+                  `../backend/api/subject-teacher-students.php?action=getStudents&sectionID=${sectionID}&page=${page}&limit=${itemsPerPage}`,
+                  {
+                     headers: {
+                        'X-User-Data': JSON.stringify(currentUser)
+                     }
+                  }
+               );
+               const data = await response.json();
+               
+               if (data.success) {
+                  if (data.students.length > 0) {
+                     displayStudents(data.students);
+                     displayPagination(data.pagination);
+                     document.getElementById('actionButtons').style.display = 'flex';
+                  } else {
+                     showEmptyState();
+                  }
+               } else {
+                  alert(data.message || 'Error loading students');
+                  hideStudentTable();
+               }
+            } catch (error) {
+               console.error('Error loading students:', error);
+               alert('Error loading students. Please try again.');
+               hideStudentTable();
+            }
+         }
+
+         // Display students in table
+         function displayStudents(students) {
+            const tbody = document.getElementById('studentTableBody');
+            tbody.innerHTML = '';
+            
+            students.forEach(student => {
+               const row = document.createElement('tr');
+               row.className = 'hover:bg-slate-50 dark:hover:bg-slate-800/50';
+               row.innerHTML = `
+                  <td class="px-6 py-4 font-medium text-slate-900 dark:text-white whitespace-nowrap">
+                     ${student.StudentName}
+                  </td>
+                  <td class="px-6 py-4 text-slate-600 dark:text-slate-300">
+                     ${student.LRN}
+                  </td>
+                  <td class="px-6 py-4 text-slate-600 dark:text-slate-300">
+                     ${student.Gender}
+                  </td>
+               `;
+               tbody.appendChild(row);
+            });
+            
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('studentTable').style.display = 'block';
+            document.getElementById('paginationContainer').style.display = 'flex';
+         }
+
+         // Display pagination
+         function displayPagination(pagination) {
+            const { total, page, limit, totalPages } = pagination;
+            const start = (page - 1) * limit + 1;
+            const end = Math.min(page * limit, total);
+            
+            document.getElementById('paginationInfo').textContent = 
+               `Showing ${start} to ${end} of ${total} results`;
+            
+            const buttonsContainer = document.getElementById('paginationButtons');
+            buttonsContainer.innerHTML = '';
+            
+            // Previous button
+            const prevBtn = createPaginationButton('chevron_left', page - 1, page === 1);
+            buttonsContainer.appendChild(prevBtn);
+            
+            // Page numbers
+            for (let i = 1; i <= totalPages; i++) {
+               if (i === 1 || i === totalPages || (i >= page - 1 && i <= page + 1)) {
+                  const pageBtn = createPageButton(i, i === page);
+                  buttonsContainer.appendChild(pageBtn);
+               } else if (i === page - 2 || i === page + 2) {
+                  const dots = document.createElement('span');
+                  dots.className = 'px-2 text-slate-400';
+                  dots.textContent = '...';
+                  buttonsContainer.appendChild(dots);
+               }
+            }
+            
+            // Next button
+            const nextBtn = createPaginationButton('chevron_right', page + 1, page === totalPages);
+            buttonsContainer.appendChild(nextBtn);
+         }
+
+         // Create pagination button
+         function createPaginationButton(icon, targetPage, disabled) {
+            const button = document.createElement('button');
+            button.className = `flex items-center justify-center p-2 h-9 w-9 rounded-lg border ${
+               disabled 
+                  ? 'border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed' 
+                  : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+            }`;
+            button.innerHTML = `<span class="material-symbols-outlined text-xl">${icon}</span>`;
+            button.disabled = disabled;
+            
+            if (!disabled) {
+               button.addEventListener('click', () => {
+                  currentPage = targetPage;
+                  loadStudents(currentSectionID, currentPage);
+               });
+            }
+            
+            return button;
+         }
+
+         // Create page button
+         function createPageButton(pageNum, isActive) {
+            const button = document.createElement('button');
+            button.className = `flex items-center justify-center p-2 h-9 w-9 rounded-lg ${
+               isActive 
+                  ? 'border border-transparent bg-primary text-white' 
+                  : 'border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+            }`;
+            button.innerHTML = `<span class="text-sm font-medium">${pageNum}</span>`;
+            
+            if (!isActive) {
+               button.addEventListener('click', () => {
+                  currentPage = pageNum;
+                  loadStudents(currentSectionID, currentPage);
+               });
+            }
+            
+            return button;
+         }
+
+         // Show loading state
+         function showLoading() {
+            document.getElementById('loadingState').style.display = 'block';
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('studentTable').style.display = 'none';
+            document.getElementById('paginationContainer').style.display = 'none';
+            document.getElementById('actionButtons').style.display = 'none';
+         }
+
+         // Show empty state
+         function showEmptyState() {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'block';
+            document.getElementById('studentTable').style.display = 'none';
+            document.getElementById('paginationContainer').style.display = 'none';
+            document.getElementById('actionButtons').style.display = 'none';
+         }
+
+         // Hide student table
+         function hideStudentTable() {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('studentTable').style.display = 'none';
+            document.getElementById('paginationContainer').style.display = 'none';
+            document.getElementById('actionButtons').style.display = 'none';
+         }
+
+         // Export to CSV - FIXED: send auth via headers
+         async function exportToCSV() {
+            if (!currentSectionID) return;
+            
+            try {
+               const response = await fetch(
+                  `../backend/api/subject-teacher-students.php?action=exportCSV&sectionID=${currentSectionID}`,
+                  {
+                     headers: {
+                        'X-User-Data': JSON.stringify(currentUser)
+                     }
+                  }
+               );
+               const data = await response.json();
+               
+               if (data.success) {
+                  const students = data.students;
+                  
+                  // Create CSV content
+                  let csv = 'LRN,Student Name,Gender,Contact Number,Barangay,Municipality,Province\n';
+                  students.forEach(student => {
+                     csv += `"${student.LRN}","${student.StudentName}","${student.Gender}","${student.ContactNumber}","${student.Barangay}","${student.Municipality}","${student.Province}"\n`;
+                  });
+                  
+                  // Download CSV
+                  const blob = new Blob([csv], { type: 'text/csv' });
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  
+                  const sectionName = document.getElementById('sectionTitle').textContent.replace(/[^a-z0-9]/gi, '_');
+                  a.download = `Students_${sectionName}_${new Date().toISOString().split('T')[0]}.csv`;
+                  
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  window.URL.revokeObjectURL(url);
+               } else {
+                  alert(data.message || 'Error exporting data');
+               }
+            } catch (error) {
+               console.error('Error exporting CSV:', error);
+               alert('Error exporting data. Please try again.');
+            }
+         }
+
+         // Print student list
+         function printStudentList() {
+            if (!currentSectionID) return;
+            
+            const printWindow = window.open('', '_blank');
+            const sectionTitle = document.getElementById('sectionTitle').textContent;
+            const sectionSubtitle = document.getElementById('sectionSubtitle').textContent;
+            const tableHTML = document.getElementById('studentTable').innerHTML;
+            
+            // Extract subject name from subtitle (format: "SubjectName - List of all students...")
+            const subjectName = sectionSubtitle.split(' - ')[0];
+            
+            printWindow.document.write(`
+               <!DOCTYPE html>
+               <html>
+               <head>
+                  <title>${sectionTitle} - Student List</title>
+                  <style>
+                     body { font-family: Arial, sans-serif; margin: 20px; }
+                     h1 { color: #085019; margin-bottom: 5px; }
+                     h2 { color: #333; margin-top: 5px; margin-bottom: 5px; }
+                     .subject-info { color: #085019; font-size: 16px; font-weight: 600; margin: 10px 0; }
+                     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                     th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+                     th { background-color: #085019; color: white; }
+                     tr:nth-child(even) { background-color: #f2f2f2; }
+                     .header { margin-bottom: 20px; border-bottom: 2px solid #085019; padding-bottom: 15px; }
+                     .print-date { color: #666; font-size: 14px; margin-top: 5px; }
+                     .teacher-info { color: #666; font-size: 14px; margin-top: 5px; }
+                  </style>
+               </head>
+               <body>
+                  <div class="header">
+                     <h1>Don Jose Integrated High School</h1>
+                     <h2>${sectionTitle}</h2>
+                     <p class="subject-info">Subject: ${subjectName}</p>
+                     <p class="teacher-info">Teacher: ${currentUser.FirstName} ${currentUser.LastName}</p>
+                     <p class="print-date">Printed on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
+                  </div>
+                  ${tableHTML}
+               </body>
+               </html>
+            `);
+            
+            printWindow.document.close();
+            printWindow.focus();
+            
+            setTimeout(() => {
+               printWindow.print();
+               printWindow.close();
+            }, 250);
+         }
+      </script>
    </body>
 </html>

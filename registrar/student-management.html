@@ -98,11 +98,11 @@
             </div>
             <div class="p-4 border-t border-gray-200 dark:border-gray-700">
                 <div class="flex items-center gap-3 mb-4 px-2">
-                    <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm">
-                        IC
+                    <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm user-initials">
+                        RG
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate">Registrar Name</p>
+                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate user-name">Registrar Name</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Registrar</p>
                     </div>
                 </div>
@@ -174,7 +174,7 @@
                         </div>
 
                         <!-- Strand Filter (Hidden by default, shown for Grade 11/12) -->
-                        <div class="flex flex-col hidden">
+                        <div class="flex flex-col hidden" id="strand-filter-container">
                             <label class="mb-2 text-sm font-medium text-gray-600 dark:text-gray-300" for="strand">Strand</label>
                             <select class="form-select w-full rounded-lg border-gray-300 bg-background-light text-sm text-[#111418] focus:border-primary focus:ring-primary dark:border-gray-600 dark:bg-gray-700 dark:text-white" id="strand">
                                 <option value="">All Strands</option>

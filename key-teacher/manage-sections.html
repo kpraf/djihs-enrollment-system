@@ -90,12 +90,6 @@
                         <span class="material-icons-outlined text-[20px]">group_add</span>
                         <span class="text-sm font-medium">Assign Students</span>
                     </a>
-                    <!-- 
-                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="settings.html">
-                        <span class="material-icons-outlined text-[20px]">settings</span>
-                        <span class="text-sm font-medium">Settings</span>
-                    </a>
-                    -->
                 </nav>
             </div>
             <div class="p-4 border-t border-gray-200 dark:border-gray-700">
@@ -252,12 +246,69 @@
         </div>
     </div>
 
+    <!-- Subject Teachers Modal -->
+    <div id="subjectTeachersModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">Subject Teachers</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400" id="subjectModalSectionName">Section Name</p>
+                </div>
+                <button onclick="closeSubjectTeachersModal()" class="text-gray-400 hover:text-gray-600">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <!-- Add Subject Teacher Form -->
+            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg mb-4">
+                <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Assign New Subject Teacher</h4>
+                <form id="subjectTeacherForm" onsubmit="assignSubjectTeacher(event)" class="space-y-3">
+                    <input type="hidden" id="subjectSectionId">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Teacher *</label>
+                            <select id="subjectTeacher" required class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm">
+                                <option value="">Select Teacher</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Subject Code *</label>
+                            <input type="text" id="subjectCode" required placeholder="e.g., MATH101"
+                                   class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Subject Name *</label>
+                        <input type="text" id="subjectName" required placeholder="e.g., Mathematics"
+                               class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm">
+                    </div>
+                    <button type="submit" class="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm font-medium">
+                        <span class="flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-lg">add</span>
+                            Assign Teacher
+                        </span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Subject Teachers List -->
+            <div>
+                <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Current Subject Teachers</h4>
+                <div id="subjectTeachersList" class="space-y-2">
+                    <p class="text-sm text-gray-500 text-center py-4">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         let sections = [];
         let allSections = [];
         let advisers = [];
         let strands = [];
         let currentUser = null;
+        let teachingEmployees = [];
+        let currentSectionForSubjects = null;
 
         document.addEventListener('DOMContentLoaded', function() {
             currentUser = JSON.parse(localStorage.getItem('user'));
@@ -266,6 +317,7 @@
             loadSchoolYears();
             loadStrands();
             loadAdvisers();
+            loadTeachingEmployees();
             loadSections();
         });
 
@@ -369,6 +421,27 @@
             }
         }
 
+        async function loadTeachingEmployees() {
+            try {
+                const response = await fetch('../backend/api/manage-sections.php?action=teaching-employees');
+                const data = await response.json();
+                
+                if (data.success) {
+                    teachingEmployees = data.employees;
+                    const select = document.getElementById('subjectTeacher');
+                    
+                    data.employees.forEach(emp => {
+                        const option = document.createElement('option');
+                        option.value = emp.EmployeeID;
+                        option.textContent = `${emp.FullName} - ${emp.Position}`;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading teaching employees:', error);
+            }
+        }
+
         async function loadSections() {
             try {
                 const response = await fetch('../backend/api/manage-sections.php?action=list');
@@ -417,10 +490,13 @@
                         </td>
                         <td class="px-4 py-3">
                             <div class="flex gap-2">
+                                <button onclick="manageSubjectTeachers(${section.SectionID}, '${section.SectionName.replace(/'/g, "\\'")}', '${gradeStrand.replace(/'/g, "\\'")}')" class="p-1.5 text-green-600 hover:bg-green-50 rounded" title="Manage Subject Teachers">
+                                    <span class="material-symbols-outlined text-xl">school</span>
+                                </button>
                                 <button onclick="editSection(${section.SectionID})" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Edit">
                                     <span class="material-symbols-outlined text-xl">edit</span>
                                 </button>
-                                <button onclick="deleteSection(${section.SectionID}, '${section.SectionName}')" class="p-1.5 text-red-600 hover:bg-red-50 rounded" title="Delete">
+                                <button onclick="deleteSection(${section.SectionID}, '${section.SectionName.replace(/'/g, "\\'")}')" class="p-1.5 text-red-600 hover:bg-red-50 rounded" title="Delete">
                                     <span class="material-symbols-outlined text-xl">delete</span>
                                 </button>
                             </div>
@@ -541,8 +617,6 @@
                 academicYear: document.getElementById('academicYear').value
             };
             
-            console.log('Sending payload:', payload); // Debug log
-            
             const action = sectionId ? 'update' : 'create';
             
             try {
@@ -594,6 +668,111 @@
         function closeModal() {
             document.getElementById('sectionModal').classList.add('hidden');
             document.getElementById('sectionModal').classList.remove('flex');
+        }
+
+        // Subject Teachers Management
+        async function manageSubjectTeachers(sectionId, sectionName, gradeStrand) {
+            currentSectionForSubjects = sectionId;
+            document.getElementById('subjectModalSectionName').textContent = `${sectionName} - ${gradeStrand}`;
+            document.getElementById('subjectSectionId').value = sectionId;
+            document.getElementById('subjectTeacherForm').reset();
+            document.getElementById('subjectSectionId').value = sectionId;
+            
+            document.getElementById('subjectTeachersModal').classList.remove('hidden');
+            document.getElementById('subjectTeachersModal').classList.add('flex');
+            
+            await loadSubjectTeachers(sectionId);
+        }
+
+        async function loadSubjectTeachers(sectionId) {
+            try {
+                const response = await fetch(`../backend/api/manage-sections.php?action=subject-teachers&sectionId=${sectionId}`);
+                const data = await response.json();
+                
+                const container = document.getElementById('subjectTeachersList');
+                
+                if (data.success && data.teachers.length > 0) {
+                    container.innerHTML = data.teachers.map(teacher => `
+                        <div class="flex items-center justify-between p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                            <div class="flex-1">
+                                <p class="text-sm font-medium text-gray-900 dark:text-white">${teacher.TeacherName}</p>
+                                <p class="text-xs text-gray-600 dark:text-gray-400">${teacher.SubjectCode} - ${teacher.SubjectName}</p>
+                            </div>
+                            <button onclick="removeSubjectTeacher(${teacher.AssignmentID})" class="p-1.5 text-red-600 hover:bg-red-50 rounded" title="Remove">
+                                <span class="material-symbols-outlined text-lg">delete</span>
+                            </button>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">No subject teachers assigned yet</p>';
+                }
+            } catch (error) {
+                console.error('Error loading subject teachers:', error);
+                document.getElementById('subjectTeachersList').innerHTML = '<p class="text-sm text-red-500 text-center py-4">Error loading subject teachers</p>';
+            }
+        }
+
+        async function assignSubjectTeacher(event) {
+            event.preventDefault();
+            
+            const payload = {
+                sectionId: document.getElementById('subjectSectionId').value,
+                employeeId: document.getElementById('subjectTeacher').value,
+                subjectCode: document.getElementById('subjectCode').value.trim().toUpperCase(),
+                subjectName: document.getElementById('subjectName').value.trim()
+            };
+            
+            try {
+                const response = await fetch('../backend/api/manage-sections.php?action=assign-subject-teacher', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(data.message);
+                    document.getElementById('subjectTeacherForm').reset();
+                    document.getElementById('subjectSectionId').value = currentSectionForSubjects;
+                    await loadSubjectTeachers(currentSectionForSubjects);
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error assigning subject teacher:', error);
+                alert('Failed to assign subject teacher');
+            }
+        }
+
+        async function removeSubjectTeacher(assignmentId) {
+            if (!confirm('Are you sure you want to remove this subject teacher?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`../backend/api/manage-sections.php?action=remove-subject-teacher&id=${assignmentId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(data.message);
+                    await loadSubjectTeachers(currentSectionForSubjects);
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error removing subject teacher:', error);
+                alert('Failed to remove subject teacher');
+            }
+        }
+
+        function closeSubjectTeachersModal() {
+            document.getElementById('subjectTeachersModal').classList.add('hidden');
+            document.getElementById('subjectTeachersModal').classList.remove('flex');
+            currentSectionForSubjects = null;
         }
     </script>
 </body>

@@ -21,7 +21,7 @@
       <!-- AUTHENTICATION PROTECTION - MUST BE FIRST -->
       <script src="../js/auth.js"></script>
       <script>
-         // Protect this page - only Admin role can access
+         // Protect this page - only Subject_Teacher role can access
          // This runs before page renders
          (function() {
             const isLoggedIn = localStorage.getItem('isLoggedIn');
@@ -113,11 +113,11 @@
                </div>
                <div class="p-4 border-t border-gray-200 dark:border-gray-700">
                   <div class="flex items-center gap-3 mb-4 px-2">
-                     <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm">
-                        IC
+                     <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm" id="userInitials">
+                        ST
                      </div>
                      <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate">Subject Teacher Name</p>
+                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate" id="userName">Loading...</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Subject Teacher</p>
                      </div>
                   </div>
@@ -132,111 +132,89 @@
                <div class="layout-content-container flex flex-col w-full">
                   <header class="flex flex-wrap items-center justify-between gap-4 pb-8">
                      <div class="flex flex-col">
-                        <p class="text-slate-800 dark:text-slate-200 text-3xl font-bold leading-tight tracking-tight">Welcome, Mrs. Garcia</p>
+                        <p class="text-slate-800 dark:text-slate-200 text-3xl font-bold leading-tight tracking-tight" id="welcomeMessage">Welcome!</p>
                         <p class="text-slate-500 dark:text-slate-400">Here's your overview for today.</p>
                      </div>
                      <div class="flex items-center gap-4">
                         <div class="relative">
-                           <select class="pl-4 pr-10 py-2 text-sm appearance-none border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-primary focus:border-primary">
-                              <option>SY 2024-2025, 1st Sem</option>
-                              <option>SY 2023-2024, 2nd Sem</option>
-                           </select>
+                           <span class="text-sm text-slate-600 dark:text-slate-400 font-medium">SY 2025-2026</span>
                         </div>
                      </div>
                   </header>
+
+                  <!-- Statistics Cards -->
                   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                     <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                        <p class="text-slate-600 dark:text-slate-400 text-base font-medium leading-normal">Assigned Classes</p>
-                        <p class="text-slate-800 dark:text-slate-100 tracking-light text-4xl font-bold leading-tight">5</p>
+                     <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:shadow-lg transition-shadow">
+                        <div class="flex items-center justify-between">
+                           <p class="text-slate-600 dark:text-slate-400 text-base font-medium leading-normal">Assigned Classes</p>
+                           <span class="material-symbols-outlined text-primary text-3xl">class</span>
+                        </div>
+                        <p class="text-slate-800 dark:text-slate-100 tracking-light text-4xl font-bold leading-tight" id="totalClasses">-</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400" id="subjectsCount">Loading...</p>
                      </div>
-                     <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                        <p class="text-slate-600 dark:text-slate-400 text-base font-medium leading-normal">Total Students</p>
-                        <p class="text-slate-800 dark:text-slate-100 tracking-light text-4xl font-bold leading-tight">152</p>
+                     <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:shadow-lg transition-shadow">
+                        <div class="flex items-center justify-between">
+                           <p class="text-slate-600 dark:text-slate-400 text-base font-medium leading-normal">Total Students</p>
+                           <span class="material-symbols-outlined text-primary text-3xl">groups</span>
+                        </div>
+                        <p class="text-slate-800 dark:text-slate-100 tracking-light text-4xl font-bold leading-tight" id="totalStudents">-</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Across all your classes</p>
                      </div>
-                     <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                        <p class="text-slate-600 dark:text-slate-400 text-base font-medium leading-normal">Pending Tasks</p>
-                        <p class="text-slate-800 dark:text-slate-100 tracking-light text-4xl font-bold leading-tight">3</p>
+                     <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:shadow-lg transition-shadow">
+                        <div class="flex items-center justify-between">
+                           <p class="text-slate-600 dark:text-slate-400 text-base font-medium leading-normal">Subjects Teaching</p>
+                           <span class="material-symbols-outlined text-primary text-3xl">menu_book</span>
+                        </div>
+                        <p class="text-slate-800 dark:text-slate-100 tracking-light text-4xl font-bold leading-tight" id="totalSubjects">-</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Different subjects</p>
                      </div>
                   </div>
+
                   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+                     <!-- My Classes List -->
                      <div class="lg:col-span-2 flex flex-col gap-4">
                         <div class="flex justify-between items-center">
                            <h2 class="text-slate-800 dark:text-slate-200 text-xl font-bold leading-tight tracking-tight">My Classes</h2>
-                           <a class="text-sm font-medium text-primary hover:underline" href="#">View All</a>
+                           <a class="text-sm font-medium text-primary hover:underline" href="../subject-teacher/my-students.html">View All</a>
                         </div>
-                        <div class="flex flex-col gap-4">
-                           <div class="rounded-xl p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-4">
-                              <div class="flex flex-col">
-                                 <h3 class="font-bold text-slate-800 dark:text-slate-200">Grade 10 - Algebra</h3>
-                                 <p class="text-sm text-slate-500 dark:text-slate-400">Section: A | 32 Students</p>
-                              </div>
-                              <div class="flex items-center gap-2">
-                                 <button class="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg">Open ECR</button>
-                              </div>
-                           </div>
-                           <div class="rounded-xl p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-4">
-                              <div class="flex flex-col">
-                                 <h3 class="font-bold text-slate-800 dark:text-slate-200">Grade 9 - Physics</h3>
-                                 <p class="text-sm text-slate-500 dark:text-slate-400">Section: B | 28 Students</p>
-                              </div>
-                              <div class="flex items-center gap-2">
-                                 <button class="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg">Open ECR</button>
-                              </div>
-                           </div>
-                           <div class="rounded-xl p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-4">
-                              <div class="flex flex-col">
-                                 <h3 class="font-bold text-slate-800 dark:text-slate-200">Grade 10 - Geometry</h3>
-                                 <p class="text-sm text-slate-500 dark:text-slate-400">Section: C | 35 Students</p>
-                              </div>
-                              <div class="flex items-center gap-2">
-                                 <button class="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg">Open ECR</button>
-                              </div>
-                           </div>
+                        
+                        <!-- Loading State -->
+                        <div id="classesLoading" class="text-center py-12">
+                           <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                           <p class="mt-4 text-slate-600 dark:text-slate-400">Loading your classes...</p>
+                        </div>
+
+                        <!-- Classes List -->
+                        <div id="classesList" class="flex flex-col gap-4" style="display: none;">
+                           <!-- Classes will be dynamically loaded here -->
+                        </div>
+
+                        <!-- Empty State -->
+                        <div id="classesEmpty" class="text-center py-12 bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800" style="display: none;">
+                           <span class="material-symbols-outlined text-6xl text-slate-300 dark:text-slate-700">class</span>
+                           <p class="mt-4 text-slate-600 dark:text-slate-400">No classes assigned yet.</p>
                         </div>
                      </div>
+
+                     <!-- Subject & Grade Level Breakdown -->
                      <div class="flex flex-col gap-4">
-                        <h2 class="text-slate-800 dark:text-slate-200 text-xl font-bold leading-tight tracking-tight">Pending Tasks &amp; Recent Activities</h2>
+                        <h2 class="text-slate-800 dark:text-slate-200 text-xl font-bold leading-tight tracking-tight">Teaching Overview</h2>
                         <div class="flex flex-col gap-3 p-5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                           <div class="flex flex-col pb-3 border-b border-slate-200 dark:border-slate-700">
-                              <div class="flex items-start gap-3">
-                                 <div class="p-2 bg-warning/10 rounded-full">
-                                    <span class="material-symbols-outlined text-warning text-base">person_add</span>
-                                 </div>
-                                 <div class="flex-1">
-                                    <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Pending Enrollment</p>
-                                    <p class="text-xs text-slate-500 dark:text-slate-400">John Smith for Grade 10 - Algebra</p>
-                                 </div>
-                              </div>
-                              <div class="flex items-center gap-2 mt-2 pl-10">
-                                 <button class="px-3 py-1 text-xs font-medium text-white bg-green-500 hover:bg-green-600 rounded-md">Approve</button>
-                                 <button class="px-3 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 rounded-md">Decline</button>
+                           <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">By Subject</h3>
+                           <div id="subjectsBreakdown" class="flex flex-col gap-3">
+                              <!-- Subject breakdown will be loaded here -->
+                              <div class="text-center py-4">
+                                 <p class="text-sm text-slate-500 dark:text-slate-400">Loading...</p>
                               </div>
                            </div>
-                           <div class="flex items-start gap-3 pb-3 border-b border-slate-200 dark:border-slate-700">
-                              <div class="p-2 bg-warning/10 rounded-full">
-                                 <span class="material-symbols-outlined text-warning text-base">person_add</span>
-                              </div>
-                              <div class="flex-1">
-                                 <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Pending Enrollment</p>
-                                 <p class="text-xs text-slate-500 dark:text-slate-400">Emily Jones for Grade 9 - Physics</p>
-                              </div>
-                           </div>
-                           <div class="flex items-start gap-3 pb-3 border-b border-slate-200 dark:border-slate-700">
-                              <div class="p-2 bg-success/10 rounded-full">
-                                 <span class="material-symbols-outlined text-green-500 text-base">task_alt</span>
-                              </div>
-                              <div class="flex-1">
-                                 <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Grading Submitted</p>
-                                 <p class="text-xs text-slate-500 dark:text-slate-400">Quiz 1 for G10 - Algebra is done.</p>
-                              </div>
-                           </div>
-                           <div class="flex items-start gap-3">
-                              <div class="p-2 bg-primary/10 rounded-full">
-                                 <span class="material-symbols-outlined text-primary text-base">edit_document</span>
-                              </div>
-                              <div class="flex-1">
-                                 <p class="text-sm font-medium text-slate-700 dark:text-slate-300">ECR Updated</p>
-                                 <p class="text-xs text-slate-500 dark:text-slate-400">Grade 9 - Physics</p>
+                        </div>
+                        
+                        <div class="flex flex-col gap-3 p-5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                           <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">By Grade Level</h3>
+                           <div id="gradeLevelsBreakdown" class="flex flex-col gap-3">
+                              <!-- Grade level breakdown will be loaded here -->
+                              <div class="text-center py-4">
+                                 <p class="text-sm text-slate-500 dark:text-slate-400">Loading...</p>
                               </div>
                            </div>
                         </div>
@@ -246,5 +224,200 @@
             </main>
          </div>
       </div>
+
+      <script>
+         let currentUser = null;
+
+         // Initialize page
+         document.addEventListener('DOMContentLoaded', function() {
+            currentUser = JSON.parse(localStorage.getItem('user'));
+            loadUserInfo();
+            loadDashboardData();
+            setupEventListeners();
+         });
+
+         // Load user information
+         function loadUserInfo() {
+            if (currentUser) {
+               const fullName = `${currentUser.FirstName} ${currentUser.LastName}`;
+               const initials = `${currentUser.FirstName.charAt(0)}${currentUser.LastName.charAt(0)}`;
+               
+               document.getElementById('userName').textContent = fullName;
+               document.getElementById('userInitials').textContent = initials;
+               document.getElementById('welcomeMessage').textContent = `Welcome, ${currentUser.FirstName}!`;
+            }
+         }
+
+         // Setup event listeners
+         function setupEventListeners() {
+            // Logout button
+            document.querySelector('.logout-btn').addEventListener('click', function() {
+               localStorage.clear();
+               window.location.href = '../login.html';
+            });
+         }
+
+         // Load dashboard data
+         async function loadDashboardData() {
+            try {
+               const response = await fetch('../backend/api/subject-teacher-dashboard.php', {
+                  headers: {
+                     'X-User-Data': JSON.stringify(currentUser)
+                  }
+               });
+               
+               const data = await response.json();
+               
+               if (data.success) {
+                  displayStatistics(data.statistics);
+                  displayClasses(data.classes);
+                  displaySubjectsBreakdown(data.subjects);
+                  displayGradeLevelsBreakdown(data.gradeLevels);
+               } else {
+                  console.error('Error loading dashboard data:', data.message);
+                  showError();
+               }
+            } catch (error) {
+               console.error('Error loading dashboard data:', error);
+               showError();
+            }
+         }
+
+         // Display statistics
+         function displayStatistics(stats) {
+            document.getElementById('totalClasses').textContent = stats.totalClasses || 0;
+            document.getElementById('totalStudents').textContent = stats.totalStudents || 0;
+            document.getElementById('totalSubjects').textContent = stats.totalSubjects || 0;
+            
+            const subjectsText = stats.totalSubjects === 1 ? 'subject' : 'subjects';
+            document.getElementById('subjectsCount').textContent = `${stats.totalSubjects} ${subjectsText} taught`;
+         }
+
+         // Display classes list
+         function displayClasses(classes) {
+            document.getElementById('classesLoading').style.display = 'none';
+            
+            if (classes.length === 0) {
+               document.getElementById('classesEmpty').style.display = 'block';
+               return;
+            }
+            
+            const classesList = document.getElementById('classesList');
+            classesList.innerHTML = '';
+            classesList.style.display = 'flex';
+            
+            classes.forEach(classItem => {
+               const strandInfo = classItem.StrandCode ? ` - ${classItem.StrandCode}` : '';
+               const classCard = document.createElement('div');
+               classCard.className = 'rounded-xl p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-4 hover:shadow-md transition-shadow';
+               classCard.innerHTML = `
+                  <div class="flex flex-col flex-1">
+                     <h3 class="font-bold text-slate-800 dark:text-slate-200">${classItem.GradeLevelName} - ${classItem.SectionName}${strandInfo}</h3>
+                     <p class="text-sm text-slate-500 dark:text-slate-400">${classItem.SubjectName}</p>
+                     <div class="flex items-center gap-4 mt-2">
+                        <span class="text-xs text-slate-600 dark:text-slate-400">
+                           <span class="material-symbols-outlined text-sm align-middle">groups</span>
+                           ${classItem.StudentCount} students
+                        </span>
+                        <span class="text-xs text-slate-600 dark:text-slate-400">
+                           Capacity: ${classItem.StudentCount}/${classItem.Capacity}
+                        </span>
+                     </div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                     <a href="../subject-teacher/my-students.html" class="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors">
+                        View Students
+                     </a>
+                  </div>
+               `;
+               classesList.appendChild(classCard);
+            });
+         }
+
+         // Display subjects breakdown
+         function displaySubjectsBreakdown(subjects) {
+            const container = document.getElementById('subjectsBreakdown');
+            
+            if (subjects.length === 0) {
+               container.innerHTML = '<p class="text-sm text-slate-500 dark:text-slate-400 text-center py-4">No subjects assigned</p>';
+               return;
+            }
+            
+            container.innerHTML = '';
+            
+            subjects.forEach(subject => {
+               const subjectItem = document.createElement('div');
+               subjectItem.className = 'flex items-start gap-3 pb-3 border-b border-slate-200 dark:border-slate-700 last:border-0';
+               subjectItem.innerHTML = `
+                  <div class="p-2 bg-primary/10 rounded-full">
+                     <span class="material-symbols-outlined text-primary text-base">menu_book</span>
+                  </div>
+                  <div class="flex-1">
+                     <p class="text-sm font-medium text-slate-700 dark:text-slate-300">${subject.SubjectName}</p>
+                     <p class="text-xs text-slate-500 dark:text-slate-400">
+                        ${subject.SectionCount} ${subject.SectionCount === 1 ? 'section' : 'sections'} • 
+                        ${subject.TotalStudents} ${subject.TotalStudents === 1 ? 'student' : 'students'}
+                     </p>
+                  </div>
+               `;
+               container.appendChild(subjectItem);
+            });
+         }
+
+         // Display grade levels breakdown
+         function displayGradeLevelsBreakdown(gradeLevels) {
+            const container = document.getElementById('gradeLevelsBreakdown');
+            
+            if (gradeLevels.length === 0) {
+               container.innerHTML = '<p class="text-sm text-slate-500 dark:text-slate-400 text-center py-4">No grade levels assigned</p>';
+               return;
+            }
+            
+            container.innerHTML = '';
+            
+            // Define colors for different grade levels
+            const gradeColors = {
+               7: 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300',
+               8: 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300',
+               9: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900 dark:text-yellow-300',
+               10: 'bg-orange-100 text-orange-600 dark:bg-orange-900 dark:text-orange-300',
+               11: 'bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-300',
+               12: 'bg-pink-100 text-pink-600 dark:bg-pink-900 dark:text-pink-300'
+            };
+            
+            gradeLevels.forEach(gradeLevel => {
+               const colorClass = gradeColors[gradeLevel.GradeLevelNumber] || 'bg-gray-100 text-gray-600 dark:bg-gray-900 dark:text-gray-300';
+               const gradeLevelItem = document.createElement('div');
+               gradeLevelItem.className = 'flex items-start gap-3 pb-3 border-b border-slate-200 dark:border-slate-700 last:border-0';
+               gradeLevelItem.innerHTML = `
+                  <div class="p-2 ${colorClass} rounded-full">
+                     <span class="material-symbols-outlined text-base">school</span>
+                  </div>
+                  <div class="flex-1">
+                     <p class="text-sm font-medium text-slate-700 dark:text-slate-300">${gradeLevel.GradeLevelName}</p>
+                     <p class="text-xs text-slate-500 dark:text-slate-400">
+                        ${gradeLevel.SectionCount} ${gradeLevel.SectionCount === 1 ? 'section' : 'sections'} • 
+                        ${gradeLevel.TotalStudents} ${gradeLevel.TotalStudents === 1 ? 'student' : 'students'}
+                     </p>
+                  </div>
+               `;
+               container.appendChild(gradeLevelItem);
+            });
+         }
+
+         // Show error state
+         function showError() {
+            document.getElementById('classesLoading').style.display = 'none';
+            document.getElementById('classesList').innerHTML = `
+               <div class="text-center py-12 bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800">
+                  <span class="material-symbols-outlined text-6xl text-red-300 dark:text-red-700">error</span>
+                  <p class="mt-4 text-slate-600 dark:text-slate-400">Error loading dashboard data.</p>
+                  <button onclick="loadDashboardData()" class="mt-4 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg">
+                     Try Again
+                  </button>
+               </div>
+            `;
+         }
+      </script>
    </body>
 </html>

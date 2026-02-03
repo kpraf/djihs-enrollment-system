@@ -1,7 +1,7 @@
 <?php
 // ============================================
 // FILE: backend/api/manage-sections.php
-// Purpose: CRUD operations for sections
+// Purpose: CRUD operations for sections + Subject Teacher Assignments
 // ============================================
 
 error_reporting(E_ALL);
@@ -29,12 +29,18 @@ try {
                 getAvailableAdvisers($conn);
             } elseif ($action === 'details') {
                 getSectionDetails($conn);
+            } elseif ($action === 'subject-teachers') {
+                getSubjectTeachers($conn);
+            } elseif ($action === 'teaching-employees') {
+                getTeachingEmployees($conn);
             }
             break;
             
         case 'POST':
             if ($action === 'create') {
                 createSection($conn);
+            } elseif ($action === 'assign-subject-teacher') {
+                assignSubjectTeacher($conn);
             }
             break;
             
@@ -47,6 +53,8 @@ try {
         case 'DELETE':
             if ($action === 'delete') {
                 deleteSection($conn);
+            } elseif ($action === 'remove-subject-teacher') {
+                removeSubjectTeacher($conn);
             }
             break;
     }
@@ -74,6 +82,7 @@ function getSections($conn) {
                 gl.GradeLevelNumber,
                 st.StrandCode,
                 st.StrandName,
+                s.StrandID,
                 COALESCE(CONCAT(e.LastName, ', ', e.FirstName), CONCAT(u.LastName, ', ', u.FirstName)) as AdviserName,
                 s.AdviserEmployeeID,
                 s.AdviserID,
@@ -150,6 +159,161 @@ function getAvailableAdvisers($conn) {
     echo json_encode([
         'success' => true,
         'advisers' => $advisers
+    ]);
+}
+
+function getTeachingEmployees($conn) {
+    $query = "SELECT 
+                e.EmployeeID,
+                CONCAT(e.LastName, ', ', e.FirstName, ' ', IFNULL(CONCAT(LEFT(e.MiddleName, 1), '.'), '')) as FullName,
+                e.Position,
+                e.Department
+              FROM employee e
+              WHERE e.EmploymentType = 'Teaching'
+              AND e.EmploymentStatus = 'Active'
+              AND e.IsActive = 1
+              ORDER BY e.LastName, e.FirstName";
+    
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+    
+    $employees = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $employees[] = $row;
+    }
+    
+    echo json_encode([
+        'success' => true,
+        'employees' => $employees
+    ]);
+}
+
+function getSubjectTeachers($conn) {
+    $sectionId = isset($_GET['sectionId']) ? $_GET['sectionId'] : null;
+    
+    if (!$sectionId) {
+        throw new Exception('Section ID is required');
+    }
+    
+    $query = "SELECT 
+                ta.AssignmentID,
+                ta.SubjectCode,
+                ta.SubjectName,
+                CONCAT(e.LastName, ', ', e.FirstName, ' ', IFNULL(CONCAT(LEFT(e.MiddleName, 1), '.'), '')) as TeacherName,
+                e.EmployeeID,
+                ta.AssignedDate
+              FROM teacherassignment ta
+              INNER JOIN employee e ON ta.EmployeeID = e.EmployeeID
+              WHERE ta.SectionID = :sectionId
+              AND ta.AssignmentType = 'Subject_Teacher'
+              AND ta.IsActive = 1
+              ORDER BY ta.SubjectCode";
+    
+    $stmt = $conn->prepare($query);
+    $stmt->bindValue(':sectionId', $sectionId);
+    $stmt->execute();
+    
+    $teachers = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $teachers[] = $row;
+    }
+    
+    echo json_encode([
+        'success' => true,
+        'teachers' => $teachers
+    ]);
+}
+
+function assignSubjectTeacher($conn) {
+    session_start();
+    $data = json_decode(file_get_contents('php://input'), true);
+    
+    // Validate required fields
+    if (empty($data['sectionId']) || empty($data['employeeId']) || 
+        empty($data['subjectCode']) || empty($data['subjectName'])) {
+        throw new Exception('All fields are required');
+    }
+    
+    // Get section details to extract grade level and academic year
+    $sectionQuery = "SELECT GradeLevelID, AcademicYear FROM section WHERE SectionID = :sectionId";
+    $stmt = $conn->prepare($sectionQuery);
+    $stmt->bindValue(':sectionId', $data['sectionId']);
+    $stmt->execute();
+    $section = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$section) {
+        throw new Exception('Section not found');
+    }
+    
+    // Check for duplicate assignment
+    $checkQuery = "SELECT AssignmentID FROM teacherassignment 
+                   WHERE EmployeeID = :employeeId 
+                   AND SectionID = :sectionId 
+                   AND SubjectCode = :subjectCode
+                   AND AssignmentType = 'Subject_Teacher'
+                   AND IsActive = 1";
+    
+    $stmt = $conn->prepare($checkQuery);
+    $stmt->bindValue(':employeeId', $data['employeeId']);
+    $stmt->bindValue(':sectionId', $data['sectionId']);
+    $stmt->bindValue(':subjectCode', $data['subjectCode']);
+    $stmt->execute();
+    
+    if ($stmt->fetch()) {
+        throw new Exception('This teacher is already assigned to this subject in this section');
+    }
+    
+    // Insert assignment
+    $query = "INSERT INTO teacherassignment 
+              (EmployeeID, AcademicYear, AssignmentType, GradeLevelID, SectionID, 
+               SubjectCode, SubjectName, IsActive, AssignedBy, AssignedDate)
+              VALUES 
+              (:employeeId, :academicYear, 'Subject_Teacher', :gradeLevelId, :sectionId,
+               :subjectCode, :subjectName, 1, :assignedBy, NOW())";
+    
+    $stmt = $conn->prepare($query);
+    $stmt->bindValue(':employeeId', $data['employeeId']);
+    $stmt->bindValue(':academicYear', $section['AcademicYear']);
+    $stmt->bindValue(':gradeLevelId', $section['GradeLevelID']);
+    $stmt->bindValue(':sectionId', $data['sectionId']);
+    $stmt->bindValue(':subjectCode', $data['subjectCode']);
+    $stmt->bindValue(':subjectName', $data['subjectName']);
+    $stmt->bindValue(':assignedBy', $_SESSION['user']['UserID'] ?? null);
+    $stmt->execute();
+    
+    $assignmentId = $conn->lastInsertId();
+    
+    echo json_encode([
+        'success' => true,
+        'message' => 'Subject teacher assigned successfully',
+        'assignmentId' => $assignmentId
+    ]);
+}
+
+function removeSubjectTeacher($conn) {
+    $assignmentId = isset($_GET['id']) ? $_GET['id'] : null;
+    
+    if (!$assignmentId) {
+        throw new Exception('Assignment ID is required');
+    }
+    
+    // Soft delete the assignment
+    $query = "UPDATE teacherassignment 
+              SET IsActive = 0 
+              WHERE AssignmentID = :id 
+              AND AssignmentType = 'Subject_Teacher'";
+    
+    $stmt = $conn->prepare($query);
+    $stmt->bindValue(':id', $assignmentId);
+    $stmt->execute();
+    
+    if ($stmt->rowCount() === 0) {
+        throw new Exception('Assignment not found or already removed');
+    }
+    
+    echo json_encode([
+        'success' => true,
+        'message' => 'Subject teacher removed successfully'
     ]);
 }
 

@@ -1,5 +1,5 @@
 <?php
-// backend/api/get-analytics.php - ADD STRAND DISTRIBUTION
+// backend/api/get-analytics.php
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -28,11 +28,12 @@ try {
             'dropoutRate' => 0,
             'pwdCount' => 0,
             'balikAralCount' => 0,
+            'ipCount' => 0,
             'genderDistribution' => ['male' => 0, 'female' => 0],
             'enrollmentTrends' => [],
             'learnerTypeDistribution' => [],
             'gradeLevelDistribution' => [0, 0, 0, 0, 0, 0],
-            'strandDistribution' => [], // NEW
+            'strandDistribution' => [],
             'detailedStats' => []
         ]
     ];
@@ -62,8 +63,6 @@ try {
     $whereClause = $where['clause'];
     $params = $where['params'];
 
-    // [Previous queries remain the same - totalStudents, dropoutRate, etc.]
-    
     // 1. TOTAL STUDENTS
     $query = "SELECT COUNT(DISTINCT e.StudentID) as total 
               FROM Enrollment e 
@@ -101,8 +100,6 @@ try {
         $response['data']['previousYearTotal'] = intval($prevResult['total']);
     }
 
-    // 2-8. [Previous queries remain the same]
-    
     // 2. DROPOUT RATE
     $droppedQuery = "SELECT COUNT(DISTINCT s.StudentID) as dropped 
                      FROM Student s
@@ -179,7 +176,22 @@ try {
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
     $response['data']['balikAralCount'] = intval($result['balik_aral_count']);
 
-    // 5. GENDER DISTRIBUTION
+    // 5. IP COMMUNITY COUNT
+    $ipQuery = "SELECT COUNT(DISTINCT s.StudentID) as ip_count 
+                FROM Student s
+                INNER JOIN Enrollment e ON s.StudentID = e.StudentID
+                WHERE s.IsIPCommunity = TRUE 
+                AND $whereClause";
+    
+    $stmt = $conn->prepare($ipQuery);
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
+    $stmt->execute();
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    $response['data']['ipCount'] = intval($result['ip_count']);
+
+    // 6. GENDER DISTRIBUTION
     $genderQuery = "SELECT 
                         s.Gender,
                         COUNT(DISTINCT s.StudentID) as count
@@ -200,7 +212,7 @@ try {
     }
     $response['data']['genderDistribution'] = $genderDist;
 
-    // 6. ENROLLMENT TRENDS
+    // 7. ENROLLMENT TRENDS
     $trendsConditions = ["e.Status IN ('Confirmed', 'Pending')"];
     $trendsParams = [];
     
@@ -233,7 +245,7 @@ try {
     }
     $response['data']['enrollmentTrends'] = array_reverse($trends);
 
-    // 7. LEARNER TYPE DISTRIBUTION
+    // 8. LEARNER TYPE DISTRIBUTION
     $learnerTypeQuery = "SELECT 
                             e.LearnerType,
                             COUNT(DISTINCT e.StudentID) as count
@@ -253,7 +265,7 @@ try {
     }
     $response['data']['learnerTypeDistribution'] = $learnerTypes;
 
-    // 8. GRADE LEVEL DISTRIBUTION
+    // 9. GRADE LEVEL DISTRIBUTION
     $gradeLevelConditions = ["e.Status IN ('Confirmed', 'Pending')"];
     $gradeLevelParams = [];
     
@@ -291,7 +303,7 @@ try {
     }
     $response['data']['gradeLevelDistribution'] = $gradeDist;
 
-    // 9. STRAND DISTRIBUTION (Grade 11 & 12 only)
+    // 10. STRAND DISTRIBUTION (Grade 11 & 12 only)
     $strandConditions = ["e.Status IN ('Confirmed', 'Pending')", "e.GradeLevelID IN (5, 6)"];
     $strandParams = [];
     
@@ -326,7 +338,7 @@ try {
     }
     $response['data']['strandDistribution'] = $strands;
 
-    // 10. DETAILED STATS BY GRADE LEVEL
+    // 11. DETAILED STATS BY GRADE LEVEL
     $detailedQuery = "SELECT 
                         gl.GradeLevelNumber as grade,
                         COUNT(DISTINCT e.StudentID) as total,

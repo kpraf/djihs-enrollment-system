@@ -20,14 +20,15 @@ try {
     $format = $_GET['format'] ?? 'csv';
     $sy = isset($_GET['sy']) && $_GET['sy'] !== 'all' ? $_GET['sy'] : null;
     $grade = isset($_GET['grade']) && $_GET['grade'] !== 'all' ? intval($_GET['grade']) : null;
+    $section = $_GET['section'] ?? 'all';
     
     // Get analytics data
     $analyticsData = getAnalyticsData($conn, $sy, $grade);
     
     if ($format === 'csv') {
-        exportCSV($analyticsData, $sy, $grade);
+        exportCSV($analyticsData, $sy, $grade, $section);
     } else {
-        exportExcel($analyticsData, $sy, $grade);
+        exportExcel($analyticsData, $sy, $grade, $section);
     }
 
 } catch (Exception $e) {
@@ -135,7 +136,18 @@ function getAnalyticsData($conn, $sy, $grade) {
     $stmt->execute();
     $data['balikAralCount'] = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
     
-    // 7. Strand Distribution (for Grade 11 & 12)
+    // 7. IP Community Count
+    $query = "SELECT COUNT(DISTINCT s.StudentID) as count FROM Student s
+              INNER JOIN Enrollment e ON s.StudentID = e.StudentID
+              WHERE $whereClause AND s.IsIPCommunity = 1";
+    $stmt = $conn->prepare($query);
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
+    $stmt->execute();
+    $data['ipCount'] = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+    
+    // 8. Strand Distribution (for Grade 11 & 12)
     $query = "SELECT st.StrandCode, st.StrandName, COUNT(DISTINCT s.StudentID) as count 
               FROM Student s
               INNER JOIN Enrollment e ON s.StudentID = e.StudentID
@@ -151,7 +163,7 @@ function getAnalyticsData($conn, $sy, $grade) {
     $stmt->execute();
     $data['strandDistribution'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // 8. Detailed Statistics by Grade
+    // 9. Detailed Statistics by Grade
     $query = "SELECT 
                 gl.GradeLevelNumber,
                 gl.GradeLevelName,
@@ -173,7 +185,7 @@ function getAnalyticsData($conn, $sy, $grade) {
     $stmt->execute();
     $data['detailedStats'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // 9. Enrollment Trends (Year-over-year)
+    // 10. Enrollment Trends (Year-over-year)
     $query = "SELECT e.AcademicYear, COUNT(DISTINCT s.StudentID) as count
               FROM Student s
               INNER JOIN Enrollment e ON s.StudentID = e.StudentID
@@ -187,8 +199,19 @@ function getAnalyticsData($conn, $sy, $grade) {
     return $data;
 }
 
-function exportCSV($data, $sy, $grade) {
-    $filename = "DJIHS_Analytics_" . date('Y-m-d_His') . ".csv";
+function exportCSV($data, $sy, $grade, $section) {
+    $sectionNames = [
+        'overview' => 'Overview Summary',
+        'trends' => 'Enrollment Trends',
+        'demographics' => 'Demographics',
+        'distribution' => 'Distribution Analysis',
+        'strands' => 'Senior High Strands',
+        'detailed' => 'Detailed Report',
+        'all' => 'Complete Report'
+    ];
+    
+    $sectionName = $sectionNames[$section] ?? 'Analytics';
+    $filename = "DJIHS_" . str_replace(' ', '_', $sectionName) . "_" . date('Y-m-d_His') . ".csv";
     
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="' . $filename . '"');
@@ -197,21 +220,63 @@ function exportCSV($data, $sy, $grade) {
     
     // Header information
     fputcsv($output, ['Don Jose Integrated High School']);
-    fputcsv($output, ['Enrollment Analytics Report']);
+    fputcsv($output, [$sectionName]);
     fputcsv($output, ['Generated: ' . date('F d, Y h:i A')]);
     fputcsv($output, ['School Year: ' . ($sy ?: 'All Years')]);
     fputcsv($output, ['Grade Level: ' . ($grade ? "Grade " . (6 + $grade) : 'All Grades')]);
     fputcsv($output, []);
     
-    // Summary Statistics
-    fputcsv($output, ['SUMMARY STATISTICS']);
+    // Export based on section
+    if ($section === 'all' || $section === 'overview') {
+        exportOverviewCSV($output, $data);
+    }
+    
+    if ($section === 'all' || $section === 'trends') {
+        exportTrendsCSV($output, $data);
+    }
+    
+    if ($section === 'all' || $section === 'demographics') {
+        exportDemographicsCSV($output, $data);
+    }
+    
+    if ($section === 'all' || $section === 'distribution') {
+        exportDistributionCSV($output, $data);
+    }
+    
+    if ($section === 'all' || $section === 'strands') {
+        if (!empty($data['strandDistribution'])) {
+            exportStrandsCSV($output, $data);
+        }
+    }
+    
+    if ($section === 'all' || $section === 'detailed') {
+        exportDetailedCSV($output, $data);
+    }
+    
+    fclose($output);
+    exit;
+}
+
+function exportOverviewCSV($output, $data) {
+    fputcsv($output, ['OVERVIEW SUMMARY']);
     fputcsv($output, ['Total Enrolled Students', $data['totalStudents']]);
     fputcsv($output, ['PWD Students', $data['pwdCount'], number_format(($data['pwdCount'] / max($data['totalStudents'], 1)) * 100, 2) . '%']);
     fputcsv($output, ['Balik-Aral Students', $data['balikAralCount'], number_format(($data['balikAralCount'] / max($data['totalStudents'], 1)) * 100, 2) . '%']);
+    fputcsv($output, ['IP Community Students', $data['ipCount'], number_format(($data['ipCount'] / max($data['totalStudents'], 1)) * 100, 2) . '%']);
     fputcsv($output, []);
-    
-    // Gender Distribution
-    fputcsv($output, ['GENDER DISTRIBUTION']);
+}
+
+function exportTrendsCSV($output, $data) {
+    fputcsv($output, ['ENROLLMENT TRENDS (YEAR-OVER-YEAR)']);
+    fputcsv($output, ['Academic Year', 'Total Students']);
+    foreach ($data['enrollmentTrends'] as $row) {
+        fputcsv($output, ['S.Y. ' . $row['AcademicYear'], $row['count']]);
+    }
+    fputcsv($output, []);
+}
+
+function exportDemographicsCSV($output, $data) {
+    fputcsv($output, ['DEMOGRAPHICS - GENDER DISTRIBUTION']);
     fputcsv($output, ['Gender', 'Count', 'Percentage']);
     foreach ($data['genderDistribution'] as $gender => $count) {
         $percentage = number_format(($count / max($data['totalStudents'], 1)) * 100, 2) . '%';
@@ -219,7 +284,15 @@ function exportCSV($data, $sy, $grade) {
     }
     fputcsv($output, []);
     
-    // Grade Level Distribution
+    fputcsv($output, ['SPECIAL CATEGORIES']);
+    fputcsv($output, ['Category', 'Count', 'Percentage']);
+    fputcsv($output, ['PWD Students', $data['pwdCount'], number_format(($data['pwdCount'] / max($data['totalStudents'], 1)) * 100, 2) . '%']);
+    fputcsv($output, ['Balik-Aral Students', $data['balikAralCount'], number_format(($data['balikAralCount'] / max($data['totalStudents'], 1)) * 100, 2) . '%']);
+    fputcsv($output, ['IP Community', $data['ipCount'], number_format(($data['ipCount'] / max($data['totalStudents'], 1)) * 100, 2) . '%']);
+    fputcsv($output, []);
+}
+
+function exportDistributionCSV($output, $data) {
     fputcsv($output, ['GRADE LEVEL DISTRIBUTION']);
     fputcsv($output, ['Grade Level', 'Student Count']);
     foreach ($data['gradeLevelDistribution'] as $row) {
@@ -227,25 +300,24 @@ function exportCSV($data, $sy, $grade) {
     }
     fputcsv($output, []);
     
-    // Learner Type Distribution
     fputcsv($output, ['LEARNER TYPE DISTRIBUTION']);
     fputcsv($output, ['Learner Type', 'Count']);
     foreach ($data['learnerTypeDistribution'] as $row) {
         fputcsv($output, [str_replace('_', ' ', $row['LearnerType']), $row['count']]);
     }
     fputcsv($output, []);
-    
-    // Strand Distribution (if applicable)
-    if (!empty($data['strandDistribution'])) {
-        fputcsv($output, ['SENIOR HIGH SCHOOL STRAND DISTRIBUTION']);
-        fputcsv($output, ['Strand Code', 'Strand Name', 'Student Count']);
-        foreach ($data['strandDistribution'] as $row) {
-            fputcsv($output, [$row['StrandCode'], $row['StrandName'], $row['count']]);
-        }
-        fputcsv($output, []);
+}
+
+function exportStrandsCSV($output, $data) {
+    fputcsv($output, ['SENIOR HIGH SCHOOL STRAND DISTRIBUTION']);
+    fputcsv($output, ['Strand Code', 'Strand Name', 'Student Count']);
+    foreach ($data['strandDistribution'] as $row) {
+        fputcsv($output, [$row['StrandCode'], $row['StrandName'], $row['count']]);
     }
-    
-    // Detailed Statistics by Grade
+    fputcsv($output, []);
+}
+
+function exportDetailedCSV($output, $data) {
     fputcsv($output, ['DETAILED STATISTICS BY GRADE LEVEL']);
     fputcsv($output, ['Grade Level', 'Total', 'Male', 'Female', 'PWD', 'Balik-Aral']);
     foreach ($data['detailedStats'] as $row) {
@@ -259,20 +331,21 @@ function exportCSV($data, $sy, $grade) {
         ]);
     }
     fputcsv($output, []);
-    
-    // Enrollment Trends
-    fputcsv($output, ['ENROLLMENT TRENDS (YEAR-OVER-YEAR)']);
-    fputcsv($output, ['Academic Year', 'Total Students']);
-    foreach ($data['enrollmentTrends'] as $row) {
-        fputcsv($output, ['S.Y. ' . $row['AcademicYear'], $row['count']]);
-    }
-    
-    fclose($output);
-    exit;
 }
 
-function exportExcel($data, $sy, $grade) {
-    $filename = "DJIHS_Analytics_" . date('Y-m-d_His') . ".xls";
+function exportExcel($data, $sy, $grade, $section) {
+    $sectionNames = [
+        'overview' => 'Overview Summary',
+        'trends' => 'Enrollment Trends',
+        'demographics' => 'Demographics',
+        'distribution' => 'Distribution Analysis',
+        'strands' => 'Senior High Strands',
+        'detailed' => 'Detailed Report',
+        'all' => 'Complete Report'
+    ];
+    
+    $sectionName = $sectionNames[$section] ?? 'Analytics';
+    $filename = "DJIHS_" . str_replace(' ', '_', $sectionName) . "_" . date('Y-m-d_His') . ".xls";
     
     header('Content-Type: application/vnd.ms-excel');
     header('Content-Disposition: attachment; filename="' . $filename . '"');
@@ -290,7 +363,7 @@ function exportExcel($data, $sy, $grade) {
     // Header section
     echo '<table>';
     echo '<tr><td class="header">Don Jose Integrated High School</td></tr>';
-    echo '<tr><td class="subheader">Enrollment Analytics Report</td></tr>';
+    echo '<tr><td class="subheader">' . $sectionName . '</td></tr>';
     echo '<tr><td style="text-align: center;">Generated: ' . date('F d, Y h:i A') . '</td></tr>';
     echo '<tr><td></td></tr>';
     echo '<tr><td><strong>School Year:</strong> ' . ($sy ?: 'All Years') . '</td></tr>';
@@ -298,16 +371,60 @@ function exportExcel($data, $sy, $grade) {
     echo '<tr><td></td></tr>';
     echo '</table>';
     
-    // Summary Statistics
-    echo '<h3 class="section-title">SUMMARY STATISTICS</h3>';
+    // Export based on section
+    if ($section === 'all' || $section === 'overview') {
+        exportOverviewExcel($data);
+    }
+    
+    if ($section === 'all' || $section === 'trends') {
+        exportTrendsExcel($data);
+    }
+    
+    if ($section === 'all' || $section === 'demographics') {
+        exportDemographicsExcel($data);
+    }
+    
+    if ($section === 'all' || $section === 'distribution') {
+        exportDistributionExcel($data);
+    }
+    
+    if ($section === 'all' || $section === 'strands') {
+        if (!empty($data['strandDistribution'])) {
+            exportStrandsExcel($data);
+        }
+    }
+    
+    if ($section === 'all' || $section === 'detailed') {
+        exportDetailedExcel($data);
+    }
+    
+    echo '</body>';
+    echo '</html>';
+    exit;
+}
+
+function exportOverviewExcel($data) {
+    echo '<h3 class="section-title">OVERVIEW SUMMARY</h3>';
     echo '<table border="1" class="data-table">';
     echo '<tr><td><strong>Total Enrolled Students</strong></td><td>' . $data['totalStudents'] . '</td><td></td></tr>';
     echo '<tr><td><strong>PWD Students</strong></td><td>' . $data['pwdCount'] . '</td><td>' . number_format(($data['pwdCount'] / max($data['totalStudents'], 1)) * 100, 2) . '%</td></tr>';
     echo '<tr><td><strong>Balik-Aral Students</strong></td><td>' . $data['balikAralCount'] . '</td><td>' . number_format(($data['balikAralCount'] / max($data['totalStudents'], 1)) * 100, 2) . '%</td></tr>';
+    echo '<tr><td><strong>IP Community Students</strong></td><td>' . $data['ipCount'] . '</td><td>' . number_format(($data['ipCount'] / max($data['totalStudents'], 1)) * 100, 2) . '%</td></tr>';
     echo '</table><br>';
-    
-    // Gender Distribution
-    echo '<h3 class="section-title">GENDER DISTRIBUTION</h3>';
+}
+
+function exportTrendsExcel($data) {
+    echo '<h3 class="section-title">ENROLLMENT TRENDS (YEAR-OVER-YEAR)</h3>';
+    echo '<table border="1" class="data-table">';
+    echo '<tr><th>Academic Year</th><th>Total Students</th></tr>';
+    foreach ($data['enrollmentTrends'] as $row) {
+        echo '<tr><td>S.Y. ' . $row['AcademicYear'] . '</td><td>' . $row['count'] . '</td></tr>';
+    }
+    echo '</table><br>';
+}
+
+function exportDemographicsExcel($data) {
+    echo '<h3 class="section-title">DEMOGRAPHICS - GENDER DISTRIBUTION</h3>';
     echo '<table border="1" class="data-table">';
     echo '<tr><th>Gender</th><th>Count</th><th>Percentage</th></tr>';
     foreach ($data['genderDistribution'] as $gender => $count) {
@@ -316,7 +433,16 @@ function exportExcel($data, $sy, $grade) {
     }
     echo '</table><br>';
     
-    // Grade Level Distribution
+    echo '<h3 class="section-title">SPECIAL CATEGORIES</h3>';
+    echo '<table border="1" class="data-table">';
+    echo '<tr><th>Category</th><th>Count</th><th>Percentage</th></tr>';
+    echo '<tr><td>PWD Students</td><td>' . $data['pwdCount'] . '</td><td>' . number_format(($data['pwdCount'] / max($data['totalStudents'], 1)) * 100, 2) . '%</td></tr>';
+    echo '<tr><td>Balik-Aral Students</td><td>' . $data['balikAralCount'] . '</td><td>' . number_format(($data['balikAralCount'] / max($data['totalStudents'], 1)) * 100, 2) . '%</td></tr>';
+    echo '<tr><td>IP Community</td><td>' . $data['ipCount'] . '</td><td>' . number_format(($data['ipCount'] / max($data['totalStudents'], 1)) * 100, 2) . '%</td></tr>';
+    echo '</table><br>';
+}
+
+function exportDistributionExcel($data) {
     echo '<h3 class="section-title">GRADE LEVEL DISTRIBUTION</h3>';
     echo '<table border="1" class="data-table">';
     echo '<tr><th>Grade Level</th><th>Student Count</th></tr>';
@@ -325,7 +451,6 @@ function exportExcel($data, $sy, $grade) {
     }
     echo '</table><br>';
     
-    // Learner Type Distribution
     echo '<h3 class="section-title">LEARNER TYPE DISTRIBUTION</h3>';
     echo '<table border="1" class="data-table">';
     echo '<tr><th>Learner Type</th><th>Count</th></tr>';
@@ -333,19 +458,19 @@ function exportExcel($data, $sy, $grade) {
         echo '<tr><td>' . str_replace('_', ' ', $row['LearnerType']) . '</td><td>' . $row['count'] . '</td></tr>';
     }
     echo '</table><br>';
-    
-    // Strand Distribution (if applicable)
-    if (!empty($data['strandDistribution'])) {
-        echo '<h3 class="section-title">SENIOR HIGH SCHOOL STRAND DISTRIBUTION</h3>';
-        echo '<table border="1" class="data-table">';
-        echo '<tr><th>Strand Code</th><th>Strand Name</th><th>Student Count</th></tr>';
-        foreach ($data['strandDistribution'] as $row) {
-            echo '<tr><td>' . $row['StrandCode'] . '</td><td>' . $row['StrandName'] . '</td><td>' . $row['count'] . '</td></tr>';
-        }
-        echo '</table><br>';
+}
+
+function exportStrandsExcel($data) {
+    echo '<h3 class="section-title">SENIOR HIGH SCHOOL STRAND DISTRIBUTION</h3>';
+    echo '<table border="1" class="data-table">';
+    echo '<tr><th>Strand Code</th><th>Strand Name</th><th>Student Count</th></tr>';
+    foreach ($data['strandDistribution'] as $row) {
+        echo '<tr><td>' . $row['StrandCode'] . '</td><td>' . $row['StrandName'] . '</td><td>' . $row['count'] . '</td></tr>';
     }
-    
-    // Detailed Statistics by Grade
+    echo '</table><br>';
+}
+
+function exportDetailedExcel($data) {
     echo '<h3 class="section-title">DETAILED STATISTICS BY GRADE LEVEL</h3>';
     echo '<table border="1" class="data-table">';
     echo '<tr><th>Grade Level</th><th>Total</th><th>Male</th><th>Female</th><th>PWD</th><th>Balik-Aral</th></tr>';
@@ -359,19 +484,6 @@ function exportExcel($data, $sy, $grade) {
         echo '<td>' . $row['BalikAral'] . '</td>';
         echo '</tr>';
     }
-    echo '</table><br>';
-    
-    // Enrollment Trends
-    echo '<h3 class="section-title">ENROLLMENT TRENDS (YEAR-OVER-YEAR)</h3>';
-    echo '<table border="1" class="data-table">';
-    echo '<tr><th>Academic Year</th><th>Total Students</th></tr>';
-    foreach ($data['enrollmentTrends'] as $row) {
-        echo '<tr><td>S.Y. ' . $row['AcademicYear'] . '</td><td>' . $row['count'] . '</td></tr>';
-    }
     echo '</table>';
-    
-    echo '</body>';
-    echo '</html>';
-    exit;
 }
 ?>
