@@ -1,0 +1,19 @@
+{
+    "name": "kpraf/djihs-enrollment-system",
+    "description": "School enrollment system backend",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "Kpraf\\DjihsEnrollmentSystem\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "kpraf",
+            "email": "kpraferosa28@gmail.com"
+        }
+    ],
+    "require": {
+        "phpoffice/phpspreadsheet": "^5.4"
+    }
+}

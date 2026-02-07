@@ -1,7 +1,7 @@
 <?php
 class Database {
     private $host = "localhost";
-    private $db_name = "djihs_enrollment";
+    private $db_name = "djihs_enrollment_dummy";
     private $username = "root";
     private $password = "";      // Empty for XAMPP
     public $conn;

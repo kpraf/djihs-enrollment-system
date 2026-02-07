@@ -424,23 +424,36 @@ function autoAssignStudents($conn) {
         }
         
         // Assign students to sections in order
-        $currentSectionIndex = 0;
         $assignedCount = 0;
         
         foreach ($students as $student) {
             // Find next available section that matches student's strand
             $assigned = false;
-            $attempts = 0;
             
-            while (!$assigned && $attempts < count($sections)) {
-                $section = $sections[$currentSectionIndex];
+            // Search through ALL sections to find a matching one
+            for ($i = 0; $i < count($sections); $i++) {
+                $section = $sections[$i];
                 
                 // Check strand compatibility
-                $strandMatch = true;
-                if ($section['StrandID'] !== null && $student['StrandID'] !== null) {
+                // For Grade 11-12: Both section and student must have matching strands
+                // For Grade 7-10: Strands should be null, but we're lenient
+                $strandMatch = false;
+                
+                if ($section['StrandID'] === null && $student['StrandID'] === null) {
+                    // Both have no strand (Grade 7-10) - perfect match
+                    $strandMatch = true;
+                } elseif ($section['StrandID'] !== null && $student['StrandID'] !== null) {
+                    // Both have strands (Grade 11-12) - must match exactly
                     $strandMatch = ($section['StrandID'] == $student['StrandID']);
+                } elseif ($section['StrandID'] === null && $student['StrandID'] !== null) {
+                    // Section has no strand but student does - no match (shouldn't happen in practice)
+                    $strandMatch = false;
+                } elseif ($section['StrandID'] !== null && $student['StrandID'] === null) {
+                    // Section has strand but student doesn't - no match (shouldn't happen in practice)
+                    $strandMatch = false;
                 }
                 
+                // Only assign if strand matches AND section has available space
                 if ($strandMatch && $section['CurrentEnrollment'] < $section['Capacity']) {
                     // Check if there's an old inactive assignment
                     $checkOld = "SELECT AssignmentID FROM sectionassignment 
@@ -480,32 +493,16 @@ function autoAssignStudents($conn) {
                         $stmt->execute();
                     }
                     
-                    // Update section enrollment count
-                    $sections[$currentSectionIndex]['CurrentEnrollment']++;
+                    // Update section enrollment count in our local array
+                    $sections[$i]['CurrentEnrollment']++;
                     $assignedCount++;
                     $assigned = true;
-                    
-                    // If section is now full, move to next section
-                    if ($sections[$currentSectionIndex]['CurrentEnrollment'] >= $sections[$currentSectionIndex]['Capacity']) {
-                        $currentSectionIndex++;
-                        if ($currentSectionIndex >= count($sections)) {
-                            break; // No more sections available
-                        }
-                    }
-                } else {
-                    // Move to next section
-                    $currentSectionIndex++;
-                    if ($currentSectionIndex >= count($sections)) {
-                        break; // No more sections available
-                    }
+                    break; // Move to next student
                 }
-                
-                $attempts++;
             }
             
-            if (!$assigned) {
-                break; // No more available slots
-            }
+            // If student couldn't be assigned (no matching section with space), continue to next student
+            // Don't break the loop - there might be other students with different strands that can be assigned
         }
         
         // Update all section enrollment counts in database

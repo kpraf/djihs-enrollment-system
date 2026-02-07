@@ -1,6 +1,66 @@
-☐ Consistency on the organization of the main pages
+- Need
+☐ Dropout rate
+☐ Performance metrics and indicators only for admin
 
-- ICT Coordinator Dashboard
-  ☐ the visuals of stats needs to be fixed
-Archive:
-  ✔ Consistency in code style (e.g., indentation, naming conventions) @done(25-12-28 00:51)
+- Formula for 
+☐ Enrollment rate
+☐ Dropout rate
+☐ Survival rate
+
+☐ Gross enrollment
+☐ Net enrollment
+☐ Transition
+☐ Survival
+☐ Repetition
+☐ Dropout rate
+
+☐ Make it drop not cancel
+☐ Cannot cancel a student mid enrollment
+☐ Dropout is for approval of ict and registrar
+
+☐ Housekeeping for errors is done by registrar after enrollment for data review
+
+☐ Add tab for performance indicators sa admin
+
+☐ Registrar should see demographics
+
+☐ Enrollment duration
+☐ Late enrollment duration
+
+☐ Add data from 3 yrs before
+☐ 2 yrs back and present for baseline
+
+☐ Option for transferring in and out of school
+
+☐ Check transfer in students during enrollment 
+
+☐ Validation error in importing student data
+
+☐ Registrar can add account
+
+☐ Limit admin to 1
+
+☐ Upon deployment, put all accounts
+
+- Registrar
+☐ Add school year to total students
+☐ This year and current year
+☐ Add analytics to registrar
+
+☐ Dropdown school year in enrollment
+
+- Adviser enrolls
+☐ Registrar or principal approves for revision
+
+- Key teacher
+☐ Dashbaord cannot create new section
+☐ Should see dropouts in a section and in the whole batch
+☐ See student list (see if active or dropout or transfer)
+
+- Adviser registrar
+☐ Document tracking (birth cert etc)
+☐ Include date of passing documents and history
+☐ Date of enrollment, drop, etc
+
+☐ Ask about local server
+✔ Ask about LRN being 12 digit @done(26-02-06 23:01)

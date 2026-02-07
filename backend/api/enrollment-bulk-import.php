@@ -61,23 +61,37 @@ class BulkImportAPI {
                         continue;
                     }
                     
-                    // Check if LRN already exists
-                    if ($this->lrnExists($student['lrn'])) {
-                        $results['errors'][] = "Row {$rowNum}: LRN {$student['lrn']} already exists";
+                    // =====================================================
+                    // CRITICAL: Check if student exists and enrollment status
+                    // =====================================================
+                    $lrnCheck = $this->checkLRNAndEnrollment($student['lrn'], $student['schoolYear']);
+                    
+                    if ($lrnCheck === true) {
+                        // Student already enrolled in this academic year - BLOCK
+                        $results['errors'][] = "Row {$rowNum}: LRN {$student['lrn']} already enrolled in {$student['schoolYear']}";
                         $results['failed']++;
                         continue;
                     }
                     
-                    // Insert student
-                    $studentID = $this->insertStudent($student);
+                    $studentID = null;
+                    
+                    if (is_array($lrnCheck) && $lrnCheck['exists']) {
+                        // Student exists but not enrolled in this year
+                        // UPDATE student info and CREATE new enrollment
+                        $studentID = $lrnCheck['studentID'];
+                        $this->updateStudent($studentID, $student);
+                    } else {
+                        // New student - INSERT
+                        $studentID = $this->insertStudent($student);
+                    }
                     
                     if (!$studentID) {
-                        $results['errors'][] = "Row {$rowNum}: Failed to insert student";
+                        $results['errors'][] = "Row {$rowNum}: Failed to insert/update student";
                         $results['failed']++;
                         continue;
                     }
                     
-                    // Insert enrollment
+                    // Insert enrollment for this academic year
                     $enrollmentID = $this->insertEnrollment($studentID, $student);
                     
                     if (!$enrollmentID) {
@@ -137,10 +151,38 @@ class BulkImportAPI {
         return true;
     }
     
-    private function lrnExists($lrn) {
+    /**
+     * Check if LRN exists and if already enrolled in given academic year
+     * 
+     * @param string $lrn - Student LRN
+     * @param string $academicYear - Academic year (e.g., "2025-2026")
+     * @return mixed - true if enrolled this year, array with studentID if exists but not enrolled, false if new
+     */
+    private function checkLRNAndEnrollment($lrn, $academicYear) {
+        // Check if student exists in student table
         $stmt = $this->conn->prepare("SELECT StudentID FROM student WHERE LRN = ?");
         $stmt->execute([$lrn]);
-        return $stmt->fetch() !== false;
+        $student = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$student) {
+            return false; // Student doesn't exist at all - OK to create new
+        }
+        
+        // Student exists - check if already enrolled in THIS academic year
+        $stmt = $this->conn->prepare(
+            "SELECT EnrollmentID 
+             FROM enrollment 
+             WHERE StudentID = ? AND AcademicYear = ?"
+        );
+        $stmt->execute([$student['StudentID'], $academicYear]);
+        $enrollment = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($enrollment) {
+            return true; // Already enrolled in this year - BLOCK
+        }
+        
+        // Student exists but not enrolled in this year - return StudentID to update
+        return ['exists' => true, 'studentID' => $student['StudentID']];
     }
     
     private function insertStudent($data) {
@@ -216,6 +258,77 @@ class BulkImportAPI {
         }
         
         return false;
+    }
+    
+    /**
+     * Update existing student information
+     * This happens when a student exists from a previous year
+     * and is enrolling in a new academic year
+     */
+    private function updateStudent($studentID, $data) {
+        $sql = "UPDATE student SET
+            LastName = ?,
+            FirstName = ?,
+            MiddleName = ?,
+            DateOfBirth = ?,
+            Age = ?,
+            Gender = ?,
+            Religion = ?,
+            IsIPCommunity = ?,
+            IPCommunitySpecify = ?,
+            IsPWD = ?,
+            PWDSpecify = ?,
+            HouseNumber = ?,
+            SitioStreet = ?,
+            Barangay = ?,
+            Municipality = ?,
+            Province = ?,
+            GuardianLastName = ?,
+            GuardianFirstName = ?,
+            GuardianMiddleName = ?,
+            ContactNumber = ?,
+            Weight = ?,
+            Height = ?,
+            Is4PsBeneficiary = ?,
+            ZipCode = ?,
+            Country = ?,
+            UpdatedBy = ?,
+            UpdatedAt = NOW()
+        WHERE StudentID = ?";
+        
+        $stmt = $this->conn->prepare($sql);
+        
+        $params = [
+            $data['lastName'],
+            $data['firstName'],
+            $data['middleName'] ?? null,
+            $data['birthdate'],
+            $data['age'] ?? null,
+            $data['sex'],
+            $data['religion'] ?? null,
+            $data['isIPCommunity'] ? 1 : 0,
+            $data['ipCommunitySpecify'] ?? null,
+            $data['isPWD'] ? 1 : 0,
+            $data['pwdSpecify'] ?? null,
+            $data['houseNumber'] ?? null,
+            $data['sitioStreet'] ?? null,
+            $data['barangay'] ?? '',
+            $data['municipality'] ?? '',
+            $data['province'] ?? '',
+            $data['guardianLastName'] ?? null,
+            $data['guardianFirstName'] ?? null,
+            $data['guardianMiddleName'] ?? null,
+            $data['contactNumber'] ?? '',
+            $data['weight'] ?? null,
+            $data['height'] ?? null,
+            $data['is4PsBeneficiary'] ? 1 : 0,
+            $data['zipCode'] ?? null,
+            $data['country'] ?? 'Philippines',
+            $this->currentUserID,
+            $studentID
+        ];
+        
+        return $stmt->execute($params);
     }
     
     private function insertEnrollment($studentID, $data) {
