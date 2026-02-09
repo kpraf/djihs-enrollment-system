@@ -277,6 +277,84 @@ class StudentsAPI {
             ];
         }
     }
+
+    /**
+     * Get enrollment statistics by academic year
+     */
+    public function getEnrollmentStatsByYear($academicYear = null) {
+        try {
+            $stats = [];
+            
+            // Build WHERE clause based on whether year is specified
+            $yearCondition = "";
+            if ($academicYear && $academicYear !== 'all') {
+                $yearCondition = "e.AcademicYear = :academicYear AND";
+            }
+            
+            // Get pending count
+            $query = "SELECT COUNT(*) as count 
+                    FROM Enrollment e 
+                    WHERE $yearCondition e.Status = 'Pending'";
+            $query = str_replace("WHERE  e.Status", "WHERE e.Status", $query); // Clean up double space
+            $stmt = $this->conn->prepare($query);
+            if ($academicYear && $academicYear !== 'all') {
+                $stmt->bindParam(':academicYear', $academicYear);
+            }
+            $stmt->execute();
+            $stats['pending'] = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+            
+            // Get confirmed count
+            $query = "SELECT COUNT(*) as count 
+                    FROM Enrollment e 
+                    WHERE $yearCondition e.Status = 'Confirmed'";
+            $query = str_replace("WHERE  e.Status", "WHERE e.Status", $query);
+            $stmt = $this->conn->prepare($query);
+            if ($academicYear && $academicYear !== 'all') {
+                $stmt->bindParam(':academicYear', $academicYear);
+            }
+            $stmt->execute();
+            $stats['confirmed'] = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+            
+            // Get total active (Confirmed + Pending)
+            $query = "SELECT COUNT(*) as count 
+                    FROM Enrollment e 
+                    WHERE $yearCondition e.Status IN ('Confirmed', 'Pending')";
+            $query = str_replace("WHERE  e.Status", "WHERE e.Status", $query);
+            $stmt = $this->conn->prepare($query);
+            if ($academicYear && $academicYear !== 'all') {
+                $stmt->bindParam(':academicYear', $academicYear);
+            }
+            $stmt->execute();
+            $stats['total'] = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+            
+            // Get transferees count (EnrollmentType = 'Transferee' OR LearnerType contains 'Transferee')
+            $query = "SELECT COUNT(*) as count 
+                    FROM Enrollment e 
+                    WHERE $yearCondition (
+                        e.EnrollmentType = 'Transferee' 
+                        OR e.LearnerType = 'Irregular_Transferee'
+                    ) AND e.Status IN ('Confirmed', 'Pending')";
+            $query = str_replace("WHERE  (", "WHERE (", $query);
+            $stmt = $this->conn->prepare($query);
+            if ($academicYear && $academicYear !== 'all') {
+                $stmt->bindParam(':academicYear', $academicYear);
+            }
+            $stmt->execute();
+            $stats['transferees'] = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+            
+            return [
+                'success' => true,
+                'data' => $stats,
+                'academicYear' => $academicYear
+            ];
+            
+        } catch (PDOException $e) {
+            return [
+                'success' => false,
+                'message' => 'Error fetching enrollment statistics: ' . $e->getMessage()
+            ];
+        }
+    }
 }
 
 // =====================================================
@@ -336,6 +414,11 @@ try {
 
             } elseif ($action === 'get_strands') {
                 $result = $api->getStrands();
+                echo json_encode($result);
+
+            } elseif ($action === 'enrollment_stats') {
+                $year = $_GET['year'] ?? 'all';
+                $result = $api->getEnrollmentStatsByYear($year);
                 echo json_encode($result);
                 
             } else {

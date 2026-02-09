@@ -90,6 +90,10 @@
                             <span class="material-icons-outlined text-[20px]">view_quilt</span>
                             <span class="text-sm font-medium">Manage Sections</span>
                         </a>
+                        <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="manage-strands.html">
+                            <span class="material-icons-outlined text-[20px]">school</span>
+                            <span class="text-sm font-medium">Manage Strands</span>
+                        </a>
                         <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="assign-students.html">
                             <span class="material-icons-outlined text-[20px]">group_add</span>
                             <span class="text-sm font-medium">Assign Students</span>
@@ -233,15 +237,6 @@
         }
 
         function setupEventListeners() {
-            document.querySelectorAll('.logout-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    if (confirm('Are you sure you want to logout?')) {
-                        localStorage.removeItem('isLoggedIn');
-                        localStorage.removeItem('user');
-                        window.location.href = '../login.html';
-                    }
-                });
-            });
         }
 
         async function loadSchoolYears() {

@@ -1,7 +1,7 @@
 // =====================================================
 // Enhanced Student Management Handler
 // File: js/student-management.js
-// Uses separate student-update.php for edit operations
+// Updated: 2026-02-08 - Added Dropped, Transferred In/Out statuses
 // =====================================================
 
 class StudentManagementHandler {
@@ -33,6 +33,9 @@ class StudentManagementHandler {
         this.loadStrands();
         this.loadStudents();
         this.displayUserInfo();
+        // Initialize new handlers
+        this.documentHandler = new DocumentSubmissionHandler();
+        this.revisionHandler = new RevisionRequestHandler();
     }
 
     displayUserInfo() {
@@ -86,17 +89,6 @@ class StudentManagementHandler {
         if (applyBtn) applyBtn.addEventListener('click', () => this.applyFilters());
         if (clearBtn) clearBtn.addEventListener('click', () => this.clearFilters());
         if (addBtn) addBtn.addEventListener('click', () => this.addNewStudent());
-
-        // Logout button
-        document.querySelectorAll('.logout-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                if (confirm('Are you sure you want to logout?')) {
-                    localStorage.removeItem('isLoggedIn');
-                    localStorage.removeItem('user');
-                    window.location.href = '../login.html';
-                }
-            });
-        });
 
         // Select all checkbox
         const selectAllCheckbox = document.querySelector('thead input[type="checkbox"]');
@@ -233,7 +225,7 @@ class StudentManagementHandler {
             if (currentValue) sectionFilter.value = currentValue;
         }
 
-        // Populate Status
+        // Populate Status - Updated with new statuses
         const statusFilter = document.getElementById('enrollment-status');
         if (statusFilter) {
             const currentValue = statusFilter.value;
@@ -245,7 +237,10 @@ class StudentManagementHandler {
                 'Pending': 'Pending',
                 'For_Review': 'For Review',
                 'Cancelled': 'Cancelled',
-                'Withdrawn': 'Withdrawn'
+                'Dropped': 'Dropped',
+                'Transferred_In': 'Transferred In',
+                'Transferred_Out': 'Transferred Out',
+                'Graduated': 'Graduated'
             };
 
             const displayStatuses = new Set();
@@ -339,7 +334,10 @@ class StudentManagementHandler {
             'Pending': 'Pending',
             'For_Review': 'For Review',
             'Cancelled': 'Cancelled',
-            'Withdrawn': 'Withdrawn'
+            'Dropped': 'Dropped',
+            'Transferred_In': 'Transferred In',
+            'Transferred_Out': 'Transferred Out',
+            'Graduated': 'Graduated'
         };
         return statusMap[status] || status;
     }
@@ -517,11 +515,38 @@ class StudentManagementHandler {
         const normalizedStatus = this.normalizeStatus(status);
         
         const statusMap = {
-            'Enrolled': { class: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300', text: 'Enrolled' },
-            'Pending': { class: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300', text: 'Pending' },
-            'For Review': { class: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300', text: 'For Review' },
-            'Withdrawn': { class: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300', text: 'Withdrawn' },
-            'Cancelled': { class: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300', text: 'Cancelled' }
+            'Enrolled': { 
+                class: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300', 
+                text: 'Enrolled' 
+            },
+            'Pending': { 
+                class: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300', 
+                text: 'Pending' 
+            },
+            'For Review': { 
+                class: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300', 
+                text: 'For Review' 
+            },
+            'Cancelled': { 
+                class: 'bg-gray-100 text-gray-800 dark:bg-gray-900/40 dark:text-gray-300', 
+                text: 'Cancelled' 
+            },
+            'Dropped': { 
+                class: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300', 
+                text: 'Dropout' 
+            },
+            'Transferred In': { 
+                class: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300', 
+                text: 'Transferred In' 
+            },
+            'Transferred Out': { 
+                class: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300', 
+                text: 'Transferred Out' 
+            },
+            'Graduated': { 
+                class: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300', 
+                text: 'Graduated' 
+            }
         };
 
         const config = statusMap[normalizedStatus] || statusMap['Pending'];
@@ -622,6 +647,14 @@ class StudentManagementHandler {
     }
 
     async editStudent(studentId) {
+        // Advisers can edit (changes go for approval)
+        // Registrar/ICT can view but should approve changes, not edit directly
+        const userRole = this.currentUser.Role;
+        const canSubmitEdit = userRole === 'Adviser';
+        if (!canSubmitEdit) {
+            alert('Only Advisers can submit student information edits. Registrars and ICT Coordinators approve these changes.');
+            return;
+        }
         try {
             const response = await fetch(`../backend/api/students.php?action=details&id=${studentId}`);
             const result = await response.json();
@@ -980,9 +1013,10 @@ class StudentManagementHandler {
                             <select id="edit-status" ${isEditable} class="${inputClass}">
                                 <option value="Active" ${student.EnrollmentStatus === 'Active' ? 'selected' : ''}>Active</option>
                                 <option value="Cancelled" ${student.EnrollmentStatus === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
-                                <option value="Transferred" ${student.EnrollmentStatus === 'Transferred' ? 'selected' : ''}>Transferred</option>
-                                <option value="Graduated" ${student.EnrollmentStatus === 'Graduated' ? 'selected' : ''}>Graduated</option>
                                 <option value="Dropped" ${student.EnrollmentStatus === 'Dropped' ? 'selected' : ''}>Dropped</option>
+                                <option value="Transferred_In" ${student.EnrollmentStatus === 'Transferred_In' ? 'selected' : ''}>Transferred In</option>
+                                <option value="Transferred_Out" ${student.EnrollmentStatus === 'Transferred_Out' ? 'selected' : ''}>Transferred Out</option>
+                                <option value="Graduated" ${student.EnrollmentStatus === 'Graduated' ? 'selected' : ''}>Graduated</option>
                             </select>
                         </div>
                     </div>
@@ -997,8 +1031,12 @@ class StudentManagementHandler {
                         </h4>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Transferee</label>
-                                <p class="text-base text-gray-900 dark:text-white">${student.IsTransferee ? 'Yes' : 'No'}</p>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Transfer Status</label>
+                                <p class="text-base text-gray-900 dark:text-white">
+                                    ${student.EnrollmentStatus === 'Transferred_In' ? 'Transferred In' : 
+                                      student.EnrollmentStatus === 'Transferred_Out' ? 'Transferred Out' : 
+                                      student.IsTransferee ? 'Yes (Legacy)' : 'No'}
+                                </p>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Created At</label>
@@ -1117,7 +1155,7 @@ class StudentManagementHandler {
                 StrandID: document.getElementById('edit-strand')?.value || null,
                 SectionID: document.getElementById('edit-section')?.value || null,
                 AcademicYear: document.getElementById('edit-academic-year')?.value,
-                EnrollmentStatus: document.getElementById('edit-status')?.value,
+                EnrollmentStatus: document.getElementById('edit-status')?.value || null,
                 UpdatedBy: this.currentUser.UserID
             };
 
@@ -1127,7 +1165,19 @@ class StudentManagementHandler {
                 return;
             }
 
-            const response = await fetch('../backend/api/student-update.php?action=update', {
+            // Check user role - Advisers submit revision requests
+                const userRole = this.currentUser.Role;
+
+                let endpoint, successMessage;
+                if (userRole === 'Adviser') {
+                    endpoint = '../backend/api/revision-requests.php?action=create_bulk_update';
+                    successMessage = 'Changes submitted for approval. A registrar will review your updates.';
+                } else {
+                    endpoint = '../backend/api/student-update.php?action=update';
+                    successMessage = 'Student information updated successfully!';
+                }
+
+                const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1138,7 +1188,7 @@ class StudentManagementHandler {
             const result = await response.json();
 
             if (result.success) {
-                alert('Student information updated successfully!');
+                alert(successMessage);
                 document.getElementById('studentDetailsModal').remove();
                 this.loadStudents(); // Reload the student list
             } else {
@@ -1157,30 +1207,109 @@ class StudentManagementHandler {
     }
 
     showMoreOptions(studentId) {
+        const student = this.students.find(s => s.StudentID === studentId);
+        const currentStatus = student?.EnrollmentStatus || student?.Status;
+
+        const userRole = this.currentUser.Role;
+        // Role-based permissions:
+        // - Advisers: Can EDIT (submits for approval), REQUEST REVISIONS, and MANAGE DOCUMENTS
+        // - Registrar/ICT: Can APPROVE revisions, MANAGE DOCUMENTS, and change status
+        const isRegistrar = userRole === 'Registrar';
+        const isAdviser = userRole === 'Adviser';
+        const isICTCoordinator = userRole === 'ICT_Coordinator';
+        const isApprover = isRegistrar || isICTCoordinator; // Can approve changes
+        const canSubmitEdits = isAdviser; // Can edit for approval
+        const canManageDocuments = isAdviser || isRegistrar || isICTCoordinator; // ALL can manage documents
+        
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
         modal.innerHTML = `
             <div class="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full">
                 <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                     <h2 class="text-xl font-bold text-gray-900 dark:text-white">Student Actions</h2>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Role: ${userRole}</p>
                 </div>
                 <div class="p-6 space-y-2">
                     <button class="btn-modal-view w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-3">
                         <span class="material-symbols-outlined text-gray-600 dark:text-gray-400">visibility</span>
                         <span class="text-gray-900 dark:text-white">View Full Details</span>
                     </button>
-                    <button class="btn-modal-edit w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-3">
-                        <span class="material-symbols-outlined text-gray-600 dark:text-gray-400">edit</span>
-                        <span class="text-gray-900 dark:text-white">Edit Information</span>
-                    </button>
+                    
+                    <!-- Advisers can EDIT (submits for approval) -->
+                    ${canSubmitEdits ? `
+                        <button class="btn-modal-edit w-full text-left px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg flex items-center gap-3 text-blue-600 dark:text-blue-400">
+                            <span class="material-symbols-outlined">edit</span>
+                            <div class="flex-1">
+                                <span class="block">Edit Information</span>
+                                <span class="text-xs opacity-75">Submit changes for approval</span>
+                            </div>
+                        </button>
+                    ` : ''}
+                    
+                    <!-- Advisers can REQUEST specific revisions -->
+                    ${canSubmitEdits ? `
+                        <button class="btn-modal-revision w-full text-left px-4 py-3 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg flex items-center gap-3 text-purple-600 dark:text-purple-400">
+                            <span class="material-symbols-outlined">request_quote</span>
+                            <div class="flex-1">
+                                <span class="block">Request Specific Revision</span>
+                                <span class="text-xs opacity-75">For corrections requiring justification</span>
+                            </div>
+                        </button>
+                    ` : ''}
+                    
+                    <!-- Approvers (Registrar/ICT) can VIEW PENDING REVISIONS -->
+                    ${isApprover ? `
+                        <button class="btn-modal-review-revisions w-full text-left px-4 py-3 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg flex items-center gap-3 text-orange-600 dark:text-orange-400">
+                            <span class="material-symbols-outlined">fact_check</span>
+                            <div class="flex-1">
+                                <span class="block">Review Pending Revisions</span>
+                                <span class="text-xs opacity-75">Approve or reject changes</span>
+                            </div>
+                        </button>
+                    ` : ''}
+
+                    <!-- EVERYONE (Adviser, Registrar, ICT) can manage documents -->
+                    ${canManageDocuments ? `
+                        <button class="btn-modal-documents w-full text-left px-4 py-3 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg flex items-center gap-3 text-indigo-600 dark:text-indigo-400">
+                            <span class="material-symbols-outlined">description</span>
+                            <div class="flex-1">
+                                <span class="block">Document Checklist</span>
+                                <span class="text-xs opacity-75">Manage student documents</span>
+                            </div>
+                        </button>
+                    ` : ''}
+
+                    <!-- Everyone can add remarks -->
                     <button class="btn-modal-remarks w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-3">
                         <span class="material-symbols-outlined text-gray-600 dark:text-gray-400">comment</span>
                         <span class="text-gray-900 dark:text-white">Add Remarks</span>
                     </button>
-                    <button class="btn-modal-cancel w-full text-left px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg flex items-center gap-3 text-red-600 dark:text-red-400">
-                        <span class="material-symbols-outlined">cancel</span>
-                        <span>Cancel Enrollment</span>
-                    </button>
+                    
+                    <!-- Only Registrar and ICT can manage status changes directly -->
+                    ${isApprover ? `
+                        <div class="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+                        
+                        ${currentStatus !== 'Cancelled' ? `
+                            <button class="btn-modal-cancel w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-900/20 rounded-lg flex items-center gap-3 text-gray-600 dark:text-gray-400">
+                                <span class="material-symbols-outlined">cancel</span>
+                                <span>Cancel Enrollment</span>
+                            </button>
+                        ` : ''}
+                        
+                        ${currentStatus !== 'Dropped' ? `
+                            <button class="btn-modal-dropout w-full text-left px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg flex items-center gap-3 text-red-600 dark:text-red-400">
+                                <span class="material-symbols-outlined">person_off</span>
+                                <span>Mark as Dropout</span>
+                            </button>
+                        ` : ''}
+                        
+                        ${currentStatus !== 'Transferred_Out' ? `
+                            <button class="btn-modal-transfer-out w-full text-left px-4 py-3 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg flex items-center gap-3 text-purple-600 dark:text-purple-400">
+                                <span class="material-symbols-outlined">logout</span>
+                                <span>Transfer Out</span>
+                            </button>
+                        ` : ''}
+                    ` : ''}
                 </div>
                 <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
                     <button class="btn-modal-close w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
@@ -1192,28 +1321,167 @@ class StudentManagementHandler {
         document.body.appendChild(modal);
 
         // Bind modal buttons
-        modal.querySelector('.btn-modal-view').addEventListener('click', () => {
+        modal.querySelector('.btn-modal-view')?.addEventListener('click', () => {
             this.viewStudent(studentId);
             modal.remove();
         });
         
-        modal.querySelector('.btn-modal-edit').addEventListener('click', () => {
+        modal.querySelector('.btn-modal-edit')?.addEventListener('click', () => {
             this.editStudent(studentId);
             modal.remove();
         });
         
-        modal.querySelector('.btn-modal-remarks').addEventListener('click', () => {
+        modal.querySelector('.btn-modal-remarks')?.addEventListener('click', () => {
             this.addRemarks(studentId);
             modal.remove();
         });
         
-        modal.querySelector('.btn-modal-cancel').addEventListener('click', () => {
-            this.cancelStudent(studentId);
+        modal.querySelector('.btn-modal-cancel')?.addEventListener('click', () => {
+            this.cancelEnrollment(studentId);
             modal.remove();
         });
         
-        modal.querySelector('.btn-modal-close').addEventListener('click', () => {
+        modal.querySelector('.btn-modal-dropout')?.addEventListener('click', () => {
+            this.markAsDropout(studentId);
             modal.remove();
+        });
+        
+        modal.querySelector('.btn-modal-transfer-out')?.addEventListener('click', () => {
+            this.transferOut(studentId);
+            modal.remove();
+        });
+        
+        modal.querySelector('.btn-modal-close')?.addEventListener('click', () => {
+            modal.remove();
+        });
+
+        // Bind document checklist (for Advisers, Registrars, and ICT Coordinators)
+        modal.querySelector('.btn-modal-documents')?.addEventListener('click', () => {
+            this.documentHandler.showDocumentChecklist(
+                studentId, 
+                student.FullName,
+                student.EnrollmentID
+            );
+            modal.remove();
+        });
+
+        // Bind revision request (for Advisers)
+        modal.querySelector('.btn-modal-revision')?.addEventListener('click', () => {
+            this.revisionHandler.showRevisionRequestForm(student);
+            modal.remove();
+        });
+
+        // Bind review revisions (for Registrar and ICT Coordinator approvers)
+        modal.querySelector('.btn-modal-review-revisions')?.addEventListener('click', () => {
+            this.showPendingRevisionsForStudent(studentId);
+            modal.remove();
+        });
+    }
+
+    /**
+     * Show pending revision requests for a specific student (for approvers)
+     */
+
+    async showPendingRevisionsForStudent(studentId) {
+        try {
+            const response = await fetch(`../backend/api/revision-requests.php?action=get_by_student&student_id=${studentId}`);
+            const result = await response.json();
+            if (!result.success) {
+                alert('Error loading revision requests: ' + result.message);
+                return;
+            }
+            const requests = result.data || [];
+            if (requests.length === 0) {
+                alert('No pending revision requests found for this student.');
+                return;
+            }
+            this.showRevisionListModal(requests, studentId);
+        } catch (error) {
+            console.error('Error loading revisions:', error);
+            alert('Error loading revision requests');
+        }
+    }
+
+    /**
+     * Display list of revision requests
+     */
+    showRevisionListModal(requests, studentId) {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+        
+        modal.innerHTML = `
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between z-10">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">Pending Revision Requests</h3>
+                    <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                        <span class="material-icons-outlined">close</span>
+                    </button>
+                </div>
+                
+                <div class="p-6 space-y-4">
+                    ${requests.map(req => {
+                        const priorityColors = {
+                            'Urgent': 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+                            'High': 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+                            'Normal': 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
+                        };
+                        
+                        return `
+                            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors cursor-pointer" data-request-id="${req.RequestID}">
+                                <div class="flex items-start justify-between mb-3">
+                                    <div>
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <h4 class="font-semibold text-gray-900 dark:text-white">Request #${req.RequestID}</h4>
+                                            <span class="px-2 py-0.5 rounded-full text-xs font-medium ${priorityColors[req.Priority] || priorityColors['Normal']}">
+                                                ${req.Priority}
+                                            </span>
+                                        </div>
+                                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                                            ${req.RequestType.replace(/_/g, ' ')} • ${new Date(req.CreatedAt).toLocaleDateString()}
+                                        </p>
+                                    </div>
+                                    <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300">
+                                        Pending
+                                    </span>
+                                </div>
+                                <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                                    <strong>Requested by:</strong> ${req.RequestedByName} (${req.RequesterRole})
+                                </p>
+                                <button class="btn-review-request text-sm text-primary hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 font-medium" data-request-id="${req.RequestID}">
+                                    Review Request →
+                                </button>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                
+                <div class="sticky bottom-0 bg-gray-50 dark:bg-gray-900 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+                    <button onclick="this.closest('.fixed').remove()" class="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
+                        Close
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        // Bind review buttons
+        modal.querySelectorAll('.btn-review-request').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const requestId = e.currentTarget.dataset.requestId;
+                modal.remove();
+                this.revisionHandler.showApprovalInterface(requestId);
+            });
+        });
+        // Also allow clicking the whole card
+        modal.querySelectorAll('[data-request-id]').forEach(card => {
+            if (!card.classList.contains('btn-review-request')) {
+                card.addEventListener('click', (e) => {
+                    const requestId = e.currentTarget.dataset.requestId;
+                    modal.remove();
+                    this.revisionHandler.showApprovalInterface(requestId);
+                });
+            }
         });
     }
 
@@ -1281,16 +1549,16 @@ class StudentManagementHandler {
         }
     }
 
-    cancelStudent(studentId) {
+    cancelEnrollment(studentId) {
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
         modal.innerHTML = `
             <div class="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full">
                 <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                    <h2 class="text-xl font-bold text-red-600 dark:text-red-400">Cancel Enrollment</h2>
+                    <h2 class="text-xl font-bold text-gray-600 dark:text-gray-400">Cancel Enrollment</h2>
                 </div>
                 <div class="p-6">
-                    <p class="text-gray-700 dark:text-gray-300 mb-4">Are you sure you want to cancel this student's enrollment? This action cannot be undone.</p>
+                    <p class="text-gray-700 dark:text-gray-300 mb-4">Cancel this enrollment? This is typically used for administrative cancellations (e.g., never attended, enrolled in error).</p>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Reason for Cancellation</label>
                     <textarea id="cancel-reason" rows="3" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary" placeholder="Enter reason..."></textarea>
                 </div>
@@ -1298,7 +1566,7 @@ class StudentManagementHandler {
                     <button class="btn-cancel-no px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
                         No, Keep Enrollment
                     </button>
-                    <button class="btn-cancel-yes px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                    <button class="btn-cancel-yes px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
                         Yes, Cancel Enrollment
                     </button>
                 </div>
@@ -1309,41 +1577,167 @@ class StudentManagementHandler {
         modal.querySelector('.btn-cancel-no').addEventListener('click', () => modal.remove());
         modal.querySelector('.btn-cancel-yes').addEventListener('click', () => {
             const reason = document.getElementById('cancel-reason').value;
-            this.confirmCancel(studentId, reason);
+            this.confirmStatusChange(studentId, 'Cancelled', reason);
             modal.remove();
         });
     }
 
-    async confirmCancel(studentId, reason) {
+    markAsDropout(studentId) {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+        
+        // Check if user can approve directly
+        const userRole = this.currentUser.Role;
+        const canApproveDirectly = ['Registrar', 'ICT_Coordinator'].includes(userRole);
+        
+        modal.innerHTML = `
+            <div class="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-xl font-bold text-red-600 dark:text-red-400">Mark as Dropout</h2>
+                    ${!canApproveDirectly ? `
+                        <p class="text-xs text-yellow-600 dark:text-yellow-400 mt-2">
+                            ⚠️ This request requires approval from Registrar or ICT Coordinator
+                        </p>
+                    ` : ''}
+                </div>
+                <div class="p-6">
+                    <p class="text-gray-700 dark:text-gray-300 mb-4">
+                        ${canApproveDirectly 
+                            ? 'Mark this student as a dropout? This indicates the student left school after attending.' 
+                            : 'Request to mark this student as a dropout? Your request will be sent for approval.'}
+                    </p>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Reason for Dropout <span class="text-red-600">*</span>
+                    </label>
+                    <textarea id="dropout-reason" rows="3" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary" placeholder="Enter detailed reason..."></textarea>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex gap-3 justify-end">
+                    <button class="btn-dropout-no px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
+                        Cancel
+                    </button>
+                    <button class="btn-dropout-yes px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                        ${canApproveDirectly ? 'Confirm Dropout' : 'Submit Request'}
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        modal.querySelector('.btn-dropout-no').addEventListener('click', () => modal.remove());
+        modal.querySelector('.btn-dropout-yes').addEventListener('click', () => {
+            const reason = document.getElementById('dropout-reason').value;
+            this.confirmStatusChange(studentId, 'Dropped', reason);
+            modal.remove();
+        });
+    }
+
+    transferOut(studentId) {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+        
+        // Check if user can approve directly
+        const userRole = this.currentUser.Role;
+        const canApproveDirectly = ['Registrar', 'ICT_Coordinator'].includes(userRole);
+        
+        modal.innerHTML = `
+            <div class="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-xl font-bold text-purple-600 dark:text-purple-400">Transfer Out Student</h2>
+                    ${!canApproveDirectly ? `
+                        <p class="text-xs text-yellow-600 dark:text-yellow-400 mt-2">
+                            ⚠️ This request requires approval from Registrar or ICT Coordinator
+                        </p>
+                    ` : ''}
+                </div>
+                <div class="p-6">
+                    <p class="text-gray-700 dark:text-gray-300 mb-4">
+                        ${canApproveDirectly 
+                            ? 'Transfer this student to another school?' 
+                            : 'Request to transfer this student out? Your request will be sent for approval.'}
+                    </p>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Transfer To (School Name) <span class="text-red-600">*</span>
+                            </label>
+                            <input type="text" id="transfer-school" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary" placeholder="Enter destination school..."/>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Reason for Transfer <span class="text-red-600">*</span>
+                            </label>
+                            <textarea id="transfer-reason" rows="3" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary" placeholder="Enter reason..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex gap-3 justify-end">
+                    <button class="btn-transfer-no px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
+                        Cancel
+                    </button>
+                    <button class="btn-transfer-yes px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                        ${canApproveDirectly ? 'Confirm Transfer' : 'Submit Request'}
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        modal.querySelector('.btn-transfer-no').addEventListener('click', () => modal.remove());
+        modal.querySelector('.btn-transfer-yes').addEventListener('click', () => {
+            const school = document.getElementById('transfer-school').value;
+            const reason = document.getElementById('transfer-reason').value;
+            
+            if (!school.trim()) {
+                alert('Please enter the destination school name');
+                return;
+            }
+            
+            this.confirmStatusChange(studentId, 'Transferred_Out', reason, school);
+            modal.remove();
+        });
+    }
+
+    async confirmStatusChange(studentId, newStatus, reason, additionalInfo = null) {
         if (!reason.trim()) {
-            alert('Please provide a reason for cancellation');
+            alert('Please provide a reason');
             return;
         }
 
         try {
-            const response = await fetch('../backend/api/student-update.php?action=cancel_enrollment', {
+            const response = await fetch('../backend/api/student-update.php?action=change_status', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     StudentID: studentId,
+                    NewStatus: newStatus,
                     Reason: reason,
-                    UserID: this.currentUser.UserID
+                    UserID: this.currentUser.UserID,
+                    AdditionalInfo: additionalInfo
                 })
             });
 
             const result = await response.json();
 
             if (result.success) {
-                alert('Enrollment cancelled successfully!');
+                if (result.requiresApproval) {
+                    alert(`Status change request submitted for approval!\n\nRequest ID: ${result.requestId}\n\nA Registrar or ICT Coordinator will review your request.`);
+                } else {
+                    const statusLabels = {
+                        'Cancelled': 'cancelled',
+                        'Dropped': 'marked as dropout',
+                        'Transferred_Out': 'transferred out'
+                    };
+                    alert(`Student ${statusLabels[newStatus]} successfully!`);
+                }
                 this.loadStudents();
             } else {
-                alert('Failed to cancel enrollment: ' + (result.message || 'Unknown error'));
+                alert('Failed to update status: ' + (result.message || 'Unknown error'));
             }
         } catch (error) {
-            console.error('Error cancelling enrollment:', error);
-            alert('Error cancelling enrollment');
+            console.error('Error changing status:', error);
+            alert('Error changing student status');
         }
     }
 
@@ -1367,3 +1761,6 @@ if (document.readyState === 'loading') {
 } else {
     studentManagement = new StudentManagementHandler();
 }
+
+// Make it globally accessible
+window.studentManagement = studentManagement;

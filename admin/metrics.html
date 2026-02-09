@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Admin | Key Performance Metrics</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="icon" type="image/png" href="../assets/favicons/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="../assets/favicons/favicon.svg" />
+    <link rel="shortcut icon" href="../assets/favicons/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="../assets/favicons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="DJIHS" />
+    <link rel="manifest" href="../assets/favicons/site.webmanifest" />
+
+    <!-- AUTHENTICATION PROTECTION -->
+    <script src="../js/auth.js"></script>
+    <script>
+        (function() {
+            const isLoggedIn = localStorage.getItem('isLoggedIn');
+            const userDataString = localStorage.getItem('user');
+            
+            if (!isLoggedIn || !userDataString) {
+                window.location.href = '../login.html';
+                return;
+            }
+            
+            try {
+                const user = JSON.parse(userDataString);
+                if (user.Role !== 'Admin') {
+                    alert('Access denied. Admin access required.');
+                    window.location.href = '../login.html';
+                }
+            } catch (e) {
+                window.location.href = '../login.html';
+            }
+        })();
+    </script>
+
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#085019",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #085019;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; }
+            .print-page-break { page-break-after: always; }
+        }
+        .metric-card {
+            transition: all 0.2s;
+        }
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .performance-good {
+            color: #10b981;
+            background-color: #d1fae5;
+        }
+        .performance-fair {
+            color: #f59e0b;
+            background-color: #fef3c7;
+        }
+        .performance-poor {
+            color: #ef4444;
+            background-color: #fee2e2;
+        }
+        .tooltip-container {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+        .tooltip-content {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 240px;
+            background-color: white;
+            color: #374151;
+            text-align: left;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e5e7eb;
+            z-index: 50;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+            pointer-events: none;
+            font-weight: 400;
+            line-height: 1.4;
+        }
+        .tooltip-container:hover .tooltip-content {
+            visibility: visible;
+            opacity: 1;
+        }
+        .tooltip-content::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: white transparent transparent transparent;
+        }
+        .dark .tooltip-content {
+            background-color: #1f2937;
+            color: #f3f4f6;
+            border-color: #374151;
+        }
+        .dark .tooltip-content::after {
+            border-color: #1f2937 transparent transparent transparent;
+        }
+        .tab-button {
+            transition: all 0.2s;
+        }
+        .tab-button.active {
+            color: #085019;
+            border-bottom: 2px solid #085019;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body class="font-display bg-background-light dark:bg-background-dark">
+    <div class="relative flex h-auto min-h-screen w-full flex-col">
+        <div class="flex min-h-screen">
+            <!-- Sidebar -->
+            <aside class="w-72 h-screen sticky top-0 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex transition-colors duration-200 no-print">
+                <div>
+                    <div class="p-6">
+                        <div class="flex items-center gap-3 mb-1">
+                            <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center overflow-hidden shrink-0 border border-yellow-200">
+                                <img alt="School Logo" class="w-full h-full object-cover opacity-90" src="../assets/images/djihs-logo-small.png"/>
+                            </div>
+                        </div>
+                        <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS Admin</h1>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
+                    </div>
+                    <nav class="px-4 space-y-1">
+                        <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="dashboard.html">
+                            <span class="material-icons-outlined text-[20px]">dashboard</span>
+                            <span class="text-sm font-medium">Dashboard</span>
+                        </a>
+                        <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="analytics.html">
+                            <span class="material-icons-outlined text-[20px]">analytics</span>
+                            <span class="text-sm font-medium">Analytics</span>
+                        </a>
+                        <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg shadow-sm" href="metrics.html">
+                            <span class="material-icons-outlined text-[20px]">speed</span>
+                            <span class="text-sm font-medium">Performance Metrics</span>
+                        </a>
+                    </nav>
+                </div>
+                <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center gap-3 mb-4 px-2">
+                        <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm" id="userInitials">AD</div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-900 dark:text-white truncate" id="userName">Admin Name</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Admin</p>
+                        </div>
+                    </div>
+                    <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors logout-btn">
+                        <span class="material-icons-outlined text-[18px]">logout</span>
+                        Logout
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="flex-1 p-6 lg:p-10">
+                <div class="mx-auto max-w-7xl">
+                    <!-- Page Heading -->
+                    <div class="flex flex-wrap justify-between gap-4 items-center mb-6 no-print">
+                        <div class="flex flex-col gap-1">
+                            <p class="text-slate-900 dark:text-white text-3xl font-black leading-tight tracking-tight">DepEd Performance Indicators</p>
+                            <p class="text-slate-500 dark:text-slate-400 text-base">Comprehensive monitoring for the current academic cycle</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="exportMetrics()" class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm font-bold">
+                                <span class="material-icons-outlined text-[20px]">download</span>
+                                <span class="hidden sm:inline">Export Report</span>
+                            </button>
+                            <button onclick="window.print()" class="flex items-center gap-2 px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-300">
+                                <span class="material-icons-outlined text-[20px]">print</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="flex flex-wrap items-center gap-3 mb-6 no-print">
+                        <select id="syFilter" class="h-9 px-6 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300">
+                            <option value="all">All School Years</option>
+                        </select>
+                        <button onclick="loadMetrics()" class="h-10 px-4 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-bold">
+                            Apply Filter
+                        </button>
+                        <button onclick="resetFilters()" class="h-10 px-4 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-sm font-bold hover:bg-slate-300 dark:hover:bg-slate-600">
+                            Reset
+                        </button>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div id="loadingState" class="flex items-center justify-center py-20">
+                        <div class="loading-spinner"></div>
+                    </div>
+
+                    <!-- Metrics Content -->
+                    <div id="metricsContent" style="display: none;">
+                        
+                        <!-- Tab Navigation -->
+                        <div class="border-b border-gray-200 dark:border-gray-700 mb-8 no-print">
+                            <nav class="flex space-x-8 overflow-x-auto">
+                                <button class="tab-button active flex items-center gap-2 px-1 py-4 text-sm font-semibold whitespace-nowrap" data-tab="enrollment">
+                                    <span class="material-symbols-outlined text-[20px]">group</span>
+                                    Access & Participation
+                                </button>
+                                <button class="tab-button flex items-center gap-2 px-1 py-4 text-sm font-semibold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 whitespace-nowrap" data-tab="efficiency">
+                                    <span class="material-symbols-outlined text-[20px]">speed</span>
+                                    Internal Efficiency
+                                </button>
+                                <button class="tab-button flex items-center gap-2 px-1 py-4 text-sm font-semibold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 whitespace-nowrap" data-tab="resources">
+                                    <span class="material-symbols-outlined text-[20px]">inventory_2</span>
+                                    Resources & Trends
+                                </button>
+                                <button class="tab-button flex items-center gap-2 px-1 py-4 text-sm font-semibold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 whitespace-nowrap" data-tab="insights">
+                                    <span class="material-symbols-outlined text-[20px]">lightbulb</span>
+                                    Insights
+                                </button>
+                            </nav>
+                        </div>
+
+                        <!-- Tab 1: Access & Participation -->
+                        <div id="tab-enrollment" class="tab-content active">
+                            <section class="mb-10">
+                                <div class="flex items-center gap-2 mb-6">
+                                    <span class="material-symbols-outlined text-primary text-[28px]">how_to_reg</span>
+                                    <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Enrollment Metrics</h2>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <!-- NER -->
+                                    <div class="metric-card bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm relative overflow-visible">
+                                        <div class="flex justify-between items-start mb-4">
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Net Enrollment Rate (NER)</span>
+                                                <div class="tooltip-container">
+                                                    <span class="material-symbols-outlined text-[18px] text-gray-400 cursor-help hover:text-primary transition-colors">info</span>
+                                                    <div class="tooltip-content text-xs">
+                                                        <p class="font-bold mb-1">Net Enrollment Ratio</p>
+                                                        <p class="mb-2">Measures participation of age-appropriate children in education.</p>
+                                                        <p class="text-primary font-mono bg-gray-50 dark:bg-gray-800 p-1.5 rounded">Formula: Enrollment (Age-appropriate) / Population (Age-appropriate) × 100</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-end gap-3 mb-4">
+                                            <span class="text-slate-900 dark:text-white text-3xl font-bold" id="nerValue">0%</span>
+                                            <span class="text-xs px-2 py-1 rounded-full font-medium" id="nerStatus">-</span>
+                                        </div>
+                                        <div class="h-12 w-full flex items-end gap-1">
+                                            <div class="bg-primary/20 h-1/2 w-full rounded-t-sm"></div>
+                                            <div class="bg-primary/20 h-2/3 w-full rounded-t-sm"></div>
+                                            <div class="bg-primary/20 h-1/3 w-full rounded-t-sm"></div>
+                                            <div class="bg-primary/20 h-4/5 w-full rounded-t-sm"></div>
+                                            <div class="bg-primary h-full w-full rounded-t-sm"></div>
+                                        </div>
+                                    </div>
+
+                                    <!-- GER -->
+                                    <div class="metric-card bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm relative overflow-visible">
+                                        <div class="flex justify-between items-start mb-4">
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Gross Enrollment Rate (GER)</span>
+                                                <div class="tooltip-container">
+                                                    <span class="material-symbols-outlined text-[18px] text-gray-400 cursor-help hover:text-primary transition-colors">info</span>
+                                                    <div class="tooltip-content text-xs">
+                                                        <p class="font-bold mb-1">Gross Enrollment Ratio</p>
+                                                        <p class="mb-2">Total enrollment regardless of age.</p>
+                                                        <p class="text-primary font-mono bg-gray-50 dark:bg-gray-800 p-1.5 rounded">Formula: Total Enrollment / Population × 100</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-end gap-3 mb-4">
+                                            <span class="text-slate-900 dark:text-white text-3xl font-bold" id="gerValue">0%</span>
+                                            <span class="text-xs px-2 py-1 rounded-full font-medium" id="gerStatus">-</span>
+                                        </div>
+                                        <div class="h-12 w-full flex items-end gap-1">
+                                            <div class="bg-primary/20 h-3/4 w-full rounded-t-sm"></div>
+                                            <div class="bg-primary/20 h-4/5 w-full rounded-t-sm"></div>
+                                            <div class="bg-primary/20 h-full w-full rounded-t-sm"></div>
+                                            <div class="bg-primary/20 h-5/6 w-full rounded-t-sm"></div>
+                                            <div class="bg-primary h-4/5 w-full rounded-t-sm"></div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Transition Rate -->
+                                    <div class="metric-card bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm relative overflow-visible">
+                                        <div class="flex justify-between items-start mb-4">
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Transition Rate</span>
+                                                <div class="tooltip-container">
+                                                    <span class="material-symbols-outlined text-[18px] text-gray-400 cursor-help hover:text-primary transition-colors">info</span>
+                                                    <div class="tooltip-content text-xs">
+                                                        <p class="font-bold mb-1">JHS to SHS Transition</p>
+                                                        <p class="mb-2">Grade 10 to Grade 11 progression rate.</p>
+                                                        <p class="text-primary font-mono bg-gray-50 dark:bg-gray-800 p-1.5 rounded">Formula: G11 Enrollment / G10 Enrollment (prev year) × 100</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-end gap-3 mb-4">
+                                            <span class="text-slate-900 dark:text-white text-3xl font-bold" id="transitionRate">0%</span>
+                                            <span class="text-xs px-2 py-1 rounded-full font-medium" id="transitionStatus">-</span>
+                                        </div>
+                                        <div class="h-12 w-full flex items-end gap-1">
+                                            <div class="bg-primary/20 h-1/4 w-full rounded-t-sm"></div>
+                                            <div class="bg-primary/20 h-1/3 w-full rounded-t-sm"></div>
+                                            <div class="bg-primary/20 h-1/2 w-full rounded-t-sm"></div>
+                                            <div class="bg-primary/20 h-3/4 w-full rounded-t-sm"></div>
+                                            <div class="bg-primary h-5/6 w-full rounded-t-sm"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+
+                        <!-- Tab 2: Internal Efficiency -->
+                        <div id="tab-efficiency" class="tab-content">
+                            <section class="mb-10">
+                                <div class="flex items-center gap-2 mb-6">
+                                    <span class="material-symbols-outlined text-primary text-[28px]">speed</span>
+                                    <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Internal Efficiency Metrics</h2>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                                    <!-- Promotion Rate -->
+                                    <div class="metric-card bg-white dark:bg-slate-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 relative overflow-visible">
+                                        <div class="flex justify-between items-center mb-2">
+                                            <div class="flex items-center gap-1">
+                                                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Promotion Rate</span>
+                                                <div class="tooltip-container">
+                                                    <span class="material-symbols-outlined text-[16px] text-gray-300 cursor-help hover:text-primary transition-colors">info</span>
+                                                    <div class="tooltip-content text-xs">
+                                                        <p class="font-bold mb-1">Promotion Rate</p>
+                                                        <p class="mb-2">Students promoted to next grade level.</p>
+                                                        <p class="text-primary font-mono bg-gray-50 dark:bg-gray-800 p-1.5 rounded">Formula: (Promoted / Enrollment) × 100</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-baseline gap-2">
+                                            <span class="text-slate-900 dark:text-white text-3xl font-bold" id="promotionRate">0%</span>
+                                            <span class="text-xs px-2 py-1 rounded-full font-medium" id="promotionStatus">-</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Cohort Survival -->
+                                    <div class="metric-card bg-white dark:bg-slate-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 relative overflow-visible">
+                                        <div class="flex justify-between items-center mb-2">
+                                            <div class="flex items-center gap-1">
+                                                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Cohort Survival</span>
+                                                <div class="tooltip-container">
+                                                    <span class="material-symbols-outlined text-[16px] text-gray-300 cursor-help hover:text-primary transition-colors">info</span>
+                                                    <div class="tooltip-content text-xs">
+                                                        <p class="font-bold mb-1">Cohort Survival Rate</p>
+                                                        <p class="mb-2">G7 enrollees reaching final grade.</p>
+                                                        <p class="text-primary font-mono bg-gray-50 dark:bg-gray-800 p-1.5 rounded">Formula: (G10 / G7 cohort) × 100</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-baseline gap-2">
+                                            <span class="text-slate-900 dark:text-white text-3xl font-bold" id="csrJHS">0%</span>
+                                            <span class="text-xs px-2 py-1 rounded-full font-medium" id="csrJHSStatus">-</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Retention Rate -->
+                                    <div class="metric-card bg-white dark:bg-slate-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 relative overflow-visible">
+                                        <div class="flex justify-between items-center mb-2">
+                                            <div class="flex items-center gap-1">
+                                                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Retention Rate</span>
+                                                <div class="tooltip-container">
+                                                    <span class="material-symbols-outlined text-[16px] text-gray-300 cursor-help hover:text-primary transition-colors">info</span>
+                                                    <div class="tooltip-content text-xs">
+                                                        <p class="font-bold mb-1">Retention Rate</p>
+                                                        <p class="mb-2">Students continuing enrollment year-over-year.</p>
+                                                        <p class="text-primary font-mono bg-gray-50 dark:bg-gray-800 p-1.5 rounded">Formula: Current enrollment / Previous enrollment × 100</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-baseline gap-2">
+                                            <span class="text-slate-900 dark:text-white text-3xl font-bold" id="retentionRate">0%</span>
+                                            <span class="text-xs px-2 py-1 rounded-full font-medium" id="retentionStatus">-</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Dropout Rate -->
+                                    <div class="metric-card bg-white dark:bg-slate-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 relative overflow-visible">
+                                        <div class="flex justify-between items-center mb-2">
+                                            <div class="flex items-center gap-1">
+                                                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">School Leaver</span>
+                                                <div class="tooltip-container">
+                                                    <span class="material-symbols-outlined text-[16px] text-gray-300 cursor-help hover:text-primary transition-colors">info</span>
+                                                    <div class="tooltip-content text-xs">
+                                                        <p class="font-bold mb-1">School Leaver Rate</p>
+                                                        <p class="mb-2">Students leaving during or after school year.</p>
+                                                        <p class="text-primary font-mono bg-gray-50 dark:bg-gray-800 p-1.5 rounded">Formula: (Drop-outs / Enrollment) × 100</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-baseline gap-2">
+                                            <span class="text-slate-900 dark:text-white text-3xl font-bold" id="dropoutRate">0%</span>
+                                            <span class="text-xs px-2 py-1 rounded-full font-medium" id="dropoutStatus">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Efficiency Metrics -->
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="metric-card bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                                        <div class="flex items-start justify-between mb-4">
+                                            <div class="flex-1">
+                                                <div class="flex items-center gap-1.5 mb-1">
+                                                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Coefficient of Efficiency</p>
+                                                    <div class="tooltip-container">
+                                                        <span class="material-symbols-outlined text-[16px] text-gray-400 cursor-help hover:text-primary transition-colors">info</span>
+                                                        <div class="tooltip-content text-xs">
+                                                            <p class="font-bold mb-1">Coefficient of Efficiency</p>
+                                                            <p class="mb-2">Internal efficiency measure.</p>
+                                                            <p class="text-primary font-mono bg-gray-50 dark:bg-gray-800 p-1.5 rounded">Ideal vs actual student-years ratio</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400">Internal efficiency measure</p>
+                                            </div>
+                                            <span class="material-symbols-outlined text-yellow-500 text-[24px]">auto_graph</span>
+                                        </div>
+                                        <div class="flex items-baseline gap-2">
+                                            <p class="text-slate-900 dark:text-white text-3xl font-bold" id="coeValue">0%</p>
+                                            <span class="text-xs px-2 py-1 rounded-full font-medium" id="coeStatus">-</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="metric-card bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                                        <div class="flex items-start justify-between mb-4">
+                                            <div class="flex-1">
+                                                <div class="flex items-center gap-1.5 mb-1">
+                                                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Completion Rate</p>
+                                                    <div class="tooltip-container">
+                                                        <span class="material-symbols-outlined text-[16px] text-gray-400 cursor-help hover:text-primary transition-colors">info</span>
+                                                        <div class="tooltip-content text-xs">
+                                                            <p class="font-bold mb-1">Completion Rate</p>
+                                                            <p class="mb-2">Cohort graduation percentage.</p>
+                                                            <p class="text-primary font-mono bg-gray-50 dark:bg-gray-800 p-1.5 rounded">Grade 10 & 12 graduates</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400">Grade 10 & 12</p>
+                                            </div>
+                                            <span class="material-symbols-outlined text-teal-500 text-[24px]">verified</span>
+                                        </div>
+                                        <div class="flex items-baseline gap-2">
+                                            <p class="text-slate-900 dark:text-white text-3xl font-bold" id="completionRate">0%</p>
+                                            <span class="text-xs px-2 py-1 rounded-full font-medium" id="completionStatus">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <!-- Grade-Level Breakdown -->
+                            <section class="mb-8">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <span class="material-symbols-outlined text-primary text-[28px]">bar_chart</span>
+                                    <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Grade-Level Breakdown</h2>
+                                </div>
+                                <div class="rounded-xl bg-white dark:bg-slate-800 shadow-sm border border-gray-200 dark:border-gray-700 p-6 overflow-x-auto">
+                                    <table class="w-full text-left">
+                                        <thead>
+                                            <tr class="border-b border-slate-200 dark:border-slate-700">
+                                                <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Grade Level</th>
+                                                <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Enrollment</th>
+                                                <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Promotion Rate</th>
+                                                <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Retention Rate</th>
+                                                <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Dropout Rate</th>
+                                                <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="gradeLevelTable" class="divide-y divide-slate-100 dark:divide-slate-700">
+                                            <tr><td colspan="6" class="p-3 text-center text-slate-500">Loading data...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+                        </div>
+
+                        <!-- Tab 3: Resources & Trends -->
+                        <div id="tab-resources" class="tab-content">
+                            <section class="mb-10">
+                                <div class="flex items-center gap-2 mb-6">
+                                    <span class="material-symbols-outlined text-primary text-[28px]">inventory_2</span>
+                                    <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Resource Adequacy</h2>
+                                </div>
+                                <div class="space-y-6">
+                                    <div class="flex items-center justify-between p-6 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                                        <div class="flex items-center gap-4">
+                                            <div class="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl">
+                                                <span class="material-symbols-outlined text-orange-500 text-[32px]">person_search</span>
+                                            </div>
+                                            <div>
+                                                <p class="text-base font-bold text-slate-900 dark:text-white">Student-Teacher Ratio</p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Target: 1:35 or lower</p>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-slate-900 dark:text-white text-3xl font-bold" id="studentTeacherRatio">1:0</p>
+                                            <span class="text-xs px-2 py-1 rounded-full font-medium mt-2 inline-block" id="strStatus">-</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center justify-between p-6 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                                        <div class="flex items-center gap-4">
+                                            <div class="p-3 bg-cyan-50 dark:bg-cyan-900/20 rounded-xl">
+                                                <span class="material-symbols-outlined text-cyan-500 text-[32px]">meeting_room</span>
+                                            </div>
+                                            <div>
+                                                <p class="text-base font-bold text-slate-900 dark:text-white">Student-Classroom Ratio</p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Target: 1:45 or lower</p>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-slate-900 dark:text-white text-3xl font-bold" id="studentClassroomRatio">1:0</p>
+                                            <span class="text-xs px-2 py-1 rounded-full font-medium mt-2 inline-block" id="scrStatus">-</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center justify-between p-6 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                                        <div class="flex items-center gap-4">
+                                            <div class="p-3 bg-pink-50 dark:bg-pink-900/20 rounded-xl">
+                                                <span class="material-symbols-outlined text-pink-500 text-[32px]">pie_chart</span>
+                                            </div>
+                                            <div>
+                                                <p class="text-base font-bold text-slate-900 dark:text-white">Section Utilization</p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Optimal: 80-95% capacity</p>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-slate-900 dark:text-white text-3xl font-bold" id="sectionUtilization">0%</p>
+                                            <span class="text-xs px-2 py-1 rounded-full font-medium mt-2 inline-block" id="utilStatus">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <!-- Performance Trends Chart -->
+                            <section class="mb-8">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <span class="material-symbols-outlined text-primary text-[28px]">show_chart</span>
+                                    <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Performance Trends</h2>
+                                </div>
+                                <div class="rounded-xl bg-white dark:bg-slate-800 shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                                    <div class="h-[400px]">
+                                        <canvas id="metricsChart"></canvas>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+
+                        <!-- Tab 4: Insights -->
+                        <div id="tab-insights" class="tab-content">
+                            <section class="mb-8">
+                                <div class="flex items-center gap-2 mb-6">
+                                    <span class="material-symbols-outlined text-primary text-[28px]">lightbulb</span>
+                                    <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Key Insights & Recommendations</h2>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="insightsContainer">
+                                    <div class="flex items-start gap-3 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+                                        <span class="material-symbols-outlined text-primary text-[24px]">info</span>
+                                        <div>
+                                            <p class="text-sm font-medium text-slate-900 dark:text-white">Loading insights...</p>
+                                            <p class="text-xs text-slate-600 dark:text-slate-400 mt-1">Please wait</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="../js/metrics.js"></script>
+    <script>
+        // Tab switching functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetTab = button.dataset.tab;
+
+                    // Remove active class from all buttons and contents
+                    tabButtons.forEach(btn => {
+                        btn.classList.remove('active');
+                        btn.classList.add('text-gray-500', 'hover:text-gray-700', 'dark:text-gray-400', 'dark:hover:text-gray-300');
+                        btn.classList.remove('text-primary');
+                    });
+                    tabContents.forEach(content => content.classList.remove('active'));
+
+                    // Add active class to clicked button and corresponding content
+                    button.classList.add('active');
+                    button.classList.remove('text-gray-500', 'hover:text-gray-700', 'dark:text-gray-400', 'dark:hover:text-gray-300');
+                    button.classList.add('text-primary');
+                    document.getElementById(`tab-${targetTab}`).classList.add('active');
+                });
+            });
+        });
+    </script>
+</body>
+</html>

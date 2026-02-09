@@ -1,11 +1,12 @@
 <?php
-// backend/api/users.php
+// backend/api/users.php - WITH AUDIT LOGGING INTEGRATED
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
 header('Access-Control-Allow-Headers: Content-Type');
 
 require_once '../config/database.php';
+require_once '../helpers/audit_logger.php';
 
 $database = new Database();
 $conn = $database->getConnection();
@@ -18,6 +19,21 @@ if ($method == 'OPTIONS') {
 }
 
 $action = isset($_GET['action']) ? $_GET['action'] : '';
+
+// Get current user from session/token (simplified - you should use your auth system)
+function getCurrentUser($conn) {
+    // This is a simplified version - implement your actual auth system
+    // For now, we'll use a placeholder
+    $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    // In real implementation, validate token and get user from database
+    // For demonstration purposes, returning a sample user
+    return [
+        'UserID' => 1, // Should come from authenticated session
+        'Role' => 'ICT_Coordinator',
+        'FirstName' => 'ICT',
+        'LastName' => 'Coordinator'
+    ];
+}
 
 try {
     switch ($method) {
@@ -207,6 +223,23 @@ function createUser($conn, $data) {
         }
     }
     
+    // Check if trying to create an Admin account
+    if ($data['Role'] === 'Admin') {
+        $adminCheckSql = "SELECT COUNT(*) as admin_count FROM user WHERE Role = 'Admin'";
+        $adminCheckStmt = $conn->prepare($adminCheckSql);
+        $adminCheckStmt->execute();
+        $adminResult = $adminCheckStmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($adminResult['admin_count'] > 0) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false, 
+                'message' => 'Cannot create Admin account. Only one Admin account (Principal) is allowed in the system.'
+            ]);
+            return;
+        }
+    }
+    
     // Check if username already exists
     $checkSql = "SELECT UserID FROM user WHERE Username = :username";
     $checkStmt = $conn->prepare($checkSql);
@@ -245,6 +278,26 @@ function createUser($conn, $data) {
         $stmt->execute();
         
         $userId = $conn->lastInsertId();
+        
+        // AUDIT LOG: Log user creation
+        $currentUser = getCurrentUser($conn);
+        $logger = new AuditLogger($conn, $currentUser['UserID'], $currentUser['Role']);
+        
+        $fullName = $data['FirstName'] . ' ' . $data['LastName'];
+        $logger->logUserCreation(
+            $userId,
+            $data['Username'],
+            $fullName,
+            $data['Role'],
+            [
+                'Username' => $data['Username'],
+                'FirstName' => $data['FirstName'],
+                'LastName' => $data['LastName'],
+                'Role' => $data['Role'],
+                'EmployeeID' => $employeeId,
+                'IsActive' => $isActive
+            ]
+        );
         
         echo json_encode([
             'success' => true,
@@ -293,6 +346,13 @@ function updateUser($conn, $data) {
         return;
     }
     
+    // Get old data for audit log
+    $oldSql = "SELECT Username, FirstName, LastName, Role FROM user WHERE UserID = :UserID";
+    $oldStmt = $conn->prepare($oldSql);
+    $oldStmt->bindParam(':UserID', $data['UserID']);
+    $oldStmt->execute();
+    $oldData = $oldStmt->fetch(PDO::FETCH_ASSOC);
+    
     $sql = "UPDATE user SET
                 Username = :Username,
                 FirstName = :FirstName,
@@ -309,6 +369,24 @@ function updateUser($conn, $data) {
         $stmt->bindParam(':Role', $data['Role']);
         $stmt->execute();
         
+        // AUDIT LOG: Log user update
+        $currentUser = getCurrentUser($conn);
+        $logger = new AuditLogger($conn, $currentUser['UserID'], $currentUser['Role']);
+        
+        $fullName = $data['FirstName'] . ' ' . $data['LastName'];
+        $logger->logUserUpdate(
+            $data['UserID'],
+            $data['Username'],
+            $fullName,
+            $oldData,
+            [
+                'Username' => $data['Username'],
+                'FirstName' => $data['FirstName'],
+                'LastName' => $data['LastName'],
+                'Role' => $data['Role']
+            ]
+        );
+        
         echo json_encode(['success' => true, 'message' => 'User updated successfully']);
         
     } catch (PDOException $e) {
@@ -324,12 +402,42 @@ function toggleUserStatus($conn, $data) {
         return;
     }
     
+    // Check if trying to deactivate the only Admin account
+    $checkAdminSql = "SELECT Role, IsActive, Username, FirstName, LastName FROM user WHERE UserID = :UserID";
+    $checkAdminStmt = $conn->prepare($checkAdminSql);
+    $checkAdminStmt->bindParam(':UserID', $data['UserID']);
+    $checkAdminStmt->execute();
+    $userInfo = $checkAdminStmt->fetch(PDO::FETCH_ASSOC);
+    
+    if ($userInfo && $userInfo['Role'] === 'Admin') {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false, 
+            'message' => 'Cannot deactivate the Admin account (Principal). This account must remain active.'
+        ]);
+        return;
+    }
+    
     $sql = "UPDATE user SET IsActive = NOT IsActive WHERE UserID = :UserID";
     
     try {
         $stmt = $conn->prepare($sql);
         $stmt->bindParam(':UserID', $data['UserID']);
         $stmt->execute();
+        
+        // AUDIT LOG: Log status change
+        $currentUser = getCurrentUser($conn);
+        $logger = new AuditLogger($conn, $currentUser['UserID'], $currentUser['Role']);
+        
+        $fullName = $userInfo['FirstName'] . ' ' . $userInfo['LastName'];
+        $newStatus = !$userInfo['IsActive'];
+        
+        $logger->logUserStatusChange(
+            $data['UserID'],
+            $userInfo['Username'],
+            $fullName,
+            $newStatus
+        );
         
         echo json_encode(['success' => true, 'message' => 'User status updated successfully']);
         
@@ -346,6 +454,13 @@ function resetPassword($conn, $data) {
         return;
     }
     
+    // Get user info for audit log
+    $userSql = "SELECT Username, FirstName, LastName FROM user WHERE UserID = :UserID";
+    $userStmt = $conn->prepare($userSql);
+    $userStmt->bindParam(':UserID', $data['UserID']);
+    $userStmt->execute();
+    $userInfo = $userStmt->fetch(PDO::FETCH_ASSOC);
+    
     $hashedPassword = password_hash($data['NewPassword'], PASSWORD_DEFAULT);
     
     $sql = "UPDATE user SET Password = :Password WHERE UserID = :UserID";
@@ -355,6 +470,17 @@ function resetPassword($conn, $data) {
         $stmt->bindParam(':Password', $hashedPassword);
         $stmt->bindParam(':UserID', $data['UserID']);
         $stmt->execute();
+        
+        // AUDIT LOG: Log password reset
+        $currentUser = getCurrentUser($conn);
+        $logger = new AuditLogger($conn, $currentUser['UserID'], $currentUser['Role']);
+        
+        $fullName = $userInfo['FirstName'] . ' ' . $userInfo['LastName'];
+        $logger->logPasswordReset(
+            $data['UserID'],
+            $userInfo['Username'],
+            $fullName
+        );
         
         echo json_encode(['success' => true, 'message' => 'Password reset successfully']);
         
@@ -373,6 +499,13 @@ function handleDelete($conn, $action) {
         return;
     }
     
+    // Get user info before deletion
+    $userSql = "SELECT Username, FirstName, LastName FROM user WHERE UserID = :id";
+    $userStmt = $conn->prepare($userSql);
+    $userStmt->bindParam(':id', $id);
+    $userStmt->execute();
+    $userInfo = $userStmt->fetch(PDO::FETCH_ASSOC);
+    
     // Soft delete - just deactivate
     $sql = "UPDATE user SET IsActive = 0 WHERE UserID = :id";
     
@@ -380,6 +513,21 @@ function handleDelete($conn, $action) {
         $stmt = $conn->prepare($sql);
         $stmt->bindParam(':id', $id);
         $stmt->execute();
+        
+        // AUDIT LOG: Log deletion (deactivation)
+        $currentUser = getCurrentUser($conn);
+        $logger = new AuditLogger($conn, $currentUser['UserID'], $currentUser['Role']);
+        
+        $fullName = $userInfo['FirstName'] . ' ' . $userInfo['LastName'];
+        $logger->log(
+            'user',
+            $id,
+            'DELETE',
+            "Deactivated user account: {$userInfo['Username']}",
+            null,
+            null,
+            $fullName
+        );
         
         echo json_encode(['success' => true, 'message' => 'User deactivated successfully']);
         

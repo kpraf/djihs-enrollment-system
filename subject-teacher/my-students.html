@@ -107,8 +107,8 @@
                      </div>
                   </div>
                   <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors logout-btn">
-                  <span class="material-icons-outlined text-[18px]">logout</span>
-                  Logout
+                     <span class="material-icons-outlined text-[18px]">logout</span>
+                     Logout
                   </button>
                </div>
             </aside>
@@ -264,12 +264,6 @@
 
             // Print button
             document.getElementById('printBtn').addEventListener('click', printStudentList);
-
-            // Logout button
-            document.querySelector('.logout-btn').addEventListener('click', function() {
-               localStorage.clear();
-               window.location.href = '../login.html';
-            });
          }
 
          // Load section details - FIXED: send auth via headers

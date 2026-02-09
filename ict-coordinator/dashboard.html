@@ -112,12 +112,6 @@
                         <span class="material-symbols-outlined">group</span>
                         <span class="text-sm font-medium">Employee Management</span>
                     </a>
-                    <!-- 
-                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="manage-access.html">
-                        <span class="material-symbols-outlined">admin_panel_settings</span>
-                        <span class="text-sm font-medium">System Access</span>
-                    </a>
-                    -->
                     <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="user-account-management.html">
                         <span class="material-symbols-outlined">person_add</span>
                         <span class="text-sm font-medium">Create User Accounts</span>
@@ -134,6 +128,10 @@
                         <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">groups</span>
                         <span class="text-sm font-medium">Student Management</span>
                      </a>
+                     <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="audit-log.html">
+                        <span class="material-symbols-outlined">fact_check</span>
+                        <span class="text-sm font-medium">Audit Log</span>
+                     </a>
                </nav>
             </div>
             <div class="mt-auto p-6 border-t border-gray-100 dark:border-gray-800">
@@ -146,9 +144,9 @@
                         <p class="text-xs text-gray-500 dark:text-gray-400 truncate">ICT Coordinator</p>
                     </div>
                 </div>
-                <button onclick="logout()" class="flex items-center gap-3 w-full px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-red-600 transition-colors">
-                    <span class="material-symbols-outlined text-[20px]">logout</span>
-                    <span class="text-sm font-medium">Log out</span>
+                <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors logout-btn">
+                    <span class="material-icons-outlined text-[18px]">logout</span>
+                    Logout
                 </button>
             </div>
          </aside>
@@ -209,6 +207,40 @@
                </div>
             </div>
 
+            <!-- Audit Log Stats Row -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+               <div class="bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow text-white">
+                  <div class="flex justify-between items-start mb-4">
+                     <p class="text-sm font-medium text-blue-100">Today's Activities</p>
+                     <span class="material-symbols-outlined bg-white/20 p-1.5 rounded-lg">today</span>
+                  </div>
+                  <div>
+                     <h3 id="todayActivities" class="text-3xl font-bold mb-1">0</h3>
+                     <p class="text-sm font-medium text-blue-100">System actions logged</p>
+                  </div>
+               </div>
+               <div class="bg-gradient-to-br from-purple-500 to-purple-600 dark:from-purple-600 dark:to-purple-700 p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow text-white">
+                  <div class="flex justify-between items-start mb-4">
+                     <p class="text-sm font-medium text-purple-100">This Week</p>
+                     <span class="material-symbols-outlined bg-white/20 p-1.5 rounded-lg">date_range</span>
+                  </div>
+                  <div>
+                     <h3 id="weekActivities" class="text-3xl font-bold mb-1">0</h3>
+                     <p class="text-sm font-medium text-purple-100">Actions in last 7 days</p>
+                  </div>
+               </div>
+               <div class="bg-gradient-to-br from-orange-500 to-orange-600 dark:from-orange-600 dark:to-orange-700 p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow text-white">
+                  <div class="flex justify-between items-start mb-4">
+                     <p class="text-sm font-medium text-orange-100">Total Activities</p>
+                     <span class="material-symbols-outlined bg-white/20 p-1.5 rounded-lg">fact_check</span>
+                  </div>
+                  <div>
+                     <h3 id="totalActivities" class="text-3xl font-bold mb-1">0</h3>
+                     <p class="text-sm font-medium text-orange-100">All-time audit logs</p>
+                  </div>
+               </div>
+            </div>
+
             <!-- Charts and Activity -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
                <!-- User Distribution Chart -->
@@ -224,10 +256,13 @@
                   </div>
                </div>
 
-               <!-- Recent Activity -->
+               <!-- Recent Audit Activity -->
                <div class="bg-card-light dark:bg-card-dark p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col">
-                  <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-6">Recent Activity</h3>
-                  <div class="space-y-6 flex-1 overflow-y-auto pr-2" id="recentActivity">
+                  <div class="flex items-center justify-between mb-6">
+                     <h3 class="text-lg font-bold text-gray-900 dark:text-white">Recent Activity</h3>
+                     <a href="audit-log.html" class="text-xs text-primary hover:text-primary-hover font-medium">View All →</a>
+                  </div>
+                  <div class="space-y-4 flex-1 overflow-y-auto pr-2" id="recentActivity">
                      <div class="flex items-center justify-center h-40">
                         <span class="material-symbols-outlined animate-spin text-4xl text-gray-400">refresh</span>
                      </div>
@@ -235,10 +270,23 @@
                </div>
             </div>
 
+            <!-- Activity by Type Chart -->
+            <div class="bg-card-light dark:bg-card-dark p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-8">
+               <div class="mb-6">
+                  <h3 class="text-lg font-bold text-gray-900 dark:text-white">Activity by Type</h3>
+                  <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Breakdown of system actions</p>
+               </div>
+               <div class="grid grid-cols-2 md:grid-cols-5 gap-4" id="activityByType">
+                  <div class="flex items-center justify-center h-24">
+                     <span class="material-symbols-outlined animate-spin text-3xl text-gray-400">refresh</span>
+                  </div>
+               </div>
+            </div>
+
             <!-- Quick Actions -->
             <div class="mb-4">
                <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Quick Actions</h3>
-               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+               <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div class="bg-card-light dark:bg-card-dark p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between">
                      <div>
                         <div class="mb-3 text-primary dark:text-green-400">
@@ -264,6 +312,20 @@
                      <div>
                         <a href="user-account-management.html" class="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors inline-flex items-center">
                         Create Account
+                        </a>
+                     </div>
+                  </div>
+                  <div class="bg-card-light dark:bg-card-dark p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between">
+                     <div>
+                        <div class="mb-3 text-primary dark:text-green-400">
+                           <span class="material-symbols-outlined text-3xl">fact_check</span>
+                        </div>
+                        <h4 class="text-base font-bold text-gray-900 dark:text-white mb-2">View Audit Log</h4>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Track all system activities and user changes.</p>
+                     </div>
+                     <div>
+                        <a href="audit-log.html" class="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors inline-flex items-center">
+                        View Logs
                         </a>
                      </div>
                   </div>
@@ -320,8 +382,10 @@
             await Promise.all([
                loadUserStats(),
                loadEmployeeStats(),
+               loadAuditStats(),
                loadRoleDistribution(),
-               loadRecentActivity()
+               loadRecentActivity(),
+               loadActivityByType()
             ]);
          }
 
@@ -353,6 +417,26 @@
                }
             } catch (error) {
                console.error('Error loading employee stats:', error);
+            }
+         }
+
+         async function loadAuditStats() {
+            try {
+               const response = await fetch('../backend/api/auditlog.php?action=stats');
+               const result = await response.json();
+               
+               if (result.success) {
+                  const stats = result.data.overall;
+                  document.getElementById('todayActivities').textContent = stats.today_logs || 0;
+                  document.getElementById('weekActivities').textContent = stats.week_logs || 0;
+                  document.getElementById('totalActivities').textContent = stats.total_logs || 0;
+               }
+            } catch (error) {
+               console.error('Error loading audit stats:', error);
+               // Set to 0 if audit log not available yet
+               document.getElementById('todayActivities').textContent = '0';
+               document.getElementById('weekActivities').textContent = '0';
+               document.getElementById('totalActivities').textContent = '0';
             }
          }
 
@@ -403,73 +487,137 @@
 
          async function loadRecentActivity() {
             try {
-               // Get recent users (created in last 30 days)
+               const response = await fetch('../backend/api/auditlog.php?action=recent&limit=5');
+               const result = await response.json();
+               
+               const container = document.getElementById('recentActivity');
+               
+               if (result.success && result.data.length > 0) {
+                  const actionIcons = {
+                     'INSERT': { icon: 'add_circle', color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/30' },
+                     'UPDATE': { icon: 'edit', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/30' },
+                     'DELETE': { icon: 'delete', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-100 dark:bg-red-900/30' },
+                     'STATUS_CHANGE': { icon: 'toggle_on', color: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-100 dark:bg-yellow-900/30' },
+                     'PASSWORD_RESET': { icon: 'lock_reset', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900/30' }
+                  };
+
+                  container.innerHTML = result.data.map(log => {
+                     const actionStyle = actionIcons[log.Action] || actionIcons['UPDATE'];
+                     return `
+                        <div class="flex gap-3">
+                           <div class="w-9 h-9 rounded-full ${actionStyle.bg} flex items-center justify-center shrink-0">
+                              <span class="material-symbols-outlined ${actionStyle.color} text-sm">${actionStyle.icon}</span>
+                           </div>
+                           <div class="flex-1 min-w-0">
+                              <p class="text-sm font-medium text-gray-900 dark:text-gray-200 truncate">${log.ActionDescription || 'System action'}</p>
+                              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${log.ChangedByName || 'System'} • ${getRelativeTime(log.ChangedAt)}</p>
+                           </div>
+                        </div>
+                     `;
+                  }).join('');
+               } else {
+                  container.innerHTML = `
+                     <div class="text-center text-gray-500 py-8">
+                        <span class="material-symbols-outlined text-4xl mb-2">inbox</span>
+                        <p class="text-sm">No recent activity</p>
+                     </div>
+                  `;
+               }
+            } catch (error) {
+               console.error('Error loading recent activity:', error);
+               // Fallback to user creation activity
+               await loadUserCreationActivity();
+            }
+         }
+
+         async function loadUserCreationActivity() {
+            try {
                const usersResponse = await fetch('../backend/api/users.php?action=all');
                const usersResult = await usersResponse.json();
                
                const container = document.getElementById('recentActivity');
                
                if (usersResult.success && usersResult.data.length > 0) {
-                  // Sort by CreatedAt and get the 5 most recent
                   const recentUsers = usersResult.data
                      .sort((a, b) => new Date(b.CreatedAt) - new Date(a.CreatedAt))
                      .slice(0, 5);
 
-                  const activities = recentUsers.map(user => {
-                     const roleColors = {
-                        'Admin': { bg: 'bg-red-100 dark:bg-red-900/30', icon: 'text-red-600 dark:text-red-400' },
-                        'Adviser': { bg: 'bg-green-100 dark:bg-green-900/30', icon: 'text-green-600 dark:text-green-400' },
-                        'Key_Teacher': { bg: 'bg-yellow-100 dark:bg-yellow-900/30', icon: 'text-yellow-600 dark:text-yellow-400' },
-                        'ICT_Coordinator': { bg: 'bg-blue-100 dark:bg-blue-900/30', icon: 'text-blue-600 dark:text-blue-400' },
-                        'Registrar': { bg: 'bg-purple-100 dark:bg-purple-900/30', icon: 'text-purple-600 dark:text-purple-400' },
-                        'Subject_Teacher': { bg: 'bg-orange-100 dark:bg-orange-900/30', icon: 'text-orange-600 dark:text-orange-400' }
-                     };
+                  const roleColors = {
+                     'Admin': { bg: 'bg-red-100 dark:bg-red-900/30', icon: 'text-red-600 dark:text-red-400' },
+                     'Adviser': { bg: 'bg-green-100 dark:bg-green-900/30', icon: 'text-green-600 dark:text-green-400' },
+                     'Key_Teacher': { bg: 'bg-yellow-100 dark:bg-yellow-900/30', icon: 'text-yellow-600 dark:text-yellow-400' },
+                     'ICT_Coordinator': { bg: 'bg-blue-100 dark:bg-blue-900/30', icon: 'text-blue-600 dark:text-blue-400' },
+                     'Registrar': { bg: 'bg-purple-100 dark:bg-purple-900/30', icon: 'text-purple-600 dark:text-purple-400' },
+                     'Subject_Teacher': { bg: 'bg-orange-100 dark:bg-orange-900/30', icon: 'text-orange-600 dark:text-orange-400' }
+                  };
 
+                  container.innerHTML = recentUsers.map(user => {
                      const colors = roleColors[user.Role] || roleColors['Subject_Teacher'];
-
-                     return {
-                        icon: 'person_add',
-                        bgColor: colors.bg,
-                        iconColor: colors.icon,
-                        text: `New ${user.Role.replace('_', ' ')} account created for ${user.FirstName} ${user.LastName}`,
-                        time: getRelativeTime(user.CreatedAt)
-                     };
-                  });
-
-                  container.innerHTML = activities.map(activity => `
-                     <div class="flex gap-4">
-                        <div class="w-10 h-10 rounded-full ${activity.bgColor} flex items-center justify-center shrink-0">
-                           <span class="material-icons-outlined ${activity.iconColor} text-sm">${activity.icon}</span>
+                     return `
+                        <div class="flex gap-3">
+                           <div class="w-9 h-9 rounded-full ${colors.bg} flex items-center justify-center shrink-0">
+                              <span class="material-icons-outlined ${colors.icon} text-sm">person_add</span>
+                           </div>
+                           <div class="flex-1 min-w-0">
+                              <p class="text-sm font-medium text-gray-900 dark:text-gray-200 truncate">${user.FirstName} ${user.LastName}</p>
+                              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${user.Role.replace('_', ' ')} • ${getRelativeTime(user.CreatedAt)}</p>
+                           </div>
                         </div>
-                        <div>
-                           <p class="text-sm font-medium text-gray-900 dark:text-gray-200">${activity.text}</p>
-                           <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${activity.time}</p>
-                        </div>
-                     </div>
-                  `).join('');
+                     `;
+                  }).join('');
                } else {
                   container.innerHTML = `
                      <div class="text-center text-gray-500 py-8">
                         <span class="material-symbols-outlined text-4xl mb-2">inbox</span>
-                        <p>No recent activity</p>
+                        <p class="text-sm">No recent activity</p>
                      </div>
                   `;
                }
             } catch (error) {
-               console.error('Error loading recent activity:', error);
+               console.error('Error loading user creation activity:', error);
                document.getElementById('recentActivity').innerHTML = `
                   <div class="text-center text-red-500 py-8">
-                     <p>Failed to load recent activity</p>
+                     <p class="text-sm">Failed to load activity</p>
                   </div>
                `;
             }
          }
 
-         function logout() {
-            if (confirm('Are you sure you want to logout?')) {
-               localStorage.removeItem('isLoggedIn');
-               localStorage.removeItem('user');
-               window.location.href = '../login.html';
+         async function loadActivityByType() {
+            try {
+               const response = await fetch('../backend/api/auditlog.php?action=stats');
+               const result = await response.json();
+               
+               const container = document.getElementById('activityByType');
+               
+               if (result.success) {
+                  const stats = result.data.overall;
+                  
+                  const activities = [
+                     { label: 'Created', count: parseInt(stats.total_inserts) || 0, icon: 'add_circle', color: 'text-green-600', bg: 'bg-green-50 dark:bg-green-900/20' },
+                     { label: 'Updated', count: parseInt(stats.total_updates) || 0, icon: 'edit', color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-900/20' },
+                     { label: 'Deleted', count: parseInt(stats.total_deletes) || 0, icon: 'delete', color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-900/20' },
+                     { label: 'Status Changes', count: parseInt(stats.total_status_changes) || 0, icon: 'toggle_on', color: 'text-yellow-600', bg: 'bg-yellow-50 dark:bg-yellow-900/20' },
+                     { label: 'Password Resets', count: parseInt(stats.total_password_resets) || 0, icon: 'lock_reset', color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-900/20' }
+                  ];
+
+                  container.innerHTML = activities.map(activity => `
+                     <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center justify-between mb-2">
+                           <span class="material-symbols-outlined ${activity.color} ${activity.bg} p-1.5 rounded-lg text-lg">${activity.icon}</span>
+                           <span class="text-2xl font-bold text-gray-900 dark:text-white">${activity.count}</span>
+                        </div>
+                        <p class="text-xs font-medium text-gray-600 dark:text-gray-400">${activity.label}</p>
+                     </div>
+                  `).join('');
+               }
+            } catch (error) {
+               console.error('Error loading activity by type:', error);
+               document.getElementById('activityByType').innerHTML = `
+                  <div class="col-span-full text-center text-gray-500 py-8">
+                     <p class="text-sm">Activity data not available</p>
+                  </div>
+               `;
             }
          }
       </script>

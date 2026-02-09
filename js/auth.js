@@ -134,34 +134,64 @@ function initUserDisplay() {
  * Automatically finds and configures logout buttons on the page
  */
 function setupLogoutButtons() {
-    const logoutButtons = document.querySelectorAll('[data-logout], .logout-btn, button[onclick*="logout"]');
-    
-    logoutButtons.forEach(button => {
-        button.addEventListener('click', (e) => {
+    const logoutButtons = document.querySelectorAll('.logout-btn'); // your page buttons
+    const modal = document.getElementById('logoutModal');
+    const confirmBtn = document.getElementById('confirmLogout');
+    const cancelBtn = document.getElementById('cancelLogout');
+
+    if (!modal) return;
+
+    // Show modal on logout button click
+    logoutButtons.forEach(btn => {
+        btn.addEventListener('click', e => {
             e.preventDefault();
-            
-            // Optional: Show confirmation dialog
-            if (confirm('Are you sure you want to logout?')) {
-                logout();
-            }
+            modal.classList.remove('hidden');
         });
     });
+
+    // Confirm logout
+    confirmBtn.addEventListener('click', logout);
+
+    // Cancel logout
+    cancelBtn.addEventListener('click', () => {
+        modal.classList.add('hidden');
+    });
+
+    // Optional: click outside to close
+    modal.addEventListener('click', e => {
+        if (e.target === modal) {
+            modal.classList.add('hidden');
+        }
+    });
+
+    // Optional: ESC key closes modal
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            modal.classList.add('hidden');
+        }
+    });
 }
+
+
 
 /**
  * Initialize authentication on page load
  */
-function initAuth(requiredRole = null) {
-    // Check authentication
+async function loadLogoutModal() {
+    if (document.getElementById('logoutModal')) return;
+
+    const res = await fetch('../partials/logout-modal.html'); // path relative to page
+    const html = await res.text();
+    document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function initAuth(requiredRole = null) {
     const user = checkAuth(requiredRole);
-    
+
     if (user) {
-        // User is authenticated
+        await loadLogoutModal(); // inject modal HTML
         initUserDisplay();
         setupLogoutButtons();
-        
-        // Log for debugging (remove in production)
-        console.log('Authenticated user:', user);
     }
 }
 

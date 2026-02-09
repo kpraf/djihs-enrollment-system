@@ -8,13 +8,35 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
-      <link rel="icon" type="image/png" href="../assets/favicons/favicon-96x96.png" sizes="96x96" />
-      <link rel="icon" type="image/svg+xml" href="../assets/favicons/favicon.svg" />
-      <link rel="shortcut icon" href="../assets/favicons/favicon.ico" />
-      <link rel="apple-touch-icon" sizes="180x180" href="../assets/favicons/apple-touch-icon.png" />
-      <meta name="apple-mobile-web-app-title" content="DJIHS" />
-      <link rel="manifest" href="../assets/favicons/site.webmanifest" />
+    <link rel="icon" type="image/png" href="../assets/favicons/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="../assets/favicons/favicon.svg" />
+    <link rel="shortcut icon" href="../assets/favicons/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="../assets/favicons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="DJIHS" />
+    <link rel="manifest" href="../assets/favicons/site.webmanifest" />
 
+    <script src="../js/auth.js"></script>
+    <script>
+        (function() {
+        const isLoggedIn = localStorage.getItem('isLoggedIn');
+        const userDataString = localStorage.getItem('user');
+        
+        if (!isLoggedIn || !userDataString) {
+            window.location.href = '../login.html';
+            return;
+        }
+        
+        try {
+            const user = JSON.parse(userDataString);
+            if (user.Role !== 'ICT_Coordinator') {
+                alert('Access denied. ICT Coordinator access required.');
+                window.location.href = '../login.html';
+            }
+        } catch (e) {
+            window.location.href = '../login.html';
+        }
+        })();
+    </script>
     <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
@@ -98,6 +120,10 @@
                         <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">groups</span>
                         <span class="text-sm font-medium">Student Management</span>
                      </a>
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="audit-log.html">
+                        <span class="material-symbols-outlined">fact_check</span>
+                        <span class="text-sm font-medium">Audit Log</span>
+                     </a>
                 </nav>
             </div>
             <div class="mt-auto p-6 border-t border-gray-100 dark:border-gray-800">
@@ -110,9 +136,9 @@
                         <p class="text-xs text-gray-500 dark:text-gray-400 truncate">ICT Coordinator</p>
                     </div>
                 </div>
-                <button onclick="logout()" class="flex items-center gap-3 w-full px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-red-600 transition-colors">
-                    <span class="material-symbols-outlined text-[20px]">logout</span>
-                    <span class="text-sm font-medium">Log out</span>
+                <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors logout-btn">
+                    <span class="material-icons-outlined text-[18px]">logout</span>
+                    Logout
                 </button>
             </div>
         </aside>
@@ -392,8 +418,6 @@
             </div>
         </div>
     </div>
-
-    <script src="../js/auth.js"></script>
     <script>
         let allEmployees = [];
         let currentUser = null;
@@ -812,14 +836,6 @@
                 if (confirmed) {
                     window.location.href = `user-account-management.html?employeeId=${id}`;
                 }
-            }
-        }
-
-        function logout() {
-            if (confirm('Are you sure you want to logout?')) {
-                localStorage.removeItem('isLoggedIn');
-                localStorage.removeItem('user');
-                window.location.href = '../login.html';
             }
         }
 

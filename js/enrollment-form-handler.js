@@ -31,6 +31,7 @@ class EnrollmentFormHandler {
         this.setupAutoCalculateAge();
         this.setupTrackVisibility();
         this.setupLRNAutofill();
+        this.loadStrands();
     }
 
     getCurrentUser() {
@@ -196,6 +197,44 @@ class EnrollmentFormHandler {
                 loadingIndicator.classList.add('hidden');
             }
         }
+    }
+
+    async loadStrands() {
+        try {
+            const response = await fetch('../backend/api/manage-strands.php?action=list');
+            const data = await response.json();
+            
+            if (data.success) {
+                const academicStrands = data.strands.filter(s => s.StrandCategory === 'Academic' && s.IsActive == 1);
+                const tvlStrands = data.strands.filter(s => s.StrandCategory === 'TVL' && s.IsActive == 1);
+                
+                this.renderStrandOptions(academicStrands, 'academicStrandsContainer');
+                this.renderStrandOptions(tvlStrands, 'tvlStrandsContainer');
+                
+                // Store for mapping later
+                this.strandMapping = {};
+                data.strands.forEach(s => {
+                    this.strandMapping[s.StrandCode] = s.StrandID;
+                });
+            }
+        } catch (error) {
+            console.error('Error loading strands:', error);
+        }
+    }
+
+    renderStrandOptions(strands, containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        
+        container.innerHTML = strands.map(strand => `
+            <label class="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                <input class="form-radio text-primary focus:ring-primary/50" 
+                    name="track" 
+                    type="radio" 
+                    value="${strand.StrandID}"/>
+                ${strand.StrandCode}
+            </label>
+        `).join('');
     }
 
     displayEnrollmentHistory() {
@@ -519,6 +558,7 @@ class EnrollmentFormHandler {
         }
 
         const trackRadio = document.querySelector('input[name="track"]:checked');
+        formData.strandID = trackRadio ? parseInt(trackRadio.value) : null;
         if (trackRadio) {
             const trackLabel = trackRadio.nextSibling?.textContent.trim() || 
                              trackRadio.parentElement.textContent.trim();
@@ -610,17 +650,9 @@ class EnrollmentFormHandler {
     }
 
     mapTrackToStrandID(trackLabel) {
-        trackLabel = trackLabel.replace(/\s+/g, ' ').trim();
-        
-        const mapping = {
-            'ABM': 1,
-            'HUMSS': 2,
-            'STEM': 3,
-            'HE-COOKERY/BPP/FBS NCII': 4,
-            'ICT-CSS NCII': 5,
-            'IA-EIM NCII': 6
-        };
-        return mapping[trackLabel] || null;
+        // Now using dynamic StrandID from radio button value
+        const trackRadio = document.querySelector('input[name="track"]:checked');
+        return trackRadio ? parseInt(trackRadio.value) : null;
     }
 
     validateForm(formData) {

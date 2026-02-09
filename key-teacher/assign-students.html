@@ -95,6 +95,10 @@
                                 <span class="material-icons-outlined text-[20px]">view_quilt</span>
                                 <span class="text-sm font-medium">Manage Sections</span>
                             </a>
+                            <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="manage-strands.html">
+                                <span class="material-icons-outlined text-[20px]">school</span>
+                                <span class="text-sm font-medium">Manage Strands</span>
+                            </a>
                             <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg shadow-sm" href="assign-students.html">
                                 <span class="material-icons-outlined text-[20px]">group_add</span>
                                 <span class="text-sm font-medium">Assign Students</span>
@@ -228,15 +232,6 @@
         }
 
         function setupEventListeners() {
-            document.querySelectorAll('.logout-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    if (confirm('Are you sure you want to logout?')) {
-                        localStorage.removeItem('isLoggedIn');
-                        localStorage.removeItem('user');
-                        window.location.href = '../login.html';
-                    }
-                });
-            });
 
             document.getElementById('gradeFilter').addEventListener('change', function() {
                 const grade = this.value;
@@ -647,8 +642,8 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    alert(data.message + 
-                        (data.unassignedCount > 0 ? `\n${data.unassignedCount} student(s) could not be assigned (no available slots).` : ''));
+                    // Display detailed results modal
+                    showAssignmentResults(data);
                     await loadData();
                 } else {
                     alert('Error: ' + data.message);
@@ -656,6 +651,239 @@
             } catch (error) {
                 console.error('Error in automatic assignment:', error);
                 alert('Failed to automatically assign students');
+            }
+        }
+
+        
+        function showAssignmentResults(data) {
+            const summary = data.summary;
+            const details = data.details;
+            
+            // Build modal HTML
+            let modalHTML = `
+                <div id="resultsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick="closeResultsModal(event)">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden" onclick="event.stopPropagation()">
+                        <!-- Header -->
+                        <div class="bg-primary text-white px-6 py-4 flex justify-between items-center">
+                            <div>
+                                <h2 class="text-xl font-bold">Auto-Assignment Results</h2>
+                                <p class="text-sm opacity-90">Assigned ${summary.assigned} of ${summary.totalStudents} students</p>
+                            </div>
+                            <button onclick="closeResultsModal()" class="text-white hover:bg-white/20 rounded-full p-2">
+                                <span class="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Summary Stats -->
+                        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800">
+                                    <div class="flex items-center gap-3">
+                                        <span class="material-symbols-outlined text-4xl text-green-600 dark:text-green-400">check_circle</span>
+                                        <div>
+                                            <p class="text-3xl font-bold text-green-700 dark:text-green-300">${summary.assigned}</p>
+                                            <p class="text-sm text-green-600 dark:text-green-400">Successfully Assigned</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 border border-red-200 dark:border-red-800">
+                                    <div class="flex items-center gap-3">
+                                        <span class="material-symbols-outlined text-4xl text-red-600 dark:text-red-400">cancel</span>
+                                        <div>
+                                            <p class="text-3xl font-bold text-red-700 dark:text-red-300">${summary.failed}</p>
+                                            <p class="text-sm text-red-600 dark:text-red-400">Failed to Assign</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Detailed Results -->
+                        <div class="p-6 overflow-y-auto max-h-[60vh]">
+            `;
+            
+            // Show successful assignments
+            if (details.assigned && details.assigned.length > 0) {
+                modalHTML += `
+                    <div class="mb-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-3 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-green-600">check_circle</span>
+                            Successfully Assigned (${details.assigned.length})
+                        </h3>
+                        <div class="space-y-2 max-h-60 overflow-y-auto">
+                `;
+                details.assigned.forEach(student => {
+                    modalHTML += `
+                        <div class="bg-green-50 dark:bg-green-900/10 rounded-lg p-3 flex items-center justify-between border border-green-200 dark:border-green-800">
+                            <div>
+                                <p class="font-medium text-gray-800 dark:text-white">${student.studentName}</p>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">LRN: ${student.lrn}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm font-medium text-green-700 dark:text-green-400">${student.sectionName}</p>
+                                <p class="text-xs text-gray-500">Section ID: ${student.sectionId}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+                modalHTML += `
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Show failures
+            if (summary.failed > 0) {
+                modalHTML += `<div class="mb-6">
+                    <h3 class="text-lg font-bold text-red-700 dark:text-red-400 mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined">error</span>
+                        Assignment Failures (${summary.failed})
+                    </h3>
+                `;
+                
+                // Strand Mismatch Failures
+                if (details.failures.strandMismatch.count > 0) {
+                    modalHTML += `
+                        <div class="mb-4">
+                            <div class="bg-orange-50 dark:bg-orange-900/20 rounded-t-lg p-3 border border-orange-200 dark:border-orange-800 border-b-0">
+                                <h4 class="font-bold text-orange-800 dark:text-orange-300 flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-base">shuffle</span>
+                                    Strand Mismatch (${details.failures.strandMismatch.count})
+                                </h4>
+                                <p class="text-sm text-orange-700 dark:text-orange-400 mt-1">These students' strands don't match any available sections</p>
+                            </div>
+                            <div class="space-y-1 max-h-48 overflow-y-auto">
+                    `;
+                    details.failures.strandMismatch.students.forEach(student => {
+                        modalHTML += `
+                            <div class="bg-white dark:bg-gray-700 border-l-4 border-orange-500 p-3 flex items-center justify-between">
+                                <div>
+                                    <p class="font-medium text-gray-800 dark:text-white">${student.studentName}</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">LRN: ${student.lrn} • Strand: ${student.studentStrand}</p>
+                                </div>
+                                <span class="material-symbols-outlined text-orange-500">warning</span>
+                            </div>
+                        `;
+                    });
+                    modalHTML += `
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // Sections Full Failures
+                if (details.failures.sectionsFull.count > 0) {
+                    modalHTML += `
+                        <div class="mb-4">
+                            <div class="bg-yellow-50 dark:bg-yellow-900/20 rounded-t-lg p-3 border border-yellow-200 dark:border-yellow-800 border-b-0">
+                                <h4 class="font-bold text-yellow-800 dark:text-yellow-300 flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-base">group_off</span>
+                                    All Matching Sections Full (${details.failures.sectionsFull.count})
+                                </h4>
+                                <p class="text-sm text-yellow-700 dark:text-yellow-400 mt-1">All sections that match these students' strands are at capacity</p>
+                            </div>
+                            <div class="space-y-1 max-h-48 overflow-y-auto">
+                    `;
+                    details.failures.sectionsFull.students.forEach(student => {
+                        modalHTML += `
+                            <div class="bg-white dark:bg-gray-700 border-l-4 border-yellow-500 p-3 flex items-center justify-between">
+                                <div>
+                                    <p class="font-medium text-gray-800 dark:text-white">${student.studentName}</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">LRN: ${student.lrn}</p>
+                                    <p class="text-xs text-gray-500 mt-1">${student.matchingSections} matching section(s), but all full</p>
+                                </div>
+                                <span class="material-symbols-outlined text-yellow-500">warning</span>
+                            </div>
+                        `;
+                    });
+                    modalHTML += `
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // No Available Sections Failures
+                if (details.failures.noAvailableSections.count > 0) {
+                    modalHTML += `
+                        <div class="mb-4">
+                            <div class="bg-red-50 dark:bg-red-900/20 rounded-t-lg p-3 border border-red-200 dark:border-red-800 border-b-0">
+                                <h4 class="font-bold text-red-800 dark:text-red-300 flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-base">block</span>
+                                    No Available Sections (${details.failures.noAvailableSections.count})
+                                </h4>
+                                <p class="text-sm text-red-700 dark:text-red-400 mt-1">No sections have available space in the entire system</p>
+                            </div>
+                            <div class="space-y-1 max-h-48 overflow-y-auto">
+                    `;
+                    details.failures.noAvailableSections.students.forEach(student => {
+                        modalHTML += `
+                            <div class="bg-white dark:bg-gray-700 border-l-4 border-red-500 p-3 flex items-center justify-between">
+                                <div>
+                                    <p class="font-medium text-gray-800 dark:text-white">${student.studentName}</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">LRN: ${student.lrn}</p>
+                                </div>
+                                <span class="material-symbols-outlined text-red-500">error</span>
+                            </div>
+                        `;
+                    });
+                    modalHTML += `
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // Database Error Failures
+                if (details.failures.databaseErrors.count > 0) {
+                    modalHTML += `
+                        <div class="mb-4">
+                            <div class="bg-red-50 dark:bg-red-900/20 rounded-t-lg p-3 border border-red-200 dark:border-red-800 border-b-0">
+                                <h4 class="font-bold text-red-800 dark:text-red-300 flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-base">bug_report</span>
+                                    Database Errors (${details.failures.databaseErrors.count})
+                                </h4>
+                                <p class="text-sm text-red-700 dark:text-red-400 mt-1">These assignments failed due to database errors</p>
+                            </div>
+                            <div class="space-y-1 max-h-48 overflow-y-auto">
+                    `;
+                    details.failures.databaseErrors.students.forEach(student => {
+                        modalHTML += `
+                            <div class="bg-white dark:bg-gray-700 border-l-4 border-red-600 p-3">
+                                <p class="font-medium text-gray-800 dark:text-white">${student.studentName}</p>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">LRN: ${student.lrn}</p>
+                                <p class="text-xs text-red-600 dark:text-red-400 mt-2 font-mono">${student.error}</p>
+                            </div>
+                        `;
+                    });
+                    modalHTML += `
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                modalHTML += `</div>`;
+            }
+            
+            modalHTML += `
+                        </div>
+                        
+                        <!-- Footer -->
+                        <div class="px-6 py-4 bg-gray-50 dark:bg-gray-900 flex justify-end gap-3">
+                            <button onclick="closeResultsModal()" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 font-medium">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add modal to page
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        function closeResultsModal(event) {
+            const modal = document.getElementById('resultsModal');
+            if (modal && (!event || event.target === modal || event.type === 'undefined')) {
+                modal.remove();
             }
         }
     </script>

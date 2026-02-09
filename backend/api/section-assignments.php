@@ -2,6 +2,7 @@
 // ============================================
 // FILE: backend/api/section-assignments.php
 // Purpose: Handle student-to-section assignments
+// FIXED VERSION - with transaction isolation and failure tracking
 // ============================================
 
 error_reporting(E_ALL);
@@ -201,13 +202,11 @@ function getSectionsWithStudents($conn) {
         ':grade' => $gradeLevel
     ];
     
-    // Apply strand filter to sections
     if ($strand) {
         $query .= " AND sec.StrandID = :strand";
         $params[':strand'] = $strand;
     }
     
-    // Order by creation date (oldest first) to prioritize first sections
     $query .= " ORDER BY sec.CreatedAt ASC, sec.SectionName ASC";
     
     $stmt = $conn->prepare($query);
@@ -358,11 +357,25 @@ function autoAssignStudents($conn) {
     $userId = isset($data['assignedBy']) ? $data['assignedBy'] : null;
     $strandId = isset($data['strandId']) ? $data['strandId'] : null;
     
-    $conn->beginTransaction();
+    // Initialize detailed tracking
+    $assignmentResults = [
+        'assigned' => [],
+        'failed' => [
+            'strand_mismatch' => [],
+            'all_sections_full' => [],
+            'no_available_sections' => [],
+            'database_error' => []
+        ]
+    ];
     
     try {
-        // Get available sections for this grade/year (ordered by creation date - oldest first)
-        $sectionsQuery = "SELECT sec.SectionID, sec.Capacity, sec.CurrentEnrollment, sec.StrandID
+        // Set SERIALIZABLE isolation level to prevent phantom reads and race conditions
+        $conn->exec("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE");
+        $conn->beginTransaction();
+        
+        // Get available sections with FOR UPDATE lock to prevent concurrent modifications
+        $sectionsQuery = "SELECT sec.SectionID, sec.Capacity, sec.CurrentEnrollment, 
+                                 sec.StrandID, sec.SectionName, sec.CreatedAt
                           FROM section sec
                           WHERE sec.AcademicYear = :year 
                           AND sec.GradeLevelID = (SELECT GradeLevelID FROM gradelevel WHERE GradeLevelNumber = :grade)
@@ -372,7 +385,8 @@ function autoAssignStudents($conn) {
             $sectionsQuery .= " AND sec.StrandID = :strand";
         }
         
-        $sectionsQuery .= " ORDER BY sec.CreatedAt ASC, sec.SectionName ASC";
+        $sectionsQuery .= " ORDER BY sec.CreatedAt ASC, sec.SectionName ASC
+                           FOR UPDATE"; // Lock sections to prevent concurrent modifications
         
         $stmt = $conn->prepare($sectionsQuery);
         $stmt->bindValue(':year', $data['academicYear']);
@@ -388,11 +402,18 @@ function autoAssignStudents($conn) {
             throw new Exception('No sections available for this grade level');
         }
         
-        // Get unassigned students (first come, first served - ordered by enrollment date)
-        $studentsQuery = "SELECT DISTINCT s.StudentID, e.EnrollmentID, e.StrandID
+        // Get unassigned students (FCFS - ordered by enrollment date)
+        $studentsQuery = "SELECT DISTINCT 
+                                 s.StudentID, 
+                                 s.LRN,
+                                 CONCAT(s.LastName, ', ', s.FirstName, ' ', IFNULL(s.MiddleName, '')) as StudentName,
+                                 e.EnrollmentID, 
+                                 e.StrandID,
+                                 st.StrandCode
                           FROM student s
                           INNER JOIN enrollment e ON s.StudentID = e.StudentID
                           INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
+                          LEFT JOIN strand st ON e.StrandID = st.StrandID
                           WHERE e.AcademicYear = :year
                           AND gl.GradeLevelNumber = :grade
                           AND e.Status IN ('Confirmed', 'Pending')
@@ -420,89 +441,117 @@ function autoAssignStudents($conn) {
         $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         if (empty($students)) {
+            $conn->rollBack();
+            $conn->exec("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
             throw new Exception('No unassigned students found');
         }
         
-        // Assign students to sections in order
-        $assignedCount = 0;
-        
+        // Process each student with detailed tracking
         foreach ($students as $student) {
-            // Find next available section that matches student's strand
             $assigned = false;
+            $availableSections = 0;
+            $matchingSections = 0;
+            $strandMatchFailures = [];
             
-            // Search through ALL sections to find a matching one
+            // Try to assign to first available matching section
             for ($i = 0; $i < count($sections); $i++) {
                 $section = $sections[$i];
                 
-                // Check strand compatibility
-                // For Grade 11-12: Both section and student must have matching strands
-                // For Grade 7-10: Strands should be null, but we're lenient
-                $strandMatch = false;
-                
-                if ($section['StrandID'] === null && $student['StrandID'] === null) {
-                    // Both have no strand (Grade 7-10) - perfect match
-                    $strandMatch = true;
-                } elseif ($section['StrandID'] !== null && $student['StrandID'] !== null) {
-                    // Both have strands (Grade 11-12) - must match exactly
-                    $strandMatch = ($section['StrandID'] == $student['StrandID']);
-                } elseif ($section['StrandID'] === null && $student['StrandID'] !== null) {
-                    // Section has no strand but student does - no match (shouldn't happen in practice)
-                    $strandMatch = false;
-                } elseif ($section['StrandID'] !== null && $student['StrandID'] === null) {
-                    // Section has strand but student doesn't - no match (shouldn't happen in practice)
-                    $strandMatch = false;
+                // Track available sections (with space)
+                if ($section['CurrentEnrollment'] < $section['Capacity']) {
+                    $availableSections++;
                 }
                 
-                // Only assign if strand matches AND section has available space
-                if ($strandMatch && $section['CurrentEnrollment'] < $section['Capacity']) {
-                    // Check if there's an old inactive assignment
-                    $checkOld = "SELECT AssignmentID FROM sectionassignment 
-                                 WHERE StudentID = :studentId 
-                                 AND SectionID = :sectionId 
-                                 AND IsActive = 0";
-                    $stmt = $conn->prepare($checkOld);
-                    $stmt->bindValue(':studentId', $student['StudentID']);
-                    $stmt->bindValue(':sectionId', $section['SectionID']);
-                    $stmt->execute();
-                    $oldAssignment = $stmt->fetch(PDO::FETCH_ASSOC);
+                // Check strand compatibility
+                $strandMatch = checkStrandCompatibility($section, $student);
+                
+                if ($strandMatch) {
+                    $matchingSections++;
                     
-                    if ($oldAssignment) {
-                        // Reactivate the old assignment
-                        $updateQuery = "UPDATE sectionassignment 
-                                        SET IsActive = 1, 
-                                            AssignmentDate = NOW(),
-                                            AssignmentMethod = 'Automatic',
-                                            AssignedBy = :assignedBy
-                                        WHERE AssignmentID = :assignmentId";
-                        $stmt = $conn->prepare($updateQuery);
-                        $stmt->bindValue(':assignedBy', $userId);
-                        $stmt->bindValue(':assignmentId', $oldAssignment['AssignmentID']);
-                        $stmt->execute();
+                    // Check if section has space
+                    if ($section['CurrentEnrollment'] < $section['Capacity']) {
+                        try {
+                            // Attempt assignment
+                            $assignResult = assignStudentToSection($conn, $student, $section, $userId);
+                            
+                            if ($assignResult['success']) {
+                                // Update local section counter
+                                $sections[$i]['CurrentEnrollment']++;
+                                
+                                // Track successful assignment
+                                $assignmentResults['assigned'][] = [
+                                    'studentId' => $student['StudentID'],
+                                    'studentName' => $student['StudentName'],
+                                    'lrn' => $student['LRN'],
+                                    'sectionId' => $section['SectionID'],
+                                    'sectionName' => $section['SectionName']
+                                ];
+                                
+                                $assigned = true;
+                                break; // Move to next student
+                            }
+                        } catch (Exception $e) {
+                            // Database error during assignment
+                            $assignmentResults['failed']['database_error'][] = [
+                                'studentId' => $student['StudentID'],
+                                'studentName' => $student['StudentName'],
+                                'lrn' => $student['LRN'],
+                                'error' => $e->getMessage()
+                            ];
+                            $assigned = true; // Mark as processed
+                            break;
+                        }
                     } else {
-                        // Insert new assignment
-                        $insertQuery = "INSERT INTO sectionassignment 
-                                        (StudentID, SectionID, EnrollmentID, AssignmentMethod, AssignedBy, IsActive) 
-                                        VALUES 
-                                        (:studentId, :sectionId, :enrollmentId, 'Automatic', :assignedBy, 1)";
-                        
-                        $stmt = $conn->prepare($insertQuery);
-                        $stmt->bindValue(':studentId', $student['StudentID']);
-                        $stmt->bindValue(':sectionId', $section['SectionID']);
-                        $stmt->bindValue(':enrollmentId', $student['EnrollmentID']);
-                        $stmt->bindValue(':assignedBy', $userId);
-                        $stmt->execute();
+                        // Section is full
+                        $strandMatchFailures[] = [
+                            'sectionName' => $section['SectionName'],
+                            'reason' => 'full'
+                        ];
                     }
-                    
-                    // Update section enrollment count in our local array
-                    $sections[$i]['CurrentEnrollment']++;
-                    $assignedCount++;
-                    $assigned = true;
-                    break; // Move to next student
+                } else {
+                    // Strand mismatch
+                    $strandMatchFailures[] = [
+                        'sectionName' => $section['SectionName'],
+                        'reason' => 'strand_mismatch',
+                        'sectionStrand' => $section['StrandID'],
+                        'studentStrand' => $student['StrandID']
+                    ];
                 }
             }
             
-            // If student couldn't be assigned (no matching section with space), continue to next student
-            // Don't break the loop - there might be other students with different strands that can be assigned
+            // Track failure reason if not assigned
+            if (!$assigned) {
+                if ($matchingSections === 0) {
+                    // No sections match student's strand
+                    $assignmentResults['failed']['strand_mismatch'][] = [
+                        'studentId' => $student['StudentID'],
+                        'studentName' => $student['StudentName'],
+                        'lrn' => $student['LRN'],
+                        'studentStrand' => $student['StrandCode'] ?: 'None (JHS)',
+                        'availableSections' => count($sections),
+                        'details' => $strandMatchFailures
+                    ];
+                } elseif ($availableSections === 0) {
+                    // All sections are full (across all strands)
+                    $assignmentResults['failed']['no_available_sections'][] = [
+                        'studentId' => $student['StudentID'],
+                        'studentName' => $student['StudentName'],
+                        'lrn' => $student['LRN'],
+                        'matchingSections' => $matchingSections,
+                        'reason' => 'All sections in the system are full'
+                    ];
+                } else {
+                    // Matching sections exist but all are full
+                    $assignmentResults['failed']['all_sections_full'][] = [
+                        'studentId' => $student['StudentID'],
+                        'studentName' => $student['StudentName'],
+                        'lrn' => $student['LRN'],
+                        'matchingSections' => $matchingSections,
+                        'availableSections' => $availableSections,
+                        'reason' => 'All matching sections for this strand are full'
+                    ];
+                }
+            }
         }
         
         // Update all section enrollment counts in database
@@ -520,18 +569,160 @@ function autoAssignStudents($conn) {
         
         $conn->commit();
         
-        $unassignedCount = count($students) - $assignedCount;
+        // Reset isolation level
+        $conn->exec("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
         
-        echo json_encode([
+        // Build comprehensive response
+        $totalFailed = count($assignmentResults['failed']['strand_mismatch']) +
+                       count($assignmentResults['failed']['all_sections_full']) +
+                       count($assignmentResults['failed']['no_available_sections']) +
+                       count($assignmentResults['failed']['database_error']);
+        
+        $response = [
             'success' => true,
-            'message' => "Automatically assigned $assignedCount student(s)",
-            'assignedCount' => $assignedCount,
-            'unassignedCount' => $unassignedCount
-        ]);
+            'summary' => [
+                'totalStudents' => count($students),
+                'assigned' => count($assignmentResults['assigned']),
+                'failed' => $totalFailed
+            ],
+            'details' => [
+                'assigned' => $assignmentResults['assigned'],
+                'failures' => [
+                    'strandMismatch' => [
+                        'count' => count($assignmentResults['failed']['strand_mismatch']),
+                        'students' => $assignmentResults['failed']['strand_mismatch']
+                    ],
+                    'sectionsFull' => [
+                        'count' => count($assignmentResults['failed']['all_sections_full']),
+                        'students' => $assignmentResults['failed']['all_sections_full']
+                    ],
+                    'noAvailableSections' => [
+                        'count' => count($assignmentResults['failed']['no_available_sections']),
+                        'students' => $assignmentResults['failed']['no_available_sections']
+                    ],
+                    'databaseErrors' => [
+                        'count' => count($assignmentResults['failed']['database_error']),
+                        'students' => $assignmentResults['failed']['database_error']
+                    ]
+                ]
+            ],
+            'message' => buildDetailedMessage($assignmentResults, count($students))
+        ];
+        
+        echo json_encode($response);
+        
     } catch (Exception $e) {
         $conn->rollBack();
+        // Reset isolation level
+        $conn->exec("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
         throw $e;
     }
+}
+
+/**
+ * Check if a student's strand is compatible with a section's strand
+ */
+function checkStrandCompatibility($section, $student) {
+    $sectionStrand = $section['StrandID'];
+    $studentStrand = $student['StrandID'];
+    
+    // Both null (JHS) - perfect match
+    if ($sectionStrand === null && $studentStrand === null) {
+        return true;
+    }
+    
+    // Both have strands (SHS) - must match exactly
+    if ($sectionStrand !== null && $studentStrand !== null) {
+        return ($sectionStrand == $studentStrand);
+    }
+    
+    // One has strand, other doesn't - no match
+    return false;
+}
+
+/**
+ * Assign a student to a section
+ */
+function assignStudentToSection($conn, $student, $section, $userId) {
+    try {
+        // Check if there's an old inactive assignment
+        $checkOld = "SELECT AssignmentID FROM sectionassignment 
+                     WHERE StudentID = :studentId 
+                     AND SectionID = :sectionId 
+                     AND IsActive = 0";
+        $stmt = $conn->prepare($checkOld);
+        $stmt->bindValue(':studentId', $student['StudentID']);
+        $stmt->bindValue(':sectionId', $section['SectionID']);
+        $stmt->execute();
+        $oldAssignment = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($oldAssignment) {
+            // Reactivate the old assignment
+            $updateQuery = "UPDATE sectionassignment 
+                            SET IsActive = 1, 
+                                AssignmentDate = NOW(),
+                                AssignmentMethod = 'Automatic',
+                                AssignedBy = :assignedBy
+                            WHERE AssignmentID = :assignmentId";
+            $stmt = $conn->prepare($updateQuery);
+            $stmt->bindValue(':assignedBy', $userId);
+            $stmt->bindValue(':assignmentId', $oldAssignment['AssignmentID']);
+            $stmt->execute();
+        } else {
+            // Insert new assignment
+            $insertQuery = "INSERT INTO sectionassignment 
+                            (StudentID, SectionID, EnrollmentID, AssignmentMethod, AssignedBy, IsActive) 
+                            VALUES 
+                            (:studentId, :sectionId, :enrollmentId, 'Automatic', :assignedBy, 1)";
+            
+            $stmt = $conn->prepare($insertQuery);
+            $stmt->bindValue(':studentId', $student['StudentID']);
+            $stmt->bindValue(':sectionId', $section['SectionID']);
+            $stmt->bindValue(':enrollmentId', $student['EnrollmentID']);
+            $stmt->bindValue(':assignedBy', $userId);
+            $stmt->execute();
+        }
+        
+        return ['success' => true];
+        
+    } catch (PDOException $e) {
+        throw new Exception("Database error: " . $e->getMessage());
+    }
+}
+
+/**
+ * Build a detailed human-readable message from assignment results
+ */
+function buildDetailedMessage($results, $totalStudents) {
+    $assigned = count($results['assigned']);
+    $failed = count($results['failed']['strand_mismatch']) +
+              count($results['failed']['all_sections_full']) +
+              count($results['failed']['no_available_sections']) +
+              count($results['failed']['database_error']);
+    
+    $message = "Auto-assignment completed: {$assigned} of {$totalStudents} students assigned successfully.";
+    
+    if ($failed > 0) {
+        $message .= "\n\n{$failed} student(s) could not be assigned:";
+        
+        if (count($results['failed']['strand_mismatch']) > 0) {
+            $message .= "\n• " . count($results['failed']['strand_mismatch']) . " due to strand mismatch (no matching sections)";
+        }
+        
+        if (count($results['failed']['all_sections_full']) > 0) {
+            $message .= "\n• " . count($results['failed']['all_sections_full']) . " because all matching sections are full";
+        }
+        
+        if (count($results['failed']['no_available_sections']) > 0) {
+            $message .= "\n• " . count($results['failed']['no_available_sections']) . " because no sections have available space";
+        }
+        
+        if (count($results['failed']['database_error']) > 0) {
+            $message .= "\n• " . count($results['failed']['database_error']) . " due to database errors";
+        }
+    }
+    
+    return $message;
 }
 
 function unassignStudent($conn) {

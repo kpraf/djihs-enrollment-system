@@ -14,7 +14,28 @@
     <!-- jsPDF for PDF Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-    
+    <script src="../js/auth.js"></script>
+    <script>
+        (function() {
+            const isLoggedIn = localStorage.getItem('isLoggedIn');
+            const userDataString = localStorage.getItem('user');
+            
+            if (!isLoggedIn || !userDataString) {
+                window.location.href = '../login.html';
+                return;
+            }
+            
+            try {
+                const user = JSON.parse(userDataString);
+                if (user.Role !== 'Adviser') {
+                    alert('Access denied. Adviser access required.');
+                    window.location.href = '../login.html';
+                }
+            } catch (e) {
+                window.location.href = '../login.html';
+            }
+        })();
+    </script>
     <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
@@ -224,8 +245,6 @@
         }
 
         function setupEventListeners() {
-            // Logout button
-            document.querySelector('.logout-btn').addEventListener('click', logout);
 
             // Search input
             document.getElementById('searchInput').addEventListener('input', (e) => {
@@ -548,12 +567,6 @@
 
             const fileName = `${currentSection.SectionName}_Students_${new Date().toISOString().split('T')[0]}.pdf`;
             doc.save(fileName);
-        }
-
-        function logout() {
-            localStorage.removeItem('isLoggedIn');
-            localStorage.removeItem('user');
-            window.location.href = '../login.html';
         }
 
         // SF1 Export Function - Direct Browser Download

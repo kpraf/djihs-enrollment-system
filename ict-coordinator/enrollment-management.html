@@ -123,6 +123,10 @@
                         <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">groups</span>
                         <span class="text-sm font-medium">Student Management</span>
                      </a>
+                     <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="audit-log.html">
+                        <span class="material-symbols-outlined">fact_check</span>
+                        <span class="text-sm font-medium">Audit Log</span>
+                     </a>
                   </nav>
                </div>
                <div class="p-4 border-t border-gray-200 dark:border-gray-700">
@@ -231,32 +235,16 @@
                               <div id="strandSection" class="space-y-4 hidden">
                                  <h3 class="text-lg font-semibold text-slate-800 dark:text-white border-b border-slate-200 dark:border-slate-800 pb-2">Track (For Grade 11 & 12) <span class="text-red-500">*</span></h3>
                                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
+                                    <div id="academicStrands">
                                        <p class="text-slate-800 dark:text-white text-sm font-medium leading-normal pb-2">ACADEMIC</p>
-                                       <div class="flex flex-wrap gap-x-6 gap-y-2">
-                                          <label class="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                                             <input class="form-radio text-primary focus:ring-primary/50" name="track" type="radio" value="1"/>ABM
-                                          </label>
-                                          <label class="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                                             <input class="form-radio text-primary focus:ring-primary/50" name="track" type="radio" value="2"/>HUMSS
-                                          </label>
-                                          <label class="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                                             <input class="form-radio text-primary focus:ring-primary/50" name="track" type="radio" value="3"/>STEM
-                                          </label>
+                                       <div id="academicStrandsContainer" class="flex flex-wrap gap-x-6 gap-y-2">
+                                          <!-- Will be populated dynamically -->
                                        </div>
                                     </div>
-                                    <div>
+                                    <div id="tvlStrands">
                                        <p class="text-slate-800 dark:text-white text-sm font-medium leading-normal pb-2">TVL</p>
-                                       <div class="flex flex-wrap gap-x-6 gap-y-2">
-                                          <label class="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                                             <input class="form-radio text-primary focus:ring-primary/50" name="track" type="radio" value="4"/>HE-COOKERY/BPP/FBS NCII
-                                          </label>
-                                          <label class="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                                             <input class="form-radio text-primary focus:ring-primary/50" name="track" type="radio" value="5"/>ICT-CSS NCII
-                                          </label>
-                                          <label class="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                                             <input class="form-radio text-primary focus:ring-primary/50" name="track" type="radio" value="6"/>IA-EIM NCII
-                                          </label>
+                                       <div id="tvlStrandsContainer" class="flex flex-wrap gap-x-6 gap-y-2">
+                                          <!-- Will be populated dynamically -->
                                        </div>
                                     </div>
                                  </div>
@@ -563,85 +551,85 @@
                   <p class="text-gray-700 dark:text-gray-300">Processing file...</p>
                </div>
 
-            <!-- Preview Section -->
-            <div id="previewSection" class="hidden">
-               <!-- School Year Display -->
-               <div class="mb-4 bg-primary/10 border border-primary/20 rounded-lg p-3 flex items-center gap-2">
-                  <span class="material-icons-outlined text-primary">calendar_today</span>
-                  <span class="text-sm font-medium text-gray-900 dark:text-white">
-                     Importing for School Year: <span id="previewSchoolYear" class="font-bold text-primary">2025-2026</span>
-                  </span>
-               </div>
-
-               <!-- Summary Bar with Fix Errors Button -->
-               <div class="px-6 py-3 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-between border border-gray-200 dark:border-gray-700 rounded-lg mb-4">
-                  <div class="flex items-center gap-4 text-sm">
-                     <span class="flex items-center gap-1.5 font-medium text-gray-700 dark:text-gray-300">
-                        <span class="material-icons-outlined text-primary text-lg">list_alt</span>
-                        <span id="totalCount">0</span> Records Found
-                     </span>
-                     <span class="h-4 w-px bg-gray-300 dark:bg-gray-600"></span>
-                     <span id="errorSummary" class="hidden flex items-center gap-1.5 font-bold text-red-600 dark:text-red-400">
-                        <span class="material-icons-outlined text-lg">error</span>
-                        <span id="errorCount">0</span> Errors Detected
-                     </span>
-                     <span id="validSummary" class="hidden flex items-center gap-1.5 font-bold text-green-600 dark:text-green-400">
-                        <span class="material-icons-outlined text-lg">check_circle</span>
-                        <span id="validCount">0</span> Valid Records
+               <!-- Preview Section -->
+               <div id="previewSection" class="hidden">
+                  <!-- School Year Display -->
+                  <div class="mb-4 bg-primary/10 border border-primary/20 rounded-lg p-3 flex items-center gap-2">
+                     <span class="material-icons-outlined text-primary">calendar_today</span>
+                     <span class="text-sm font-medium text-gray-900 dark:text-white">
+                        Importing for School Year: <span id="previewSchoolYear" class="font-bold text-primary">2025-2026</span>
                      </span>
                   </div>
-                  <button id="fixErrorsBtn" class="hidden flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-white bg-red-600 border border-red-700 rounded-lg hover:bg-red-700 transition-colors">
-                     <span class="material-icons-outlined text-base">refresh</span>
-                     Re-upload File
-                  </button>
-               </div>
 
-               <!-- Statistics Cards -->
-               <div class="grid grid-cols-4 gap-4 mb-6">
-                  <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                     <p class="text-sm text-gray-600 dark:text-gray-400">Total Records</p>
-                     <p id="totalCountCard" class="text-2xl font-bold text-blue-600 dark:text-blue-400">0</p>
+                  <!-- Summary Bar with Fix Errors Button -->
+                  <div class="px-6 py-3 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-between border border-gray-200 dark:border-gray-700 rounded-lg mb-4">
+                     <div class="flex items-center gap-4 text-sm">
+                        <span class="flex items-center gap-1.5 font-medium text-gray-700 dark:text-gray-300">
+                           <span class="material-icons-outlined text-primary text-lg">list_alt</span>
+                           <span id="totalCount">0</span> Records Found
+                        </span>
+                        <span class="h-4 w-px bg-gray-300 dark:bg-gray-600"></span>
+                        <span id="errorSummary" class="hidden flex items-center gap-1.5 font-bold text-red-600 dark:text-red-400">
+                           <span class="material-icons-outlined text-lg">error</span>
+                           <span id="errorCount">0</span> Errors Detected
+                        </span>
+                        <span id="validSummary" class="hidden flex items-center gap-1.5 font-bold text-green-600 dark:text-green-400">
+                           <span class="material-icons-outlined text-lg">check_circle</span>
+                           <span id="validCount">0</span> Valid Records
+                        </span>
+                     </div>
+                     <button id="fixErrorsBtn" class="hidden flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-white bg-red-600 border border-red-700 rounded-lg hover:bg-red-700 transition-colors">
+                        <span class="material-icons-outlined text-base">refresh</span>
+                        Re-upload File
+                     </button>
                   </div>
-                  <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-                     <p class="text-sm text-gray-600 dark:text-gray-400">Valid</p>
-                     <p id="validCountCard" class="text-2xl font-bold text-green-600 dark:text-green-400">0</p>
-                  </div>
-                  <div class="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
-                     <p class="text-sm text-gray-600 dark:text-gray-400">Errors</p>
-                     <p id="errorCountCard" class="text-2xl font-bold text-red-600 dark:text-red-400">0</p>
-                  </div>
-                  <div class="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg">
-                     <p class="text-sm text-gray-600 dark:text-gray-400">Warnings</p>
-                     <p id="warningCountCard" class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">0</p>
-                  </div>
-               </div>
 
-               <!-- Issues List -->
-               <div id="issuesList" class="hidden mb-6 space-y-2 max-h-60 overflow-y-auto"></div>
+                  <!-- Statistics Cards -->
+                  <div class="grid grid-cols-4 gap-4 mb-6">
+                     <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Total Records</p>
+                        <p id="totalCountCard" class="text-2xl font-bold text-blue-600 dark:text-blue-400">0</p>
+                     </div>
+                     <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Valid</p>
+                        <p id="validCountCard" class="text-2xl font-bold text-green-600 dark:text-green-400">0</p>
+                     </div>
+                     <div class="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Errors</p>
+                        <p id="errorCountCard" class="text-2xl font-bold text-red-600 dark:text-red-400">0</p>
+                     </div>
+                     <div class="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg">
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Warnings</p>
+                        <p id="warningCountCard" class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">0</p>
+                     </div>
+                  </div>
 
-               <!-- Preview Table -->
-               <div class="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
-                  <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                     <thead class="bg-gray-50 dark:bg-gray-800/80">
-                        <tr>
-                           <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Row</th>
-                           <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">LRN</th>
-                           <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Full Name</th>
-                           <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Grade Level</th>
-                           <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Strand</th>
-                           <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Guardian</th>
-                           <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contact No.</th>
-                           <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                        </tr>
-                     </thead>
-                     <tbody id="previewTableBody" class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                     </tbody>
-                  </table>
+                  <!-- Issues List -->
+                  <div id="issuesList" class="hidden mb-6 space-y-2 max-h-60 overflow-y-auto"></div>
+
+                  <!-- Preview Table -->
+                  <div class="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+                     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-800/80">
+                           <tr>
+                              <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Row</th>
+                              <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">LRN</th>
+                              <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Full Name</th>
+                              <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Grade Level</th>
+                              <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Strand</th>
+                              <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Guardian</th>
+                              <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contact No.</th>
+                              <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                           </tr>
+                        </thead>
+                        <tbody id="previewTableBody" class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                        </tbody>
+                     </table>
+                  </div>
+                  <p class="mt-4 text-[11px] text-gray-400 dark:text-gray-500 text-center italic uppercase tracking-widest">
+                     Only the first 50 rows are shown for preview
+                  </p>
                </div>
-               <p class="mt-4 text-[11px] text-gray-400 dark:text-gray-500 text-center italic uppercase tracking-widest">
-                  Only the first 50 rows are shown for preview
-               </p>
-            </div>
             </div>
 
             <!-- Modal Footer -->
@@ -663,8 +651,9 @@
 
       <!-- Scripts -->
       <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
       <script src="../js/bulk-import-handler.js"></script>
       <script src="../js/enrollment-form-handler.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
    </body>
 </html>

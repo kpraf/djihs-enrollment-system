@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Key Teacher | Manage Strands</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+    <link rel="icon" type="image/png" href="../assets/favicons/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="../assets/favicons/favicon.svg" />
+    <link rel="shortcut icon" href="../assets/favicons/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="../assets/favicons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="DJIHS" />
+    <link rel="manifest" href="../assets/favicons/site.webmanifest" />
+
+    <!-- AUTHENTICATION PROTECTION -->
+    <script src="../js/auth.js"></script>
+    <script>
+        (function() {
+            const isLoggedIn = localStorage.getItem('isLoggedIn');
+            const userDataString = localStorage.getItem('user');
+            
+            if (!isLoggedIn || !userDataString) {
+                window.location.href = '../login.html';
+                return;
+            }
+            
+            try {
+                const user = JSON.parse(userDataString);
+                if (user.Role !== 'Key_Teacher') {
+                    alert('Access denied. Key Teacher access required.');
+                    window.location.href = '../login.html';
+                }
+            } catch (e) {
+                window.location.href = '../login.html';
+            }
+        })();
+    </script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#085019",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="font-display bg-background-light dark:bg-background-dark">
+    <div class="relative flex min-h-screen w-full">
+        <!-- Sidebar -->
+        <aside class="w-72 h-screen sticky top-0 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex transition-colors duration-200">
+            <div>
+                <div class="p-6">
+                    <div class="flex items-center gap-3 mb-1">
+                        <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center overflow-hidden shrink-0 border border-yellow-200">
+                            <img alt="School Logo" class="w-full h-full object-cover opacity-90" src="../assets/images/djihs-logo-small.png"/>
+                        </div>
+                    </div>
+                    <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS Key Teacher</h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
+                </div>
+                <nav class="px-4 space-y-1">
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="dashboard.html">
+                        <span class="material-icons-outlined text-[20px]">dashboard</span>
+                        <span class="text-sm font-medium">Dashboard</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="manage-sections.html">
+                        <span class="material-icons-outlined text-[20px]">view_quilt</span>
+                        <span class="text-sm font-medium">Manage Sections</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg shadow-sm" href="manage-strands.html">
+                        <span class="material-icons-outlined text-[20px]">school</span>
+                        <span class="text-sm font-medium">Manage Strands</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="assign-students.html">
+                        <span class="material-icons-outlined text-[20px]">group_add</span>
+                        <span class="text-sm font-medium">Assign Students</span>
+                    </a>
+                </nav>
+            </div>
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                <div class="flex items-center gap-3 mb-4 px-2">
+                    <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-primary dark:text-green-300 font-bold text-sm" id="userInitials">KT</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate" id="userName">Key Teacher</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Key Teacher</p>
+                    </div>
+                </div>
+                <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors logout-btn">
+                    <span class="material-icons-outlined text-[18px]">logout</span>
+                    Logout
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-8">
+            <div class="max-w-7xl mx-auto">
+                <!-- Header -->
+                <div class="flex flex-wrap justify-between items-center gap-3 mb-6">
+                    <div>
+                        <p class="text-gray-900 dark:text-white text-3xl font-bold">Manage Strands</p>
+                        <p class="text-gray-600 dark:text-gray-400 text-base">Create and manage Senior High School strands</p>
+                    </div>
+                    <button onclick="openCreateModal()" class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
+                        <span class="material-symbols-outlined text-[20px]">add_circle</span>
+                        <span class="text-sm font-medium">Add New Strand</span>
+                    </button>
+                </div>
+
+                <!-- Info Alert -->
+                <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+                    <div class="flex items-start gap-3">
+                        <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-xl">info</span>
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-blue-900 dark:text-blue-100">About Strand Management</p>
+                            <p class="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                                Strands are only applicable to Grade 11 and 12 (Senior High School). You can add custom strands beyond the default Academic and TVL offerings.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
+                    <div class="flex flex-wrap items-center gap-4">
+                        <div class="flex-1 min-w-[200px]">
+                            <input id="searchInput" type="text" placeholder="Search strand code or name..." 
+                                   class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary"
+                                   oninput="filterStrands()">
+                        </div>
+                        <select id="categoryFilter" onchange="filterStrands()" class="px-8 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                            <option value="">All Categories</option>
+                            <option value="Academic">Academic</option>
+                            <option value="TVL">TVL (Tech-Voc-Livelihood)</option>
+                        </select>
+                        <select id="statusFilter" onchange="filterStrands()" class="px-8 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                            <option value="">All Status</option>
+                            <option value="1">Active</option>
+                            <option value="0">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase">Total Strands</p>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white mt-1" id="totalStrands">0</p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase">Active Strands</p>
+                        <p class="text-2xl font-bold text-green-600 dark:text-green-400 mt-1" id="activeStrands">0</p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase">Academic</p>
+                        <p class="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1" id="academicStrands">0</p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase">TVL</p>
+                        <p class="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-1" id="tvlStrands">0</p>
+                    </div>
+                </div>
+
+                <!-- Strands Table -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Code</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Strand Name</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Category</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Sections</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Students</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Status</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="strandsTableBody" class="divide-y divide-gray-200 dark:divide-gray-700">
+                            <tr>
+                                <td colspan="7" class="px-4 py-8 text-center text-gray-500">Loading strands...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Create/Edit Modal -->
+    <div id="strandModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white" id="modalTitle">Add New Strand</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            
+            <form id="strandForm" onsubmit="saveStrand(event)">
+                <input type="hidden" id="strandId">
+                
+                <div class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Strand Code *
+                                <span class="text-xs text-gray-500">(e.g., STEM, ABM)</span>
+                            </label>
+                            <input type="text" id="strandCode" required maxlength="20"
+                                   class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white uppercase"
+                                   placeholder="e.g., STEM">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category *</label>
+                            <select id="category" required class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                                <option value="">Select Category</option>
+                                <option value="Academic">Academic</option>
+                                <option value="TVL">TVL (Tech-Voc-Livelihood)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Strand Full Name *
+                        </label>
+                        <input type="text" id="strandName" required maxlength="200"
+                               class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                               placeholder="e.g., Science, Technology, Engineering, and Mathematics">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Description
+                            <span class="text-xs text-gray-500">(Optional)</span>
+                        </label>
+                        <textarea id="description" rows="3"
+                                  class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                  placeholder="Brief description of the strand and its focus areas..."></textarea>
+                    </div>
+
+                    <!-- Examples -->
+                    <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Examples:</p>
+                        <div class="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                            <p><strong>Academic:</strong> STEM, HUMSS, ABM, GAS</p>
+                            <p><strong>TVL:</strong> HE-COOK, ICT-CSS, IA-EIM, AGRI-CROP</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3 mt-6">
+                    <button type="button" onclick="closeModal()" class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
+                        <span id="submitBtnText">Save Strand</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let strands = [];
+        let allStrands = [];
+        let currentUser = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            currentUser = JSON.parse(localStorage.getItem('user'));
+            displayUserInfo();
+            loadStrands();
+        });
+
+        function displayUserInfo() {
+            if (currentUser) {
+                document.getElementById('userName').textContent = `${currentUser.FirstName} ${currentUser.LastName}`;
+                document.getElementById('userInitials').textContent = `${currentUser.FirstName[0]}${currentUser.LastName[0]}`;
+            }
+        }
+
+        async function loadStrands() {
+            try {
+                const response = await fetch('../backend/api/manage-strands.php?action=list');
+                const data = await response.json();
+                console.log(data);
+                
+                if (data.success) {
+                    allStrands = data.strands;
+                    strands = [...allStrands];
+                    updateStats();
+                    renderStrands();
+                } else {
+                    alert('Error loading strands: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error loading strands:', error);
+                alert('Failed to load strands');
+            }
+        }
+
+        function updateStats() {
+            const total = allStrands.length;
+            const active = allStrands.filter(s => s.IsActive == 1).length;
+            const academic = allStrands.filter(s => s.StrandCategory === 'Academic').length;
+            const tvl = allStrands.filter(s => s.StrandCategory === 'TVL').length;
+            
+            document.getElementById('totalStrands').textContent = total;
+            document.getElementById('activeStrands').textContent = active;
+            document.getElementById('academicStrands').textContent = academic;
+            document.getElementById('tvlStrands').textContent = tvl;
+        }
+
+        function renderStrands() {
+            const tbody = document.getElementById('strandsTableBody');
+            
+            if (strands.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-gray-500">No strands found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = strands.map(strand => {
+                const categoryColors = {
+                    'Academic': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+                    'TVL': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+                };
+                
+                const isActive = strand.IsActive == 1;
+                
+                return `
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td class="px-4 py-3">
+                            <span class="text-sm font-bold text-gray-900 dark:text-white">${strand.StrandCode}</span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div>
+                                <p class="text-sm font-medium text-gray-900 dark:text-white">${strand.StrandName}</p>
+                                ${strand.Description ? `<p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${strand.Description}</p>` : ''}
+                            </div>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${categoryColors[strand.StrandCategory]}">
+                                ${strand.StrandCategory}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                            ${strand.SectionCount || 0}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                            ${strand.EnrolledStudents || 0}
+                        </td>
+                        <td class="px-4 py-3">
+                            <button onclick="toggleStatus(${strand.StrandID}, ${isActive})" 
+                                    class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer transition-colors ${isActive ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}">
+                                ${isActive ? 'Active' : 'Inactive'}
+                            </button>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="flex gap-2">
+                                <button onclick="editStrand(${strand.StrandID})" 
+                                        class="p-1.5 text-blue-600 hover:bg-blue-50 rounded" 
+                                        title="Edit">
+                                    <span class="material-symbols-outlined text-xl">edit</span>
+                                </button>
+                                <button onclick="deleteStrand(${strand.StrandID}, '${strand.StrandCode.replace(/'/g, "\\'")}', ${strand.SectionCount}, ${strand.EnrolledStudents})" 
+                                        class="p-1.5 text-red-600 hover:bg-red-50 rounded" 
+                                        title="Delete">
+                                    <span class="material-symbols-outlined text-xl">delete</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterStrands() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const category = document.getElementById('categoryFilter').value;
+            const status = document.getElementById('statusFilter').value;
+            
+            strands = allStrands.filter(strand => {
+                const matchSearch = !search || 
+                    strand.StrandCode.toLowerCase().includes(search) ||
+                    strand.StrandName.toLowerCase().includes(search);
+                const matchCategory = !category || strand.StrandCategory === category;
+                const matchStatus = status === '' || strand.IsActive == status;
+                
+                return matchSearch && matchCategory && matchStatus;
+            });
+            
+            renderStrands();
+        }
+
+        function openCreateModal() {
+            document.getElementById('modalTitle').textContent = 'Add New Strand';
+            document.getElementById('strandForm').reset();
+            document.getElementById('strandId').value = '';
+            document.getElementById('submitBtnText').textContent = 'Save Strand';
+            document.getElementById('strandModal').classList.remove('hidden');
+            document.getElementById('strandModal').classList.add('flex');
+        }
+
+        async function editStrand(strandId) {
+            const strand = allStrands.find(s => s.StrandID == strandId);
+            
+            if (!strand) {
+                alert('Strand not found');
+                return;
+            }
+            
+            document.getElementById('modalTitle').textContent = 'Edit Strand';
+            document.getElementById('strandId').value = strand.StrandID;
+            document.getElementById('strandCode').value = strand.StrandCode;
+            document.getElementById('strandName').value = strand.StrandName;
+            document.getElementById('category').value = strand.StrandCategory;
+            document.getElementById('description').value = strand.Description || '';
+            document.getElementById('submitBtnText').textContent = 'Update Strand';
+            
+            document.getElementById('strandModal').classList.remove('hidden');
+            document.getElementById('strandModal').classList.add('flex');
+        }
+
+        async function saveStrand(event) {
+            event.preventDefault();
+            
+            const strandId = document.getElementById('strandId').value;
+            const action = strandId ? 'update' : 'create';
+            
+            const payload = {
+                strandId: strandId || undefined,
+                strandCode: document.getElementById('strandCode').value.trim().toUpperCase(),
+                strandName: document.getElementById('strandName').value.trim(),
+                category: document.getElementById('category').value,
+                description: document.getElementById('description').value.trim()
+            };
+            
+            try {
+                const response = await fetch(`../backend/api/manage-strands.php?action=${action}`, {
+                    method: strandId ? 'PUT' : 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(data.message);
+                    closeModal();
+                    loadStrands();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error saving strand:', error);
+                alert('Failed to save strand');
+            }
+        }
+
+        async function toggleStatus(strandId, isActive) {
+            const action = isActive ? 'deactivate' : 'activate';
+            
+            if (!confirm(`Are you sure you want to ${action} this strand?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`../backend/api/manage-strands.php?action=toggle-status&id=${strandId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    loadStrands();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error toggling status:', error);
+                alert('Failed to update strand status');
+            }
+        }
+
+        async function deleteStrand(strandId, strandCode, sectionCount, enrolledStudents) {
+            if (sectionCount > 0 || enrolledStudents > 0) {
+                alert(`Cannot delete "${strandCode}". This strand is being used by ${sectionCount} section(s) and has ${enrolledStudents} enrolled student(s). Consider deactivating it instead.`);
+                return;
+            }
+            
+            if (!confirm(`Are you sure you want to permanently delete "${strandCode}"?\n\nThis action cannot be undone.`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`../backend/api/manage-strands.php?action=delete&id=${strandId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(data.message);
+                    loadStrands();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error deleting strand:', error);
+                alert('Failed to delete strand');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('strandModal').classList.add('hidden');
+            document.getElementById('strandModal').classList.remove('flex');
+        }
+    </script>
+</body>
+</html>
