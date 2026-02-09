@@ -21,15 +21,6 @@ function displayUserInfo() {
 }
 
 function setupEventListeners() {
-    document.querySelectorAll('.logout-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            if (confirm('Are you sure you want to logout?')) {
-                localStorage.removeItem('isLoggedIn');
-                localStorage.removeItem('user');
-                window.location.href = '../login.html';
-            }
-        });
-    });
 }
 
 async function loadSchoolYears() {
