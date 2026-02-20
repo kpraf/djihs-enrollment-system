@@ -1,7 +1,7 @@
 // =====================================================
 // Enhanced Student Management Handler
 // File: js/student-management.js
-// Updated: 2026-02-08 - Added Dropped, Transferred In/Out statuses
+// Updated: 2026-02-20 - Removed specific revision request, unified edit flow, fixed audit alignment
 // =====================================================
 
 class StudentManagementHandler {
@@ -35,7 +35,6 @@ class StudentManagementHandler {
         this.displayUserInfo();
         // Initialize new handlers
         this.documentHandler = new DocumentSubmissionHandler();
-        this.revisionHandler = new RevisionRequestHandler();
     }
 
     displayUserInfo() {
@@ -376,7 +375,7 @@ class StudentManagementHandler {
         if (pageStudents.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                    <td colspan="9" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                         <div class="flex flex-col items-center gap-3">
                             <span class="material-symbols-outlined text-6xl text-gray-300">inbox</span>
                             <p class="text-lg font-medium">No students found</p>
@@ -408,7 +407,10 @@ class StudentManagementHandler {
                     ${this.extractGradeNumber(student.GradeLevel)}
                 </td>
                 <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
-                    ${student.StrandName ? student.StrandName + ' - ' : ''}${student.Section || '-'}
+                    ${student.StrandName || '-'}
+                </td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
+                    ${student.Section || '-'}
                 </td>
                 <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
                     ${student.AcademicYear || '-'}
@@ -647,8 +649,7 @@ class StudentManagementHandler {
     }
 
     async editStudent(studentId) {
-        // Advisers can edit (changes go for approval)
-        // Registrar/ICT can view but should approve changes, not edit directly
+        // Advisers submit edits for approval; Registrar/ICT approve changes, not edit directly
         const userRole = this.currentUser.Role;
         const canSubmitEdit = userRole === 'Adviser';
         if (!canSubmitEdit) {
@@ -681,13 +682,23 @@ class StudentManagementHandler {
         modal.id = 'studentDetailsModal';
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
         
+        const userRole = this.currentUser.Role;
+        const isAdviser = userRole === 'Adviser';
+
         modal.innerHTML = `
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
                 <!-- Header -->
                 <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between z-10">
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">
-                        ${editMode ? 'Edit Student Information' : 'Student Details'}
-                    </h3>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white">
+                            ${editMode ? 'Edit Student Information' : 'Student Details'}
+                        </h3>
+                        ${editMode ? `
+                            <p class="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                                ⚠️ Changes will be submitted for Registrar/ICT approval before taking effect
+                            </p>
+                        ` : ''}
+                    </div>
                     <button onclick="document.getElementById('studentDetailsModal').remove()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
                         <span class="material-icons-outlined">close</span>
                     </button>
@@ -705,14 +716,16 @@ class StudentManagementHandler {
                             Cancel
                         </button>
                         <button id="btn-save-student" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
-                            <span class="material-icons-outlined text-[18px]">save</span>
-                            Save Changes
+                            <span class="material-icons-outlined text-[18px]">send</span>
+                            Submit for Approval
                         </button>
                     ` : `
-                        <button id="btn-edit-student" data-student-id="${student.StudentID}" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
-                            <span class="material-icons-outlined text-[18px]">edit</span>
-                            Edit Student
-                        </button>
+                        ${isAdviser ? `
+                            <button id="btn-edit-student" data-student-id="${student.StudentID}" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
+                                <span class="material-icons-outlined text-[18px]">edit</span>
+                                Edit Student
+                            </button>
+                        ` : ''}
                         <button onclick="document.getElementById('studentDetailsModal').remove()" class="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
                             Close
                         </button>
@@ -759,17 +772,32 @@ class StudentManagementHandler {
                 }
             }
 
-            // Load sections for current grade/strand
+            // Load sections for current grade/strand, pre-selecting student's current section
             if (gradeLevelId) {
-                this.loadSectionsForGrade(gradeLevelId, student.StrandID);
+                this.loadSectionsForGrade(gradeLevelId, student.StrandID, student.SectionID);
             }
         } else {
             const editBtn = document.getElementById('btn-edit-student');
             if (editBtn) {
                 editBtn.addEventListener('click', (e) => {
                     const studentId = parseInt(e.currentTarget.dataset.studentId);
+                    document.getElementById('studentDetailsModal').remove();
                     this.editStudent(studentId);
                 });
+            }
+
+            // Pre-select section in view mode — same logic as edit mode
+            let gradeLevelId = null;
+            if (student.GradeLevelName) {
+                const gradeMatch = student.GradeLevelName.match(/\d+/);
+                if (gradeMatch) {
+                    const gradeNumber = parseInt(gradeMatch[0]);
+                    const gradeLevel = this.gradeLevels.find(g => g.GradeLevelNumber === gradeNumber);
+                    if (gradeLevel) gradeLevelId = gradeLevel.GradeLevelID;
+                }
+            }
+            if (gradeLevelId) {
+                this.loadSectionsForGrade(gradeLevelId, student.StrandID, student.SectionID);
             }
         }
     }
@@ -986,24 +1014,6 @@ class StudentManagementHandler {
                                 `).join('')}
                             </select>
                         </div>
-                        <div id="strand-container" class="${showStrand ? '' : 'hidden'}">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Strand</label>
-                            <select id="edit-strand" ${isEditable} class="${inputClass}">
-                                <option value="">Select Strand</option>
-                                ${this.strands.map(s => `
-                                    <option value="${s.StrandID}" ${student.StrandID == s.StrandID ? 'selected' : ''}>
-                                        ${s.StrandCode} - ${s.StrandName}
-                                    </option>
-                                `).join('')}
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Section</label>
-                            <select id="edit-section" ${isEditable} class="${inputClass}">
-                                <option value="">Select Section</option>
-                                <!-- Sections will be loaded dynamically -->
-                            </select>
-                        </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Academic Year</label>
                             <input type="text" id="edit-academic-year" value="${student.AcademicYear || ''}" ${isEditable} class="${inputClass}" />
@@ -1018,6 +1028,35 @@ class StudentManagementHandler {
                                 <option value="Transferred_Out" ${student.EnrollmentStatus === 'Transferred_Out' ? 'selected' : ''}>Transferred Out</option>
                                 <option value="Graduated" ${student.EnrollmentStatus === 'Graduated' ? 'selected' : ''}>Graduated</option>
                             </select>
+                        </div>
+                    </div>
+
+                    <!-- Strand (SHS only) -->
+                    <div id="strand-container" class="mt-4 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 ${showStrand ? '' : 'hidden'}">
+                        <p class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-3">Senior High School Strand</p>
+                        <div class="max-w-sm">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Strand</label>
+                            <select id="edit-strand" ${isEditable} class="${inputClass}">
+                                <option value="">Select Strand</option>
+                                ${this.strands.map(s => `
+                                    <option value="${s.StrandID}" ${student.StrandID == s.StrandID ? 'selected' : ''}>
+                                        ${s.StrandCode} - ${s.StrandName}
+                                    </option>
+                                `).join('')}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Section -->
+                    <div class="mt-4 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                        <p class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-3">Class Section</p>
+                        <div class="max-w-sm">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Section</label>
+                            <select id="edit-section" ${isEditable} class="${inputClass}">
+                                <option value="">Select Section</option>
+                                <!-- Populated dynamically based on grade + strand selection -->
+                            </select>
+                            ${editMode ? `<p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Sections shown match the selected grade level${showStrand ? ' and strand' : ''}.</p>` : ''}
                         </div>
                     </div>
                 </div>
@@ -1087,11 +1126,12 @@ class StudentManagementHandler {
         this.loadSectionsForGrade(selectedGrade, selectedStrand);
     }
 
-    async loadSectionsForGrade(gradeLevel, strandId = null) {
+    async loadSectionsForGrade(gradeLevel, strandId = null, overrideSection = null) {
         const sectionSelect = document.getElementById('edit-section');
         if (!sectionSelect) return;
         
-        const currentSection = this.currentEditingStudent?.SectionID;
+        // Use explicit override first (modal open), then fall back to editing student's current value
+        const currentSection = overrideSection ?? this.currentEditingStudent?.SectionID;
         
         try {
             let url = `../backend/api/student-update.php?action=get_sections&grade_level=${gradeLevel}`;
@@ -1117,44 +1157,98 @@ class StudentManagementHandler {
         }
     }
 
+    /**
+     * Build a diff of changed fields between original student data and form values.
+     * Returns an array of { field, oldValue, newValue } for audit log and revision request.
+     */
+    buildFieldDiff(formData) {
+        const original = this.currentEditingStudent;
+        const fieldMap = {
+            LRN:                 { old: original.LRN,                new: formData.LRN },
+            LastName:            { old: original.LastName,           new: formData.LastName },
+            FirstName:           { old: original.FirstName,          new: formData.FirstName },
+            MiddleName:          { old: original.MiddleName,         new: formData.MiddleName },
+            ExtensionName:       { old: original.ExtensionName,      new: formData.ExtensionName },
+            DateOfBirth:         { old: original.DateOfBirth,        new: formData.DateOfBirth },
+            Age:                 { old: String(original.Age || ''),  new: String(formData.Age || '') },
+            Gender:              { old: original.Gender,             new: formData.Gender },
+            Religion:            { old: original.Religion,           new: formData.Religion },
+            ContactNumber:       { old: original.ContactNumber,      new: formData.ContactNumber },
+            IsIPCommunity:       { old: String(original.IsIPCommunity || 0), new: String(formData.IsIPCommunity) },
+            IPCommunitySpecify:  { old: original.IPCommunitySpecify, new: formData.IPCommunitySpecify },
+            IsPWD:               { old: String(original.IsPWD || 0), new: String(formData.IsPWD) },
+            PWDSpecify:          { old: original.PWDSpecify,         new: formData.PWDSpecify },
+            HouseNumber:         { old: original.HouseNumber,        new: formData.HouseNumber },
+            SitioStreet:         { old: original.SitioStreet,        new: formData.SitioStreet },
+            Barangay:            { old: original.Barangay,           new: formData.Barangay },
+            Municipality:        { old: original.Municipality,       new: formData.Municipality },
+            Province:            { old: original.Province,           new: formData.Province },
+            ZipCode:             { old: original.ZipCode,            new: formData.ZipCode },
+            FatherLastName:      { old: original.FatherLastName,     new: formData.FatherLastName },
+            FatherFirstName:     { old: original.FatherFirstName,    new: formData.FatherFirstName },
+            FatherMiddleName:    { old: original.FatherMiddleName,   new: formData.FatherMiddleName },
+            MotherLastName:      { old: original.MotherLastName,     new: formData.MotherLastName },
+            MotherFirstName:     { old: original.MotherFirstName,    new: formData.MotherFirstName },
+            MotherMiddleName:    { old: original.MotherMiddleName,   new: formData.MotherMiddleName },
+            GuardianLastName:    { old: original.GuardianLastName,   new: formData.GuardianLastName },
+            GuardianFirstName:   { old: original.GuardianFirstName,  new: formData.GuardianFirstName },
+            GuardianMiddleName:  { old: original.GuardianMiddleName, new: formData.GuardianMiddleName },
+            GradeLevelID:        { old: String(original.GradeLevelID || ''), new: String(formData.GradeLevelID || '') },
+            StrandID:            { old: String(original.StrandID || ''),     new: String(formData.StrandID || '') },
+            SectionID:           { old: String(original.SectionID || ''),    new: String(formData.SectionID || '') },
+            AcademicYear:        { old: original.AcademicYear,       new: formData.AcademicYear },
+            EnrollmentStatus:    { old: original.EnrollmentStatus,   new: formData.EnrollmentStatus }
+        };
+
+        const changes = [];
+        for (const [field, values] of Object.entries(fieldMap)) {
+            const oldVal = (values.old ?? '').toString().trim();
+            const newVal = (values.new ?? '').toString().trim();
+            if (oldVal !== newVal) {
+                changes.push({ field, oldValue: oldVal, newValue: newVal });
+            }
+        }
+        return changes;
+    }
+
     async saveStudent() {
         try {
             // Gather form data
             const formData = {
                 StudentID: this.currentEditingStudent.StudentID,
-                LRN: document.getElementById('edit-lrn')?.value,
-                LastName: document.getElementById('edit-lastname')?.value,
-                FirstName: document.getElementById('edit-firstname')?.value,
-                MiddleName: document.getElementById('edit-middlename')?.value,
-                ExtensionName: document.getElementById('edit-extension')?.value,
+                LRN: document.getElementById('edit-lrn')?.value?.trim(),
+                LastName: document.getElementById('edit-lastname')?.value?.trim(),
+                FirstName: document.getElementById('edit-firstname')?.value?.trim(),
+                MiddleName: document.getElementById('edit-middlename')?.value?.trim(),
+                ExtensionName: document.getElementById('edit-extension')?.value?.trim(),
                 DateOfBirth: document.getElementById('edit-dob')?.value,
                 Age: document.getElementById('edit-age')?.value,
                 Gender: document.getElementById('edit-gender')?.value,
-                Religion: document.getElementById('edit-religion')?.value,
-                ContactNumber: document.getElementById('edit-contact')?.value,
+                Religion: document.getElementById('edit-religion')?.value?.trim(),
+                ContactNumber: document.getElementById('edit-contact')?.value?.trim(),
                 IsIPCommunity: document.getElementById('edit-ip')?.checked ? 1 : 0,
-                IPCommunitySpecify: document.getElementById('edit-ip-specify')?.value,
+                IPCommunitySpecify: document.getElementById('edit-ip-specify')?.value?.trim(),
                 IsPWD: document.getElementById('edit-pwd')?.checked ? 1 : 0,
-                PWDSpecify: document.getElementById('edit-pwd-specify')?.value,
-                HouseNumber: document.getElementById('edit-house')?.value,
-                SitioStreet: document.getElementById('edit-street')?.value,
-                Barangay: document.getElementById('edit-barangay')?.value,
-                Municipality: document.getElementById('edit-municipality')?.value,
-                Province: document.getElementById('edit-province')?.value,
-                ZipCode: document.getElementById('edit-zipcode')?.value,
-                FatherLastName: document.getElementById('edit-father-last')?.value,
-                FatherFirstName: document.getElementById('edit-father-first')?.value,
-                FatherMiddleName: document.getElementById('edit-father-middle')?.value,
-                MotherLastName: document.getElementById('edit-mother-last')?.value,
-                MotherFirstName: document.getElementById('edit-mother-first')?.value,
-                MotherMiddleName: document.getElementById('edit-mother-middle')?.value,
-                GuardianLastName: document.getElementById('edit-guardian-last')?.value,
-                GuardianFirstName: document.getElementById('edit-guardian-first')?.value,
-                GuardianMiddleName: document.getElementById('edit-guardian-middle')?.value,
+                PWDSpecify: document.getElementById('edit-pwd-specify')?.value?.trim(),
+                HouseNumber: document.getElementById('edit-house')?.value?.trim(),
+                SitioStreet: document.getElementById('edit-street')?.value?.trim(),
+                Barangay: document.getElementById('edit-barangay')?.value?.trim(),
+                Municipality: document.getElementById('edit-municipality')?.value?.trim(),
+                Province: document.getElementById('edit-province')?.value?.trim(),
+                ZipCode: document.getElementById('edit-zipcode')?.value?.trim(),
+                FatherLastName: document.getElementById('edit-father-last')?.value?.trim(),
+                FatherFirstName: document.getElementById('edit-father-first')?.value?.trim(),
+                FatherMiddleName: document.getElementById('edit-father-middle')?.value?.trim(),
+                MotherLastName: document.getElementById('edit-mother-last')?.value?.trim(),
+                MotherFirstName: document.getElementById('edit-mother-first')?.value?.trim(),
+                MotherMiddleName: document.getElementById('edit-mother-middle')?.value?.trim(),
+                GuardianLastName: document.getElementById('edit-guardian-last')?.value?.trim(),
+                GuardianFirstName: document.getElementById('edit-guardian-first')?.value?.trim(),
+                GuardianMiddleName: document.getElementById('edit-guardian-middle')?.value?.trim(),
                 GradeLevelID: document.getElementById('edit-grade')?.value,
                 StrandID: document.getElementById('edit-strand')?.value || null,
                 SectionID: document.getElementById('edit-section')?.value || null,
-                AcademicYear: document.getElementById('edit-academic-year')?.value,
+                AcademicYear: document.getElementById('edit-academic-year')?.value?.trim(),
                 EnrollmentStatus: document.getElementById('edit-status')?.value || null,
                 UpdatedBy: this.currentUser.UserID
             };
@@ -1165,34 +1259,44 @@ class StudentManagementHandler {
                 return;
             }
 
-            // Check user role - Advisers submit revision requests
-                const userRole = this.currentUser.Role;
+            // Build field-level diff for proper audit logging
+            const changedFields = this.buildFieldDiff(formData);
 
-                let endpoint, successMessage;
-                if (userRole === 'Adviser') {
-                    endpoint = '../backend/api/revision-requests.php?action=create_bulk_update';
-                    successMessage = 'Changes submitted for approval. A registrar or ICT coordinator will review your updates.';
-                } else {
-                    endpoint = '../backend/api/student-update.php?action=update';
-                    successMessage = 'Student information updated successfully!';
-                }
+            if (changedFields.length === 0) {
+                alert('No changes detected.');
+                return;
+            }
 
-                const response = await fetch(endpoint, {
+            // Advisers always submit as a revision request (pending approval)
+            // The payload includes both the full formData for context AND the specific field diffs
+            // so the backend can log the REVISION_REQUEST action accurately in the audit log.
+            const payload = {
+                ...formData,
+                ChangedFields: changedFields,        // field-level diff for audit log
+                StudentName: `${formData.LastName}, ${formData.FirstName}`,
+                RequestedBy: this.currentUser.UserID,
+                RequesterRole: this.currentUser.Role
+            };
+
+            const response = await fetch('../backend/api/revision-requests.php?action=create_bulk_update', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(formData)
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             });
 
             const result = await response.json();
 
             if (result.success) {
-                alert(successMessage);
+                alert(
+                    `Changes submitted for approval!\n\n` +
+                    `Request ID: ${result.requestId}\n` +
+                    `${changedFields.length} field(s) flagged for review.\n\n` +
+                    `A Registrar or ICT Coordinator will review your updates.`
+                );
                 document.getElementById('studentDetailsModal').remove();
-                this.loadStudents(); // Reload the student list
+                this.loadStudents();
             } else {
-                alert('Failed to update student: ' + (result.message || 'Unknown error'));
+                alert('Failed to submit changes: ' + (result.message || 'Unknown error'));
             }
         } catch (error) {
             console.error('Error saving student:', error);
@@ -1211,15 +1315,12 @@ class StudentManagementHandler {
         const currentStatus = student?.EnrollmentStatus || student?.Status;
 
         const userRole = this.currentUser.Role;
-        // Role-based permissions:
-        // - Advisers: Can EDIT (submits for approval), REQUEST REVISIONS, and MANAGE DOCUMENTS
-        // - Registrar/ICT: Can APPROVE revisions, MANAGE DOCUMENTS, and change status
         const isRegistrar = userRole === 'Registrar';
         const isAdviser = userRole === 'Adviser';
         const isICTCoordinator = userRole === 'ICT_Coordinator';
-        const isApprover = isRegistrar || isICTCoordinator; // Can approve changes
-        const canSubmitEdits = isAdviser; // Can edit for approval
-        const canManageDocuments = isAdviser || isRegistrar || isICTCoordinator; // ALL can manage documents
+        const isApprover = isRegistrar || isICTCoordinator;
+        const canSubmitEdits = isAdviser;
+        const canManageDocuments = isAdviser || isRegistrar || isICTCoordinator;
         
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
@@ -1235,7 +1336,7 @@ class StudentManagementHandler {
                         <span class="text-gray-900 dark:text-white">View Full Details</span>
                     </button>
                     
-                    <!-- Advisers can EDIT (submits for approval) -->
+                    <!-- Advisers: Edit Information (submits for approval) -->
                     ${canSubmitEdits ? `
                         <button class="btn-modal-edit w-full text-left px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg flex items-center gap-3 text-blue-600 dark:text-blue-400">
                             <span class="material-symbols-outlined">edit</span>
@@ -1246,18 +1347,7 @@ class StudentManagementHandler {
                         </button>
                     ` : ''}
                     
-                    <!-- Advisers can REQUEST specific revisions -->
-                    ${canSubmitEdits ? `
-                        <button class="btn-modal-revision w-full text-left px-4 py-3 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg flex items-center gap-3 text-purple-600 dark:text-purple-400">
-                            <span class="material-symbols-outlined">request_quote</span>
-                            <div class="flex-1">
-                                <span class="block">Request Specific Revision</span>
-                                <span class="text-xs opacity-75">For corrections requiring justification</span>
-                            </div>
-                        </button>
-                    ` : ''}
-                    
-                    <!-- Approvers (Registrar/ICT) can VIEW PENDING REVISIONS -->
+                    <!-- Approvers: Review Pending Revisions -->
                     ${isApprover ? `
                         <button class="btn-modal-review-revisions w-full text-left px-4 py-3 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg flex items-center gap-3 text-orange-600 dark:text-orange-400">
                             <span class="material-symbols-outlined">fact_check</span>
@@ -1268,7 +1358,7 @@ class StudentManagementHandler {
                         </button>
                     ` : ''}
 
-                    <!-- EVERYONE (Adviser, Registrar, ICT) can manage documents -->
+                    <!-- Document Checklist (all roles) -->
                     ${canManageDocuments ? `
                         <button class="btn-modal-documents w-full text-left px-4 py-3 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg flex items-center gap-3 text-indigo-600 dark:text-indigo-400">
                             <span class="material-symbols-outlined">description</span>
@@ -1279,13 +1369,13 @@ class StudentManagementHandler {
                         </button>
                     ` : ''}
 
-                    <!-- Everyone can add remarks -->
+                    <!-- Add Remarks (all roles) -->
                     <button class="btn-modal-remarks w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-3">
                         <span class="material-symbols-outlined text-gray-600 dark:text-gray-400">comment</span>
                         <span class="text-gray-900 dark:text-white">Add Remarks</span>
                     </button>
                     
-                    <!-- Only Registrar and ICT can manage status changes directly -->
+                    <!-- Status management (Registrar & ICT only) -->
                     ${isApprover ? `
                         <div class="border-t border-gray-200 dark:border-gray-700 my-2"></div>
                         
@@ -1355,7 +1445,6 @@ class StudentManagementHandler {
             modal.remove();
         });
 
-        // Bind document checklist (for Advisers, Registrars, and ICT Coordinators)
         modal.querySelector('.btn-modal-documents')?.addEventListener('click', () => {
             this.documentHandler.showDocumentChecklist(
                 studentId, 
@@ -1365,22 +1454,11 @@ class StudentManagementHandler {
             modal.remove();
         });
 
-        // Bind revision request (for Advisers)
-        modal.querySelector('.btn-modal-revision')?.addEventListener('click', () => {
-            this.revisionHandler.showRevisionRequestForm(student);
-            modal.remove();
-        });
-
-        // Bind review revisions (for Registrar and ICT Coordinator approvers)
         modal.querySelector('.btn-modal-review-revisions')?.addEventListener('click', () => {
             this.showPendingRevisionsForStudent(studentId);
             modal.remove();
         });
     }
-
-    /**
-     * Show pending revision requests for a specific student (for approvers)
-     */
 
     async showPendingRevisionsForStudent(studentId) {
         try {
@@ -1402,9 +1480,6 @@ class StudentManagementHandler {
         }
     }
 
-    /**
-     * Display list of revision requests
-     */
     showRevisionListModal(requests, studentId) {
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
@@ -1464,22 +1539,23 @@ class StudentManagementHandler {
         `;
         
         document.body.appendChild(modal);
-        // Bind review buttons
+
+        // Bind review buttons - use RevisionRequestHandler for approval UI
+        const revisionHandler = new RevisionRequestHandler();
         modal.querySelectorAll('.btn-review-request').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const requestId = e.currentTarget.dataset.requestId;
                 modal.remove();
-                this.revisionHandler.showApprovalInterface(requestId);
+                revisionHandler.showApprovalInterface(requestId);
             });
         });
-        // Also allow clicking the whole card
         modal.querySelectorAll('[data-request-id]').forEach(card => {
             if (!card.classList.contains('btn-review-request')) {
                 card.addEventListener('click', (e) => {
                     const requestId = e.currentTarget.dataset.requestId;
                     modal.remove();
-                    this.revisionHandler.showApprovalInterface(requestId);
+                    revisionHandler.showApprovalInterface(requestId);
                 });
             }
         });
@@ -1526,9 +1602,7 @@ class StudentManagementHandler {
         try {
             const response = await fetch('../backend/api/student-update.php?action=add_remarks', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     StudentID: studentId,
                     Remarks: remarks,
@@ -1586,26 +1660,13 @@ class StudentManagementHandler {
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
         
-        // Check if user can approve directly
-        const userRole = this.currentUser.Role;
-        const canApproveDirectly = ['Registrar', 'ICT_Coordinator'].includes(userRole);
-        
         modal.innerHTML = `
             <div class="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full">
                 <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                     <h2 class="text-xl font-bold text-red-600 dark:text-red-400">Mark as Dropout</h2>
-                    ${!canApproveDirectly ? `
-                        <p class="text-xs text-yellow-600 dark:text-yellow-400 mt-2">
-                            ⚠️ This request requires approval from Registrar or ICT Coordinator
-                        </p>
-                    ` : ''}
                 </div>
                 <div class="p-6">
-                    <p class="text-gray-700 dark:text-gray-300 mb-4">
-                        ${canApproveDirectly 
-                            ? 'Mark this student as a dropout? This indicates the student left school after attending.' 
-                            : 'Request to mark this student as a dropout? Your request will be sent for approval.'}
-                    </p>
+                    <p class="text-gray-700 dark:text-gray-300 mb-4">Mark this student as a dropout? This indicates the student left school after attending.</p>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Reason for Dropout <span class="text-red-600">*</span>
                     </label>
@@ -1616,7 +1677,7 @@ class StudentManagementHandler {
                         Cancel
                     </button>
                     <button class="btn-dropout-yes px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-                        ${canApproveDirectly ? 'Confirm Dropout' : 'Submit Request'}
+                        Confirm Dropout
                     </button>
                 </div>
             </div>
@@ -1635,26 +1696,13 @@ class StudentManagementHandler {
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
         
-        // Check if user can approve directly
-        const userRole = this.currentUser.Role;
-        const canApproveDirectly = ['Registrar', 'ICT_Coordinator'].includes(userRole);
-        
         modal.innerHTML = `
             <div class="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full">
                 <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                     <h2 class="text-xl font-bold text-purple-600 dark:text-purple-400">Transfer Out Student</h2>
-                    ${!canApproveDirectly ? `
-                        <p class="text-xs text-yellow-600 dark:text-yellow-400 mt-2">
-                            ⚠️ This request requires approval from Registrar or ICT Coordinator
-                        </p>
-                    ` : ''}
                 </div>
                 <div class="p-6">
-                    <p class="text-gray-700 dark:text-gray-300 mb-4">
-                        ${canApproveDirectly 
-                            ? 'Transfer this student to another school?' 
-                            : 'Request to transfer this student out? Your request will be sent for approval.'}
-                    </p>
+                    <p class="text-gray-700 dark:text-gray-300 mb-4">Transfer this student to another school?</p>
                     <div class="space-y-3">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -1675,7 +1723,7 @@ class StudentManagementHandler {
                         Cancel
                     </button>
                     <button class="btn-transfer-yes px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-                        ${canApproveDirectly ? 'Confirm Transfer' : 'Submit Request'}
+                        Confirm Transfer
                     </button>
                 </div>
             </div>
@@ -1706,9 +1754,7 @@ class StudentManagementHandler {
         try {
             const response = await fetch('../backend/api/student-update.php?action=change_status', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     StudentID: studentId,
                     NewStatus: newStatus,
@@ -1746,7 +1792,6 @@ class StudentManagementHandler {
     }
 
     showLoading(show) {
-        // Implement loading indicator if needed
         console.log('Loading:', show);
     }
 }
@@ -1762,5 +1807,4 @@ if (document.readyState === 'loading') {
     studentManagement = new StudentManagementHandler();
 }
 
-// Make it globally accessible
 window.studentManagement = studentManagement;

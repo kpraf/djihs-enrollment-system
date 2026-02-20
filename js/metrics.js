@@ -13,7 +13,7 @@ function displayUserInfo() {
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
     const userNameEl = document.getElementById('userName');
     const userInitialsEl = document.getElementById('userInitials');
-    
+
     if (userData.FirstName && userData.LastName) {
         userNameEl.textContent = `${userData.FirstName} ${userData.LastName}`;
         userInitialsEl.textContent = `${userData.FirstName[0]}${userData.LastName[0]}`.toUpperCase();
@@ -21,13 +21,14 @@ function displayUserInfo() {
 }
 
 function setupEventListeners() {
+    // Placeholder for future event listeners
 }
 
 async function loadSchoolYears() {
     try {
         const response = await fetch('../backend/api/get-school-years.php');
         const data = await response.json();
-        
+
         const syFilter = document.getElementById('syFilter');
         if (data.success && data.schoolYears && data.schoolYears.length > 0) {
             data.schoolYears.forEach(sy => {
@@ -37,7 +38,7 @@ async function loadSchoolYears() {
                 syFilter.appendChild(option);
             });
         }
-        
+
         loadMetrics();
     } catch (error) {
         console.error('Error loading school years:', error);
@@ -48,25 +49,23 @@ async function loadSchoolYears() {
 async function loadMetrics() {
     document.getElementById('loadingState').style.display = 'flex';
     document.getElementById('metricsContent').style.display = 'none';
-    
+
     const sy = document.getElementById('syFilter').value;
-    
+
     try {
         const response = await fetch(`../backend/api/get-metrics.php?sy=${sy}`);
         const data = await response.json();
-        
+
         if (data.success) {
-            // Check if there's a message (e.g., no data available)
             if (data.message) {
                 console.info(data.message);
             }
-            
+
             metricsData = data.data;
             updateMetricsDisplay();
             document.getElementById('loadingState').style.display = 'none';
             document.getElementById('metricsContent').style.display = 'block';
-            
-            // If all metrics are 0, show a helpful message
+
             if (metricsData.ger === 0 && metricsData.promotionRate === 0) {
                 showNoDataMessage();
             }
@@ -90,7 +89,7 @@ function showNoDataMessage() {
             <div>
                 <p class="text-base font-semibold text-blue-900 dark:text-blue-100 mb-2">No Enrollment Data Available</p>
                 <p class="text-sm text-blue-700 dark:text-blue-200 mb-3">
-                    The metrics dashboard requires enrollment data to calculate performance indicators. 
+                    The metrics dashboard requires enrollment data to calculate performance indicators.
                     To see metrics, please ensure:
                 </p>
                 <ul class="text-sm text-blue-700 dark:text-blue-200 list-disc list-inside space-y-1">
@@ -137,7 +136,6 @@ function showErrorMessage(message, debug = null) {
 
 function updateMetricsDisplay() {
     updateEnrollmentMetrics();
-    updateRetentionMetrics();
     updateEfficiencyMetrics();
     updateResourceMetrics();
     updateGradeLevelTable();
@@ -145,136 +143,210 @@ function updateMetricsDisplay() {
     generateInsights();
 }
 
+// ==========================================
+// ENROLLMENT METRICS (Tab 1)
+// ==========================================
 function updateEnrollmentMetrics() {
-    // GER (Gross Enrollment Ratio)
+    // GER — always estimated since we lack PSA population data
     const gerValue = metricsData.ger || 0;
     document.getElementById('gerValue').textContent = gerValue.toFixed(1) + '%';
-    updateStatus('gerStatus', gerValue, 95, 85);
-    
-    // NER (Net Enrollment Ratio)
+    if (metricsData.gerIsEstimated) {
+        applyEstimatedBadge('gerStatus', gerValue, 95, 85);
+    } else {
+        updateStatus('gerStatus', gerValue, 95, 85);
+    }
+
+    // NER — proportion of age-appropriate students (estimated, not true NER)
     const nerValue = metricsData.ner || 0;
     document.getElementById('nerValue').textContent = nerValue.toFixed(1) + '%';
-    updateStatus('nerStatus', nerValue, 90, 80);
-    
+    if (metricsData.nerIsEstimated) {
+        applyEstimatedBadge('nerStatus', nerValue, 90, 80);
+    } else {
+        updateStatus('nerStatus', nerValue, 90, 80);
+    }
+
     // Transition Rate
     const transitionRate = metricsData.transitionRate || 0;
     document.getElementById('transitionRate').textContent = transitionRate.toFixed(1) + '%';
-    updateStatus('transitionStatus', transitionRate, 95, 85);
+    if (transitionRate === 0) {
+        applyNaBadge('transitionStatus', 'Select a S.Y.');
+    } else {
+        updateStatus('transitionStatus', transitionRate, 95, 85);
+    }
 }
 
-function updateRetentionMetrics() {
-    // Cohort Survival Rate
-    const csrJHS = metricsData.cohortSurvivalRateJHS || 0;
-    document.getElementById('csrJHS').textContent = csrJHS.toFixed(1) + '%';
-    updateStatus('csrJHSStatus', csrJHS, 90, 80);
-    
+// ==========================================
+// EFFICIENCY METRICS (Tab 2 cards)
+// ==========================================
+function updateEfficiencyMetrics() {
     // Promotion Rate
     const promotionRate = metricsData.promotionRate || 0;
     document.getElementById('promotionRate').textContent = promotionRate.toFixed(1) + '%';
     updateStatus('promotionStatus', promotionRate, 95, 85);
-    
+
+    // Cohort Survival Rate (JHS)
+    const csrJHS = metricsData.cohortSurvivalRateJHS || 0;
+    document.getElementById('csrJHS').textContent = csrJHS.toFixed(1) + '%';
+    if (csrJHS === 0) {
+        applyNaBadge('csrJHSStatus', 'Need 3+ years data');
+    } else {
+        updateStatus('csrJHSStatus', csrJHS, 90, 80);
+    }
+
     // Retention Rate
     const retentionRate = metricsData.retentionRate || 0;
     document.getElementById('retentionRate').textContent = retentionRate.toFixed(1) + '%';
-    updateStatus('retentionStatus', retentionRate, 90, 80);
-    
+    if (retentionRate === 0) {
+        applyNaBadge('retentionStatus', 'Select a S.Y.');
+    } else {
+        updateStatus('retentionStatus', retentionRate, 90, 80);
+    }
+
     // Dropout Rate (lower is better)
     const dropoutRate = metricsData.dropoutRate || 0;
     document.getElementById('dropoutRate').textContent = dropoutRate.toFixed(1) + '%';
     updateStatusReverse('dropoutStatus', dropoutRate, 5, 10);
-}
 
-function updateEfficiencyMetrics() {
-    // Coefficient of Efficiency
+    // Coefficient of Efficiency (estimated)
     const coe = metricsData.coefficientOfEfficiency || 0;
     document.getElementById('coeValue').textContent = coe.toFixed(1) + '%';
-    updateStatus('coeStatus', coe, 90, 80);
-    
-    // Completion Rate
+    if (metricsData.coeIsEstimated) {
+        applyEstimatedBadge('coeStatus', coe, 90, 80);
+    } else {
+        updateStatus('coeStatus', coe, 90, 80);
+    }
+
+    // Completion Rate (estimated)
     const completionRate = metricsData.completionRate || 0;
     document.getElementById('completionRate').textContent = completionRate.toFixed(1) + '%';
-    updateStatus('completionStatus', completionRate, 90, 80);
+    if (metricsData.completionIsEstimated || completionRate === 0) {
+        applyEstimatedBadge('completionStatus', completionRate, 90, 80);
+    } else {
+        updateStatus('completionStatus', completionRate, 90, 80);
+    }
 }
 
+// ==========================================
+// RESOURCE METRICS (Tab 3)
+// ==========================================
 function updateResourceMetrics() {
-    // Student-Teacher Ratio
     const str = metricsData.studentTeacherRatio || 0;
     document.getElementById('studentTeacherRatio').textContent = `1:${str.toFixed(0)}`;
-    // Ideal is 1:35 or lower
     updateStatusReverse('strStatus', str, 35, 45);
-    
-    // Student-Classroom Ratio
+
     const scr = metricsData.studentClassroomRatio || 0;
     document.getElementById('studentClassroomRatio').textContent = `1:${scr.toFixed(0)}`;
     updateStatusReverse('scrStatus', scr, 40, 50);
-    
-    // Section Utilization
+
     const utilization = metricsData.sectionUtilization || 0;
     document.getElementById('sectionUtilization').textContent = utilization.toFixed(1) + '%';
-    // 80-95% is ideal (not too empty, not overcrowded)
     updateUtilizationStatus('utilStatus', utilization);
 }
 
+// ==========================================
+// STATUS BADGE HELPERS
+// ==========================================
 function updateStatus(elementId, value, goodThreshold, fairThreshold) {
     const element = document.getElementById(elementId);
+    if (!element) return;
     element.className = 'text-xs px-2 py-1 rounded-full font-medium';
-    
+
     if (value >= goodThreshold) {
-        element.className += ' performance-good';
+        element.classList.add('performance-good');
         element.textContent = 'Good';
     } else if (value >= fairThreshold) {
-        element.className += ' performance-fair';
+        element.classList.add('performance-fair');
         element.textContent = 'Fair';
     } else {
-        element.className += ' performance-poor';
+        element.classList.add('performance-poor');
         element.textContent = 'Needs Improvement';
     }
 }
 
 function updateStatusReverse(elementId, value, goodThreshold, fairThreshold) {
     const element = document.getElementById(elementId);
+    if (!element) return;
     element.className = 'text-xs px-2 py-1 rounded-full font-medium';
-    
+
+    if (value === 0) {
+        element.classList.add('bg-slate-100', 'text-slate-500');
+        element.textContent = 'No data';
+        return;
+    }
+
     if (value <= goodThreshold) {
-        element.className += ' performance-good';
+        element.classList.add('performance-good');
         element.textContent = 'Good';
     } else if (value <= fairThreshold) {
-        element.className += ' performance-fair';
+        element.classList.add('performance-fair');
         element.textContent = 'Fair';
     } else {
-        element.className += ' performance-poor';
+        element.classList.add('performance-poor');
         element.textContent = 'Needs Improvement';
     }
 }
 
 function updateUtilizationStatus(elementId, value) {
     const element = document.getElementById(elementId);
+    if (!element) return;
     element.className = 'text-xs px-2 py-1 rounded-full font-medium';
-    
+
+    if (value === 0) {
+        element.classList.add('bg-slate-100', 'text-slate-500');
+        element.textContent = 'No data';
+        return;
+    }
+
     if (value >= 80 && value <= 95) {
-        element.className += ' performance-good';
+        element.classList.add('performance-good');
         element.textContent = 'Optimal';
     } else if ((value >= 70 && value < 80) || (value > 95 && value <= 100)) {
-        element.className += ' performance-fair';
+        element.classList.add('performance-fair');
         element.textContent = 'Fair';
     } else {
-        element.className += ' performance-poor';
+        element.classList.add('performance-poor');
         element.textContent = value < 70 ? 'Underutilized' : 'Overcrowded';
     }
 }
 
+/** Shows a grey "Estimated" badge with performance coloring */
+function applyEstimatedBadge(elementId, value, goodThreshold, fairThreshold) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+
+    let perfClass = 'performance-poor';
+    if (value >= goodThreshold)       perfClass = 'performance-good';
+    else if (value >= fairThreshold)  perfClass = 'performance-fair';
+
+    element.className = `text-xs px-2 py-1 rounded-full font-medium ${perfClass}`;
+    element.textContent = 'Est.';
+    element.title = 'This metric is estimated. Accurate calculation requires official PSA population data.';
+}
+
+/** Shows a neutral "N/A" badge for metrics requiring year-specific data */
+function applyNaBadge(elementId, tooltip = '') {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    element.className = 'text-xs px-2 py-1 rounded-full font-medium bg-slate-100 dark:bg-slate-700 text-slate-500';
+    element.textContent = 'N/A';
+    if (tooltip) element.title = tooltip;
+}
+
+// ==========================================
+// GRADE LEVEL TABLE
+// ==========================================
 function updateGradeLevelTable() {
     const tbody = document.getElementById('gradeLevelTable');
     tbody.innerHTML = '';
-    
+
     if (metricsData.gradeLevelData && metricsData.gradeLevelData.length > 0) {
         metricsData.gradeLevelData.forEach(grade => {
             const row = document.createElement('tr');
             row.className = 'hover:bg-slate-50 dark:hover:bg-slate-800/50';
-            
-            let statusBadge = '';
-            const avgPerformance = (grade.promotionRate + grade.retentionRate - grade.dropoutRate) / 2;
-            
+
+            const avgPerformance = (grade.promotionRate + grade.retentionRate) / 2;
+            let statusBadge;
+
             if (avgPerformance >= 90) {
                 statusBadge = '<span class="text-xs px-2 py-1 rounded-full performance-good">Excellent</span>';
             } else if (avgPerformance >= 80) {
@@ -282,7 +354,7 @@ function updateGradeLevelTable() {
             } else {
                 statusBadge = '<span class="text-xs px-2 py-1 rounded-full performance-poor">At Risk</span>';
             }
-            
+
             row.innerHTML = `
                 <td class="p-3 text-sm text-slate-700 dark:text-slate-300 font-medium">Grade ${grade.gradeLevel}</td>
                 <td class="p-3 text-sm text-slate-700 dark:text-slate-300">${grade.enrollment}</td>
@@ -298,31 +370,29 @@ function updateGradeLevelTable() {
     }
 }
 
+// ==========================================
+// TRENDS CHART
+// ==========================================
 function updateMetricsChart() {
     const ctx = document.getElementById('metricsChart');
-    
+    if (!ctx) return;
+
     if (metricsChart) {
         metricsChart.destroy();
+        metricsChart = null;
     }
-    
+
     if (!metricsData.trends || metricsData.trends.length === 0) {
         return;
     }
-    
+
     const labels = metricsData.trends.map(t => 'S.Y. ' + t.year);
-    
+
     metricsChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
             datasets: [
-                {
-                    label: 'Enrollment Rate',
-                    data: metricsData.trends.map(t => t.enrollmentRate || 0),
-                    borderColor: '#3B82F6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    tension: 0.4
-                },
                 {
                     label: 'Promotion Rate',
                     data: metricsData.trends.map(t => t.promotionRate || 0),
@@ -350,10 +420,7 @@ function updateMetricsChart() {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    display: true,
-                    position: 'bottom'
-                },
+                legend: { display: true, position: 'bottom' },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
@@ -367,9 +434,7 @@ function updateMetricsChart() {
                     beginAtZero: true,
                     max: 100,
                     ticks: {
-                        callback: function(value) {
-                            return value + '%';
-                        }
+                        callback: function(value) { return value + '%'; }
                     }
                 }
             }
@@ -377,120 +442,130 @@ function updateMetricsChart() {
     });
 }
 
+// ==========================================
+// INSIGHTS
+// ==========================================
 function generateInsights() {
     const container = document.getElementById('insightsContainer');
     container.innerHTML = '';
-    
+
     const insights = [];
-    
-    // Enrollment insights
-    if (metricsData.ger < 85) {
-        insights.push({
-            icon: 'warning',
-            iconColor: 'text-orange-600',
-            title: 'Low Gross Enrollment Ratio',
-            description: `Current GER is ${metricsData.ger.toFixed(1)}%. Consider outreach programs to increase enrollment.`
-        });
-    } else if (metricsData.ger >= 95) {
-        insights.push({
-            icon: 'check_circle',
-            iconColor: 'text-green-600',
-            title: 'Excellent Enrollment Coverage',
-            description: `GER of ${metricsData.ger.toFixed(1)}% indicates strong community participation.`
-        });
-    }
-    
+    const sy = document.getElementById('syFilter').value;
+
+    // GER note — always estimated
+    insights.push({
+        icon: 'info',
+        iconColor: 'text-blue-500',
+        title: 'GER & NER are Estimated',
+        description: 'Gross and Net Enrollment Ratios require official PSA school-age population data for precise calculation. Values shown are internal estimates only.'
+    });
+
     // Dropout insights
     if (metricsData.dropoutRate > 5) {
         insights.push({
             icon: 'error',
             iconColor: 'text-red-600',
-            title: 'High Dropout Rate Alert',
-            description: `Dropout rate at ${metricsData.dropoutRate.toFixed(1)}% exceeds acceptable threshold. Implement retention programs.`
+            title: 'High School Leaver Rate Alert',
+            description: `School leaver rate is at ${metricsData.dropoutRate.toFixed(1)}%, exceeding the 5% threshold. Consider targeted retention and intervention programs.`
         });
-    } else if (metricsData.dropoutRate <= 3) {
+    } else if (metricsData.dropoutRate <= 3 && metricsData.dropoutRate > 0) {
         insights.push({
             icon: 'verified',
             iconColor: 'text-green-600',
             title: 'Strong Student Retention',
-            description: `Low dropout rate of ${metricsData.dropoutRate.toFixed(1)}% shows effective support systems.`
+            description: `Low school leaver rate of ${metricsData.dropoutRate.toFixed(1)}% demonstrates effective student support systems.`
         });
     }
-    
-    // Transition insights
-    if (metricsData.transitionRate < 85) {
+
+    // Transition rate insights
+    if (sy !== 'all') {
+        if (metricsData.transitionRate > 0 && metricsData.transitionRate < 85) {
+            insights.push({
+                icon: 'warning',
+                iconColor: 'text-orange-600',
+                title: 'JHS to SHS Transition Gap',
+                description: `Only ${metricsData.transitionRate.toFixed(1)}% of Grade 10 students continued to Grade 11. Enhanced guidance and SHS promotion programs are recommended.`
+            });
+        } else if (metricsData.transitionRate >= 95) {
+            insights.push({
+                icon: 'check_circle',
+                iconColor: 'text-green-600',
+                title: 'Excellent JHS to SHS Transition',
+                description: `${metricsData.transitionRate.toFixed(1)}% transition rate — the vast majority of JHS completers are continuing to SHS.`
+            });
+        }
+
+        // Retention insight
+        if (metricsData.retentionRate > 0 && metricsData.retentionRate < 80) {
+            insights.push({
+                icon: 'warning',
+                iconColor: 'text-orange-600',
+                title: 'Below-Average Retention',
+                description: `Retention rate of ${metricsData.retentionRate.toFixed(1)}% indicates a notable number of students are not continuing from the previous year.`
+            });
+        }
+    } else {
         insights.push({
-            icon: 'warning',
-            iconColor: 'text-orange-600',
-            title: 'Transition Gap Detected',
-            description: `Only ${metricsData.transitionRate.toFixed(1)}% of JHS students continue to SHS. Enhance guidance programs.`
+            icon: 'info',
+            iconColor: 'text-blue-500',
+            title: 'Year-Specific Metrics Unavailable',
+            description: 'Transition Rate, Retention Rate, and Cohort Survival Rate require a specific school year to be selected. Choose a year in the filter above.'
         });
     }
-    
+
     // Resource insights
     if (metricsData.studentTeacherRatio > 45) {
         insights.push({
             icon: 'groups',
             iconColor: 'text-red-600',
-            title: 'Teacher Shortage',
-            description: `Student-teacher ratio of 1:${metricsData.studentTeacherRatio.toFixed(0)} exceeds ideal. Consider hiring more teachers.`
+            title: 'Teacher Shortage Detected',
+            description: `Student-teacher ratio of 1:${metricsData.studentTeacherRatio.toFixed(0)} exceeds the DepEd ideal of 1:35. Consider hiring additional teaching staff.`
         });
-    } else if (metricsData.studentTeacherRatio <= 35) {
+    } else if (metricsData.studentTeacherRatio > 0 && metricsData.studentTeacherRatio <= 35) {
         insights.push({
             icon: 'school',
             iconColor: 'text-green-600',
-            title: 'Adequate Teacher Allocation',
-            description: `Student-teacher ratio of 1:${metricsData.studentTeacherRatio.toFixed(0)} meets DepEd standards.`
+            title: 'Teacher Allocation Within Standards',
+            description: `Student-teacher ratio of 1:${metricsData.studentTeacherRatio.toFixed(0)} meets DepEd guidelines (target: 1:35 or lower).`
         });
     }
-    
-    // Section utilization insights
-    if (metricsData.sectionUtilization < 70) {
+
+    // Section utilization
+    if (metricsData.sectionUtilization > 0 && metricsData.sectionUtilization < 70) {
         insights.push({
             icon: 'info',
             iconColor: 'text-blue-600',
             title: 'Underutilized Sections',
-            description: `Section utilization at ${metricsData.sectionUtilization.toFixed(1)}%. Consider consolidating or reducing sections.`
+            description: `Section utilization at ${metricsData.sectionUtilization.toFixed(1)}%. Consider consolidating sections to improve resource efficiency.`
         });
     } else if (metricsData.sectionUtilization > 95) {
         insights.push({
             icon: 'warning',
             iconColor: 'text-orange-600',
-            title: 'Overcrowded Sections',
-            description: `Sections at ${metricsData.sectionUtilization.toFixed(1)}% capacity. Consider creating additional sections.`
+            title: 'Sections Near Overcapacity',
+            description: `Sections are at ${metricsData.sectionUtilization.toFixed(1)}% capacity. Consider opening additional sections to maintain learning quality.`
         });
     }
-    
-    // Cohort survival insights
-    if (metricsData.cohortSurvivalRateJHS >= 90) {
+
+    // Cohort survival
+    if (metricsData.cohortSurvivalRateJHS >= 90 && metricsData.cohortSurvivalRateJHS > 0) {
         insights.push({
             icon: 'emoji_events',
             iconColor: 'text-yellow-600',
-            title: 'High Cohort Survival Rate',
-            description: `${metricsData.cohortSurvivalRateJHS.toFixed(1)}% of students complete JHS. Excellent retention!`
+            title: 'Strong JHS Cohort Survival',
+            description: `${metricsData.cohortSurvivalRateJHS.toFixed(1)}% of the Grade 7 cohort reached Grade 10 — excellent longitudinal retention.`
         });
     }
-    
-    // If no specific insights, add general positive message
+
     if (insights.length === 0) {
         insights.push({
             icon: 'thumb_up',
             iconColor: 'text-primary',
-            title: 'Overall Performance Good',
-            description: 'All key performance indicators are within acceptable ranges. Continue current practices.'
+            title: 'Overall Performance is Good',
+            description: 'All available key performance indicators are within acceptable ranges. Continue current practices.'
         });
     }
-    
-    // Add completion rate insight
-    if (metricsData.completionRate < 80) {
-        insights.push({
-            icon: 'flag',
-            iconColor: 'text-orange-600',
-            title: 'Low Completion Rate',
-            description: `Completion rate at ${metricsData.completionRate.toFixed(1)}%. Focus on student support and intervention programs.`
-        });
-    }
-    
+
     // Render insights
     insights.forEach(insight => {
         const div = document.createElement('div');

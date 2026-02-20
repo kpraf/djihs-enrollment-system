@@ -2,7 +2,7 @@
 // =====================================================
 // Student Revision Request API
 // File: backend/api/revision-requests.php
-// Created: 2026-02-08
+// Updated: 2026-02-20 - Fixed SectionID, ZipCode, duplicate create case, audit log alignment
 // =====================================================
 
 header('Content-Type: application/json');
@@ -31,14 +31,14 @@ class RevisionRequestAPI {
         try {
             $this->conn->beginTransaction();
             
-            $studentId = $data['StudentID'];
-            $enrollmentId = $data['EnrollmentID'] ?? null;
-            $requestedBy = $data['RequestedBy'];
-            $requestType = $data['RequestType'];
+            $studentId      = $data['StudentID'];
+            $enrollmentId   = $data['EnrollmentID'] ?? null;
+            $requestedBy    = $data['RequestedBy'];
+            $requestType    = $data['RequestType'];
             $fieldsToChange = json_encode($data['FieldsToChange']);
-            $justification = $data['Justification'];
+            $justification  = $data['Justification'];
             $supportingDocs = $data['SupportingDocuments'] ?? null;
-            $priority = $data['Priority'] ?? 'Normal';
+            $priority       = $data['Priority'] ?? 'Normal';
             
             $query = "INSERT INTO StudentRevisionRequest (
                 StudentID, EnrollmentID, RequestedBy, RequestType,
@@ -50,34 +50,40 @@ class RevisionRequestAPI {
             
             $stmt = $this->conn->prepare($query);
             $stmt->execute([
-                ':studentId' => $studentId,
-                ':enrollmentId' => $enrollmentId,
-                ':requestedBy' => $requestedBy,
-                ':requestType' => $requestType,
+                ':studentId'      => $studentId,
+                ':enrollmentId'   => $enrollmentId,
+                ':requestedBy'    => $requestedBy,
+                ':requestType'    => $requestType,
                 ':fieldsToChange' => $fieldsToChange,
-                ':justification' => $justification,
+                ':justification'  => $justification,
                 ':supportingDocs' => $supportingDocs,
-                ':priority' => $priority
+                ':priority'       => $priority
             ]);
             
             $requestId = $this->conn->lastInsertId();
             
-            // Log to audit
+            // Audit log — store the ChangedFields array as NewValue so the
+            // audit log detail view can render a proper diff table.
             $this->logAudit(
                 'StudentRevisionRequest',
                 $requestId,
                 'REVISION_REQUEST',
                 null,
-                json_encode(['requestType' => $requestType, 'status' => 'Pending']),
+                json_encode([
+                    'requestType'   => $requestType,
+                    'status'        => 'Pending',
+                    'ChangedFields' => $data['FieldsToChange']   // field-level diff
+                ]),
                 $requestedBy,
-                "Revision request created for Student ID: $studentId"
+                "Student edit submitted for approval — Student ID: $studentId, " .
+                count($data['FieldsToChange']) . " field(s) changed"
             );
             
             $this->conn->commit();
             
             return [
-                'success' => true,
-                'message' => 'Revision request submitted successfully',
+                'success'   => true,
+                'message'   => 'Revision request submitted successfully',
                 'requestId' => $requestId
             ];
             
@@ -95,19 +101,17 @@ class RevisionRequestAPI {
      */
     public function getPendingRequests($filters = []) {
         try {
-            $query = "SELECT * FROM vw_PendingRevisionRequests WHERE 1=1";
+            $query  = "SELECT * FROM vw_PendingRevisionRequests WHERE 1=1";
             $params = [];
             
             if (isset($filters['priority'])) {
                 $query .= " AND Priority = :priority";
                 $params[':priority'] = $filters['priority'];
             }
-            
             if (isset($filters['requestType'])) {
                 $query .= " AND RequestType = :requestType";
                 $params[':requestType'] = $filters['requestType'];
             }
-            
             if (isset($filters['gradeLevel'])) {
                 $query .= " AND GradeLevelName = :gradeLevel";
                 $params[':gradeLevel'] = $filters['gradeLevel'];
@@ -118,7 +122,7 @@ class RevisionRequestAPI {
             
             return [
                 'success' => true,
-                'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)
+                'data'    => $stmt->fetchAll(PDO::FETCH_ASSOC)
             ];
             
         } catch (PDOException $e) {
@@ -167,33 +171,24 @@ class RevisionRequestAPI {
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if ($result) {
-                // Decode JSON fields
                 $result['FieldsToChange'] = json_decode($result['FieldsToChange'], true);
-                
-                return [
-                    'success' => true,
-                    'data' => $result
-                ];
-            } else {
-                return [
-                    'success' => false,
-                    'message' => 'Request not found'
-                ];
+                return ['success' => true, 'data' => $result];
             }
             
+            return ['success' => false, 'message' => 'Request not found'];
+            
         } catch (PDOException $e) {
-            return [
-                'success' => false,
-                'message' => 'Error fetching request details: ' . $e->getMessage()
-            ];
+            return ['success' => false, 'message' => 'Error fetching request details: ' . $e->getMessage()];
         }
     }
     
+    /**
+     * Approve a revision request and automatically implement changes
+     */
     public function approveRequest($requestId, $reviewedBy, $reviewNotes = null) {
         try {
             $this->conn->beginTransaction();
             
-            // Update request status
             $query = "UPDATE StudentRevisionRequest
                 SET Status = 'Approved',
                     ReviewedBy = :reviewedBy,
@@ -204,8 +199,8 @@ class RevisionRequestAPI {
             
             $stmt = $this->conn->prepare($query);
             $stmt->execute([
-                ':requestId' => $requestId,
-                ':reviewedBy' => $reviewedBy,
+                ':requestId'   => $requestId,
+                ':reviewedBy'  => $reviewedBy,
                 ':reviewNotes' => $reviewNotes
             ]);
             
@@ -213,18 +208,17 @@ class RevisionRequestAPI {
                 throw new Exception('Request not found or already processed');
             }
             
-            // Log to audit
             $this->logAudit(
                 'StudentRevisionRequest',
                 $requestId,
                 'REVISION_APPROVED',
-                'Pending',
-                'Approved',
+                json_encode(['status' => 'Pending']),
+                json_encode(['status' => 'Approved', 'reviewNotes' => $reviewNotes]),
                 $reviewedBy,
-                "Revision request approved"
+                "Student edit request approved — Request ID: $requestId"
             );
             
-            // AUTOMATICALLY IMPLEMENT THE CHANGES
+            // Auto-implement immediately after approval
             $this->implementRevisionInternal($requestId, $reviewedBy);
             
             $this->conn->commit();
@@ -236,18 +230,44 @@ class RevisionRequestAPI {
             
         } catch (Exception $e) {
             $this->conn->rollBack();
-            return [
-                'success' => false,
-                'message' => 'Error approving request: ' . $e->getMessage()
-            ];
+            return ['success' => false, 'message' => 'Error approving request: ' . $e->getMessage()];
         }
     }
 
     /**
-     * Internal implementation method (called automatically after approval)
+     * Fields that belong to the Student table
+     */
+    private function getStudentFields() {
+        return [
+            'LRN', 'LastName', 'FirstName', 'MiddleName', 'ExtensionName',
+            'DateOfBirth', 'Age', 'Gender', 'Religion', 'ContactNumber',
+            'HouseNumber', 'SitioStreet', 'Barangay', 'Municipality', 'Province', 'ZipCode',
+            'FatherLastName', 'FatherFirstName', 'FatherMiddleName',
+            'MotherLastName', 'MotherFirstName', 'MotherMiddleName',
+            'GuardianLastName', 'GuardianFirstName', 'GuardianMiddleName',
+            'IsIPCommunity', 'IPCommunitySpecify', 'IsPWD', 'PWDSpecify'
+        ];
+    }
+
+    /**
+     * Fields that belong to the Enrollment table
+     */
+    private function getEnrollmentFields() {
+        return ['GradeLevelID', 'StrandID', 'AcademicYear'];
+    }
+
+    /**
+     * Fields that belong to the SectionAssignment table
+     */
+    private function getSectionFields() {
+        return ['SectionID'];
+    }
+
+    /**
+     * Internal implementation — called automatically after approval.
+     * Single source of truth for applying field changes.
      */
     private function implementRevisionInternal($requestId, $implementedBy) {
-        // Get request details
         $query = "SELECT StudentID, EnrollmentID, FieldsToChange, Status, RequestType
             FROM StudentRevisionRequest
             WHERE RequestID = :requestId";
@@ -259,158 +279,148 @@ class RevisionRequestAPI {
         if (!$request) {
             throw new Exception('Request not found');
         }
-        
         if ($request['Status'] !== 'Approved') {
             throw new Exception('Request must be approved before implementation');
         }
         
-        $fieldsToChange = json_decode($request['FieldsToChange'], true);
-        $studentId = $request['StudentID'];
-        $enrollmentId = $request['EnrollmentID'];
+        $fieldsToChange  = json_decode($request['FieldsToChange'], true);
+        $studentId       = $request['StudentID'];
+        $enrollmentId    = $request['EnrollmentID'];
+
+        $studentFields    = $this->getStudentFields();
+        $enrollmentFields = $this->getEnrollmentFields();
+        $sectionFields    = $this->getSectionFields();
         
-        // Build update query for Student table
-        $studentUpdates = [];
-        $studentParams = [':studentId' => $studentId, ':updatedBy' => $implementedBy];
-        
-        // Build update query for Enrollment table if needed
+        $studentUpdates    = [];
+        $studentParams     = [':studentId' => $studentId, ':updatedBy' => $implementedBy];
         $enrollmentUpdates = [];
-        $enrollmentParams = [];
-        
-        // Track if we need to update enrollment status
-        $enrollmentStatusUpdate = null;
-        
+        $enrollmentParams  = [];
+        $newSectionId      = null;
+        $enrollmentStatus  = null;
+
         foreach ($fieldsToChange as $change) {
-            $field = $change['field'];
+            $field    = $change['field'];
             $newValue = $change['newValue'];
             
-            // Determine which table the field belongs to
-            $studentFields = [
-                'LRN', 'LastName', 'FirstName', 'MiddleName', 'ExtensionName',
-                'DateOfBirth', 'Age', 'Gender', 'Religion', 'ContactNumber',
-                'HouseNumber', 'SitioStreet', 'Barangay', 'Municipality', 'Province', 'ZipCode',
-                'FatherLastName', 'FatherFirstName', 'FatherMiddleName',
-                'MotherLastName', 'MotherFirstName', 'MotherMiddleName',
-                'GuardianLastName', 'GuardianFirstName', 'GuardianMiddleName',
-                'IsIPCommunity', 'IPCommunitySpecify', 'IsPWD', 'PWDSpecify'
-            ];
-            
-            $enrollmentFields = ['GradeLevelID', 'StrandID', 'AcademicYear'];
-            
             if ($field === 'EnrollmentStatus') {
-                // Handle enrollment status separately
-                $enrollmentStatusUpdate = $newValue;
-                // Also update student table
-                $studentUpdates[] = "EnrollmentStatus = :enrollmentStatus";
-                $studentParams[":enrollmentStatus"] = $newValue;
+                $enrollmentStatus = $newValue;
+                // Mirror on the Student table as well
+                $studentUpdates[]                  = "EnrollmentStatus = :enrollmentStatus";
+                $studentParams[':enrollmentStatus'] = $newValue;
+
             } elseif (in_array($field, $studentFields)) {
-                $studentUpdates[] = "$field = :$field";
-                $studentParams[":$field"] = $newValue;
+                $paramKey              = ":field_$field";
+                $studentUpdates[]      = "$field = $paramKey";
+                $studentParams[$paramKey] = $newValue;
+
             } elseif (in_array($field, $enrollmentFields) && $enrollmentId) {
-                $enrollmentUpdates[] = "$field = :$field";
-                $enrollmentParams[":$field"] = $newValue;
+                $paramKey                  = ":field_$field";
+                $enrollmentUpdates[]       = "$field = $paramKey";
+                $enrollmentParams[$paramKey] = $newValue;
+
+            } elseif (in_array($field, $sectionFields) && $enrollmentId) {
+                // SectionID change → update SectionAssignment
+                $newSectionId = $newValue;
             }
         }
         
-        // Update Student table
+        // Apply Student table updates
         if (!empty($studentUpdates)) {
             $studentUpdates[] = "UpdatedBy = :updatedBy";
-            $updateStudentQuery = "UPDATE Student SET " . 
-                implode(", ", $studentUpdates) . 
-                " WHERE StudentID = :studentId";
-            
-            $updateStmt = $this->conn->prepare($updateStudentQuery);
-            $updateStmt->execute($studentParams);
+            $sql = "UPDATE Student SET " . implode(', ', $studentUpdates) . " WHERE StudentID = :studentId";
+            $this->conn->prepare($sql)->execute($studentParams);
         }
         
-        // Update Enrollment table
+        // Apply Enrollment table updates
         if (!empty($enrollmentUpdates) && $enrollmentId) {
             $enrollmentParams[':enrollmentId'] = $enrollmentId;
-            $updateEnrollmentQuery = "UPDATE Enrollment SET " . 
-                implode(", ", $enrollmentUpdates) . 
-                " WHERE EnrollmentID = :enrollmentId";
-            
-            $updateEnrollStmt = $this->conn->prepare($updateEnrollmentQuery);
-            $updateEnrollStmt->execute($enrollmentParams);
+            $sql = "UPDATE Enrollment SET " . implode(', ', $enrollmentUpdates) . " WHERE EnrollmentID = :enrollmentId";
+            $this->conn->prepare($sql)->execute($enrollmentParams);
+        }
+
+        // Apply SectionID change via SectionAssignment
+        if ($newSectionId && $enrollmentId) {
+            // Deactivate current assignment for this enrollment
+            $deact = "UPDATE SectionAssignment SET IsActive = 0
+                      WHERE StudentID = :studentId AND EnrollmentID = :enrollmentId";
+            $this->conn->prepare($deact)->execute([
+                ':studentId'    => $studentId,
+                ':enrollmentId' => $enrollmentId
+            ]);
+            // Insert new assignment
+            $insert = "INSERT INTO SectionAssignment (StudentID, EnrollmentID, SectionID, IsActive)
+                       VALUES (:studentId, :enrollmentId, :sectionId, 1)
+                       ON DUPLICATE KEY UPDATE IsActive = 1";
+            $this->conn->prepare($insert)->execute([
+                ':studentId'    => $studentId,
+                ':enrollmentId' => $enrollmentId,
+                ':sectionId'    => $newSectionId
+            ]);
         }
         
-        // Update enrollment status if changed
-        if ($enrollmentStatusUpdate && $enrollmentId) {
-            // Map Student.EnrollmentStatus to Enrollment.Status
+        // Handle EnrollmentStatus change on Enrollment table
+        if ($enrollmentStatus && $enrollmentId) {
             $statusMap = [
-                'Active' => 'Confirmed',
-                'Cancelled' => 'Cancelled',
-                'Dropped' => 'Dropped',
+                'Active'          => 'Confirmed',
+                'Cancelled'       => 'Cancelled',
+                'Dropped'         => 'Dropped',
                 'Transferred_Out' => 'Transferred_Out',
-                'Graduated' => 'Confirmed'
+                'Graduated'       => 'Confirmed'
             ];
+            $enrollStatus = $statusMap[$enrollmentStatus] ?? 'Confirmed';
             
-            $enrollStatus = $statusMap[$enrollmentStatusUpdate] ?? 'Confirmed';
-            
-            $updateEnrollStatusQuery = "UPDATE Enrollment 
-                SET Status = :status,
-                    StatusChangedDate = NOW(),
-                    StatusChangedBy = :updatedBy
-                WHERE EnrollmentID = :enrollmentId";
-            
-            $statusStmt = $this->conn->prepare($updateEnrollStatusQuery);
-            $statusStmt->execute([
-                ':status' => $enrollStatus,
-                ':updatedBy' => $implementedBy,
+            $sql = "UPDATE Enrollment
+                    SET Status = :status, StatusChangedDate = NOW(), StatusChangedBy = :updatedBy
+                    WHERE EnrollmentID = :enrollmentId";
+            $this->conn->prepare($sql)->execute([
+                ':status'       => $enrollStatus,
+                ':updatedBy'    => $implementedBy,
                 ':enrollmentId' => $enrollmentId
             ]);
             
-            // Deactivate section assignments for non-active statuses
-            if (in_array($enrollmentStatusUpdate, ['Cancelled', 'Dropped', 'Transferred_Out'])) {
-                $deactivateSections = "UPDATE SectionAssignment 
-                    SET IsActive = 0 
-                    WHERE StudentID = :studentId";
-                $deactStmt = $this->conn->prepare($deactivateSections);
-                $deactStmt->execute([':studentId' => $studentId]);
+            // Deactivate section assignments for terminal statuses
+            if (in_array($enrollmentStatus, ['Cancelled', 'Dropped', 'Transferred_Out'])) {
+                $this->conn->prepare(
+                    "UPDATE SectionAssignment SET IsActive = 0 WHERE StudentID = :studentId"
+                )->execute([':studentId' => $studentId]);
             }
         }
         
-        // Log to StudentChangeLog for specific change types
-        if (in_array($request['RequestType'], ['Gender_Correction', 'Name_Correction'])) {
-            $changeLogQuery = "INSERT INTO StudentChangeLog (
-                StudentID, ChangeType, OldValue, NewValue, Reason, ChangedBy
-            ) VALUES (
-                :studentId, :changeType, :oldValue, :newValue, :reason, :changedBy
-            )";
-            
+        // Log specific change types to StudentChangeLog
+        if (in_array($request['RequestType'], ['Gender_Correction', 'Name_Correction', 'Bulk_Update'])) {
+            $logSql = "INSERT INTO StudentChangeLog
+                (StudentID, ChangeType, OldValue, NewValue, Reason, ChangedBy)
+                VALUES (:studentId, :changeType, :oldValue, :newValue, :reason, :changedBy)";
             foreach ($fieldsToChange as $change) {
-                $changeLogStmt = $this->conn->prepare($changeLogQuery);
-                $changeLogStmt->execute([
-                    ':studentId' => $studentId,
+                $this->conn->prepare($logSql)->execute([
+                    ':studentId'  => $studentId,
                     ':changeType' => $request['RequestType'],
-                    ':oldValue' => $change['oldValue'],
-                    ':newValue' => $change['newValue'],
-                    ':reason' => "Revision Request #$requestId",
-                    ':changedBy' => $implementedBy
+                    ':oldValue'   => $change['oldValue'],
+                    ':newValue'   => $change['newValue'],
+                    ':reason'     => "Revision Request #$requestId",
+                    ':changedBy'  => $implementedBy
                 ]);
             }
         }
         
-        // Update request implementation tracking
-        $updateRequestQuery = "UPDATE StudentRevisionRequest
-            SET ImplementedBy = :implementedBy,
-                ImplementedDate = NOW()
-            WHERE RequestID = :requestId";
+        // Mark as implemented
+        $this->conn->prepare(
+            "UPDATE StudentRevisionRequest SET ImplementedBy = :implementedBy, ImplementedDate = NOW()
+             WHERE RequestID = :requestId"
+        )->execute([':requestId' => $requestId, ':implementedBy' => $implementedBy]);
         
-        $updateRequestStmt = $this->conn->prepare($updateRequestQuery);
-        $updateRequestStmt->execute([
-            ':requestId' => $requestId,
-            ':implementedBy' => $implementedBy
-        ]);
-        
-        // Log to audit
         $this->logAudit(
             'StudentRevisionRequest',
             $requestId,
             'REVISION_IMPLEMENTED',
-            'Approved',
-            'Implemented',
+            json_encode(['status' => 'Approved']),
+            json_encode([
+                'status'        => 'Implemented',
+                'ChangedFields' => $fieldsToChange
+            ]),
             $implementedBy,
-            "Revision changes applied to Student ID: $studentId"
+            "Student edit applied to record — Student ID: $studentId, " .
+            count($fieldsToChange) . " field(s) updated"
         );
     }
     
@@ -435,8 +445,8 @@ class RevisionRequestAPI {
             
             $stmt = $this->conn->prepare($query);
             $stmt->execute([
-                ':requestId' => $requestId,
-                ':reviewedBy' => $reviewedBy,
+                ':requestId'   => $requestId,
+                ':reviewedBy'  => $reviewedBy,
                 ':reviewNotes' => $reviewNotes
             ]);
             
@@ -444,179 +454,43 @@ class RevisionRequestAPI {
                 throw new Exception('Request not found or already processed');
             }
             
-            // Log to audit
             $this->logAudit(
                 'StudentRevisionRequest',
                 $requestId,
                 'REVISION_REJECTED',
-                'Pending',
-                'Rejected',
+                json_encode(['status' => 'Pending']),
+                json_encode(['status' => 'Rejected', 'reviewNotes' => $reviewNotes]),
                 $reviewedBy,
-                "Revision request rejected: $reviewNotes"
+                "Student edit request rejected — Request ID: $requestId. Reason: $reviewNotes"
             );
             
             $this->conn->commit();
-            
-            return [
-                'success' => true,
-                'message' => 'Request rejected'
-            ];
+            return ['success' => true, 'message' => 'Request rejected'];
             
         } catch (Exception $e) {
             $this->conn->rollBack();
-            return [
-                'success' => false,
-                'message' => 'Error rejecting request: ' . $e->getMessage()
-            ];
+            return ['success' => false, 'message' => 'Error rejecting request: ' . $e->getMessage()];
         }
     }
     
     /**
-     * Implement approved revision (apply changes to student record)
+     * Public implement endpoint (kept for manual implementation if ever needed,
+     * but normally auto-called after approval)
      */
     public function implementRevision($requestId, $implementedBy) {
         try {
             $this->conn->beginTransaction();
-            
-            // Get request details
-            $query = "SELECT StudentID, EnrollmentID, FieldsToChange, Status, RequestType
-                FROM StudentRevisionRequest
-                WHERE RequestID = :requestId";
-            
-            $stmt = $this->conn->prepare($query);
-            $stmt->execute([':requestId' => $requestId]);
-            $request = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if (!$request) {
-                throw new Exception('Request not found');
-            }
-            
-            if ($request['Status'] !== 'Approved') {
-                throw new Exception('Request must be approved before implementation');
-            }
-            
-            $fieldsToChange = json_decode($request['FieldsToChange'], true);
-            $studentId = $request['StudentID'];
-            $enrollmentId = $request['EnrollmentID'];
-            
-            // Build update query for Student table
-            $studentUpdates = [];
-            $studentParams = [':studentId' => $studentId, ':updatedBy' => $implementedBy];
-            
-            // Build update query for Enrollment table if needed
-            $enrollmentUpdates = [];
-            $enrollmentParams = [];
-            
-            foreach ($fieldsToChange as $change) {
-                $field = $change['field'];
-                $newValue = $change['newValue'];
-                
-                // Determine which table the field belongs to
-                $studentFields = [
-                    'LRN', 'LastName', 'FirstName', 'MiddleName', 'ExtensionName',
-                    'DateOfBirth', 'Age', 'Gender', 'Religion', 'ContactNumber',
-                    'HouseNumber', 'SitioStreet', 'Barangay', 'Municipality', 'Province',
-                    'FatherLastName', 'FatherFirstName', 'FatherMiddleName',
-                    'MotherLastName', 'MotherFirstName', 'MotherMiddleName',
-                    'GuardianLastName', 'GuardianFirstName', 'GuardianMiddleName',
-                    'IsIPCommunity', 'IPCommunitySpecify', 'IsPWD', 'PWDSpecify'
-                ];
-                
-                $enrollmentFields = ['GradeLevelID', 'StrandID', 'AcademicYear'];
-                
-                if (in_array($field, $studentFields)) {
-                    $studentUpdates[] = "$field = :$field";
-                    $studentParams[":$field"] = $newValue;
-                } elseif (in_array($field, $enrollmentFields) && $enrollmentId) {
-                    $enrollmentUpdates[] = "$field = :$field";
-                    $enrollmentParams[":$field"] = $newValue;
-                }
-            }
-            
-            // Update Student table
-            if (!empty($studentUpdates)) {
-                $studentUpdates[] = "UpdatedBy = :updatedBy";
-                $updateStudentQuery = "UPDATE Student SET " . 
-                    implode(", ", $studentUpdates) . 
-                    " WHERE StudentID = :studentId";
-                
-                $updateStmt = $this->conn->prepare($updateStudentQuery);
-                $updateStmt->execute($studentParams);
-            }
-            
-            // Update Enrollment table
-            if (!empty($enrollmentUpdates) && $enrollmentId) {
-                $enrollmentParams[':enrollmentId'] = $enrollmentId;
-                $updateEnrollmentQuery = "UPDATE Enrollment SET " . 
-                    implode(", ", $enrollmentUpdates) . 
-                    " WHERE EnrollmentID = :enrollmentId";
-                
-                $updateEnrollStmt = $this->conn->prepare($updateEnrollmentQuery);
-                $updateEnrollStmt->execute($enrollmentParams);
-            }
-            
-            // Log to StudentChangeLog for specific change types
-            if (in_array($request['RequestType'], ['Gender_Correction', 'Name_Correction'])) {
-                $changeLogQuery = "INSERT INTO StudentChangeLog (
-                    StudentID, ChangeType, OldValue, NewValue, Reason, ChangedBy
-                ) VALUES (
-                    :studentId, :changeType, :oldValue, :newValue, :reason, :changedBy
-                )";
-                
-                foreach ($fieldsToChange as $change) {
-                    $changeLogStmt = $this->conn->prepare($changeLogQuery);
-                    $changeLogStmt->execute([
-                        ':studentId' => $studentId,
-                        ':changeType' => $request['RequestType'],
-                        ':oldValue' => $change['oldValue'],
-                        ':newValue' => $change['newValue'],
-                        ':reason' => "Revision Request #$requestId",
-                        ':changedBy' => $implementedBy
-                    ]);
-                }
-            }
-            
-            // Update request status
-            $updateRequestQuery = "UPDATE StudentRevisionRequest
-                SET ImplementedBy = :implementedBy,
-                    ImplementedDate = NOW()
-                WHERE RequestID = :requestId";
-            
-            $updateRequestStmt = $this->conn->prepare($updateRequestQuery);
-            $updateRequestStmt->execute([
-                ':requestId' => $requestId,
-                ':implementedBy' => $implementedBy
-            ]);
-            
-            // Log to audit
-            $this->logAudit(
-                'StudentRevisionRequest',
-                $requestId,
-                'REVISION_IMPLEMENTED',
-                'Approved',
-                'Implemented',
-                $implementedBy,
-                "Revision changes applied to Student ID: $studentId"
-            );
-            
+            $this->implementRevisionInternal($requestId, $implementedBy);
             $this->conn->commit();
-            
-            return [
-                'success' => true,
-                'message' => 'Changes implemented successfully'
-            ];
-            
+            return ['success' => true, 'message' => 'Changes implemented successfully'];
         } catch (Exception $e) {
             $this->conn->rollBack();
-            return [
-                'success' => false,
-                'message' => 'Error implementing revision: ' . $e->getMessage()
-            ];
+            return ['success' => false, 'message' => 'Error implementing revision: ' . $e->getMessage()];
         }
     }
     
     /**
-     * Get requests by user (for advisers to see their own requests)
+     * Get requests by user (for advisers to track their own submissions)
      */
     public function getRequestsByUser($userId, $status = null) {
         try {
@@ -643,93 +517,20 @@ class RevisionRequestAPI {
                 $query .= " AND srr.Status = :status";
                 $params[':status'] = $status;
             }
-            
             $query .= " ORDER BY srr.CreatedAt DESC";
             
             $stmt = $this->conn->prepare($query);
             $stmt->execute($params);
             
-            return [
-                'success' => true,
-                'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)
-            ];
+            return ['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
             
         } catch (PDOException $e) {
-            return [
-                'success' => false,
-                'message' => 'Error fetching requests: ' . $e->getMessage()
-            ];
+            return ['success' => false, 'message' => 'Error fetching requests: ' . $e->getMessage()];
         }
     }
     
     /**
-     * Get request statistics
-     */
-    public function getRequestStatistics($academicYear = null) {
-        try {
-            $query = "SELECT 
-                COUNT(*) AS TotalRequests,
-                SUM(CASE WHEN Status = 'Pending' THEN 1 ELSE 0 END) AS PendingCount,
-                SUM(CASE WHEN Status = 'Approved' THEN 1 ELSE 0 END) AS ApprovedCount,
-                SUM(CASE WHEN Status = 'Rejected' THEN 1 ELSE 0 END) AS RejectedCount,
-                SUM(CASE WHEN ImplementedDate IS NOT NULL THEN 1 ELSE 0 END) AS ImplementedCount,
-                AVG(DATEDIFF(ReviewedDate, CreatedAt)) AS AvgReviewDays
-            FROM StudentRevisionRequest srr";
-            
-            if ($academicYear) {
-                $query .= " INNER JOIN Enrollment e ON srr.EnrollmentID = e.EnrollmentID
-                    WHERE e.AcademicYear = :academicYear";
-            }
-            
-            $stmt = $this->conn->prepare($query);
-            if ($academicYear) {
-                $stmt->execute([':academicYear' => $academicYear]);
-            } else {
-                $stmt->execute();
-            }
-            
-            return [
-                'success' => true,
-                'data' => $stmt->fetch(PDO::FETCH_ASSOC)
-            ];
-            
-        } catch (PDOException $e) {
-            return [
-                'success' => false,
-                'message' => 'Error fetching statistics: ' . $e->getMessage()
-            ];
-        }
-    }
-    
-    /**
-     * Helper function to log to audit
-     */
-    private function logAudit($tableName, $recordId, $action, $oldValue, $newValue, $userId, $description) {
-        try {
-            $query = "INSERT INTO AuditLog (
-                TableName, RecordID, Action, OldValue, NewValue, 
-                ChangedBy, ActionDescription
-            ) VALUES (
-                :tableName, :recordId, :action, :oldValue, :newValue,
-                :userId, :description
-            )";
-            
-            $stmt = $this->conn->prepare($query);
-            $stmt->execute([
-                ':tableName' => $tableName,
-                ':recordId' => $recordId,
-                ':action' => $action,
-                ':oldValue' => $oldValue,
-                ':newValue' => $newValue,
-                ':userId' => $userId,
-                ':description' => $description
-            ]);
-        } catch (PDOException $e) {
-            error_log("Audit log error: " . $e->getMessage());
-        }
-    }
-    /**
-     * Get requests by student (for approvers)
+     * Get requests by student (for approvers reviewing a specific student)
      */
     public function getRequestsByStudent($studentId, $status = null) {
         try {
@@ -756,26 +557,77 @@ class RevisionRequestAPI {
                 $query .= " AND srr.Status = :status";
                 $params[':status'] = $status;
             }
-            
             $query .= " ORDER BY srr.CreatedAt DESC";
             
             $stmt = $this->conn->prepare($query);
             $stmt->execute($params);
             
-            return [
-                'success' => true,
-                'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)
-            ];
+            return ['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
             
         } catch (PDOException $e) {
-            return [
-                'success' => false,
-                'message' => 'Error fetching requests: ' . $e->getMessage()
-            ];
+            return ['success' => false, 'message' => 'Error fetching requests: ' . $e->getMessage()];
+        }
+    }
+    
+    /**
+     * Get request statistics
+     */
+    public function getRequestStatistics($academicYear = null) {
+        try {
+            $query = "SELECT 
+                COUNT(*) AS TotalRequests,
+                SUM(CASE WHEN Status = 'Pending'  THEN 1 ELSE 0 END) AS PendingCount,
+                SUM(CASE WHEN Status = 'Approved' THEN 1 ELSE 0 END) AS ApprovedCount,
+                SUM(CASE WHEN Status = 'Rejected' THEN 1 ELSE 0 END) AS RejectedCount,
+                SUM(CASE WHEN ImplementedDate IS NOT NULL THEN 1 ELSE 0 END) AS ImplementedCount,
+                AVG(DATEDIFF(ReviewedDate, CreatedAt)) AS AvgReviewDays
+            FROM StudentRevisionRequest srr";
+            
+            if ($academicYear) {
+                $query .= " INNER JOIN Enrollment e ON srr.EnrollmentID = e.EnrollmentID
+                    WHERE e.AcademicYear = :academicYear";
+            }
+            
+            $stmt = $this->conn->prepare($query);
+            if ($academicYear) {
+                $stmt->execute([':academicYear' => $academicYear]);
+            } else {
+                $stmt->execute();
+            }
+            
+            return ['success' => true, 'data' => $stmt->fetch(PDO::FETCH_ASSOC)];
+            
+        } catch (PDOException $e) {
+            return ['success' => false, 'message' => 'Error fetching statistics: ' . $e->getMessage()];
+        }
+    }
+    
+    /**
+     * Helper — write to audit log
+     */
+    private function logAudit($tableName, $recordId, $action, $oldValue, $newValue, $userId, $description) {
+        try {
+            $query = "INSERT INTO AuditLog (
+                TableName, RecordID, Action, OldValue, NewValue,
+                ChangedBy, ActionDescription
+            ) VALUES (
+                :tableName, :recordId, :action, :oldValue, :newValue,
+                :userId, :description
+            )";
+            $this->conn->prepare($query)->execute([
+                ':tableName'   => $tableName,
+                ':recordId'    => $recordId,
+                ':action'      => $action,
+                ':oldValue'    => $oldValue,
+                ':newValue'    => $newValue,
+                ':userId'      => $userId,
+                ':description' => $description
+            ]);
+        } catch (PDOException $e) {
+            error_log("Audit log error: " . $e->getMessage());
         }
     }
 }
-
 
 
 // =====================================================
@@ -784,130 +636,80 @@ class RevisionRequestAPI {
 
 try {
     $database = new Database();
-    $db = $database->getConnection();
+    $db       = $database->getConnection();
     
     if ($db === null) {
         throw new Exception('Database connection failed');
     }
     
-    $api = new RevisionRequestAPI($db);
+    $api    = new RevisionRequestAPI($db);
     $action = $_GET['action'] ?? '';
     
     switch ($_SERVER['REQUEST_METHOD']) {
+
+        // ── GET ──────────────────────────────────────────────────────────────
         case 'GET':
             if ($action === 'get_pending') {
                 $filters = [];
-                if (isset($_GET['priority'])) $filters['priority'] = $_GET['priority'];
+                if (isset($_GET['priority']))     $filters['priority']    = $_GET['priority'];
                 if (isset($_GET['request_type'])) $filters['requestType'] = $_GET['request_type'];
-                if (isset($_GET['grade_level'])) $filters['gradeLevel'] = $_GET['grade_level'];
-                
-                $result = $api->getPendingRequests($filters);
-                echo json_encode($result);
-                
+                if (isset($_GET['grade_level']))  $filters['gradeLevel']  = $_GET['grade_level'];
+                echo json_encode($api->getPendingRequests($filters));
+
             } elseif ($action === 'get_details') {
                 $requestId = $_GET['request_id'] ?? null;
-                
                 if (!$requestId) {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'Request ID required'
-                    ]);
+                    echo json_encode(['success' => false, 'message' => 'Request ID required']);
                     exit;
                 }
-                
-                $result = $api->getRequestDetails($requestId);
-                echo json_encode($result);
-                
+                echo json_encode($api->getRequestDetails($requestId));
+
             } elseif ($action === 'get_by_user') {
                 $userId = $_GET['user_id'] ?? null;
                 $status = $_GET['status'] ?? null;
-                
                 if (!$userId) {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'User ID required'
-                    ]);
+                    echo json_encode(['success' => false, 'message' => 'User ID required']);
                     exit;
                 }
-                
-                $result = $api->getRequestsByUser($userId, $status);
-                echo json_encode($result);
-                
-            } elseif ($action === 'get_statistics') {
-                $academicYear = $_GET['academic_year'] ?? null;
-                
-                $result = $api->getRequestStatistics($academicYear);
-                echo json_encode($result);
+                echo json_encode($api->getRequestsByUser($userId, $status));
 
             } elseif ($action === 'get_by_student') {
                 $studentId = $_GET['student_id'] ?? null;
-                $status = $_GET['status'] ?? 'Pending'; // Default to pending
-                
+                // Default to Pending so the "Review Revisions" modal shows only pending ones
+                $status    = $_GET['status'] ?? 'Pending';
                 if (!$studentId) {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'Student ID required'
-                    ]);
+                    echo json_encode(['success' => false, 'message' => 'Student ID required']);
                     exit;
                 }
-                
-                $result = $api->getRequestsByStudent($studentId, $status);
-                echo json_encode($result);
+                echo json_encode($api->getRequestsByStudent($studentId, $status));
+
+            } elseif ($action === 'get_statistics') {
+                $academicYear = $_GET['academic_year'] ?? null;
+                echo json_encode($api->getRequestStatistics($academicYear));
+
             } else {
                 http_response_code(400);
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Invalid action'
-                ]);
+                echo json_encode(['success' => false, 'message' => 'Invalid action']);
             }
-            
             break;
-            
+
+        // ── POST ─────────────────────────────────────────────────────────────
         case 'POST':
             $data = json_decode(file_get_contents('php://input'), true);
-                        
+            if (!$data) {
+                echo json_encode(['success' => false, 'message' => 'Invalid JSON payload']);
+                exit;
+            }
+
+            // ── create_bulk_update ──────────────────────────────────────────
+            // Called by the JS "Edit Information" form (Adviser role).
+            // The JS already sends a ChangedFields diff; we re-verify server-side
+            // against the database for security, then create the revision request.
             if ($action === 'create_bulk_update') {
-                // Get current student data
-                $currentStmt = $db->prepare("SELECT s.*, e.GradeLevelID, e.StrandID, e.AcademicYear, e.EnrollmentID,
-                    e.Status as EnrollmentStatus
-                    FROM Student s
-                    LEFT JOIN (
-                        SELECT StudentID, MAX(EnrollmentID) as LatestEnrollmentID
-                        FROM Enrollment
-                        GROUP BY StudentID
-                    ) latest ON s.StudentID = latest.StudentID
-                    LEFT JOIN Enrollment e ON latest.LatestEnrollmentID = e.EnrollmentID
-                    WHERE s.StudentID = ?");
-                $currentStmt->execute([$data['StudentID']]);
-                $currentData = $currentStmt->fetch(PDO::FETCH_ASSOC);
-                
-                if (!$currentData) {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'Student not found'
-                    ]);
-                    exit;
-                }
-                
-                // Map Enrollment.Status to Student.EnrollmentStatus format for comparison
-                $statusMap = [
-                    'Confirmed' => 'Active',
-                    'Pending' => 'Active',
-                    'Cancelled' => 'Cancelled',
-                    'Dropped' => 'Dropped',
-                    'Transferred_Out' => 'Transferred_Out',
-                    'For_Review' => 'Active'
-                ];
-                
-                // Convert enrollment status to student status format
-                $currentData['EnrollmentStatus'] = $statusMap[$currentData['EnrollmentStatus']] ?? $currentData['EnrollmentStatus'];
-                
-                // Build fields array for ALL changed values
-                $fieldsToChange = [];
-                
-                // Define all checkable fields
-                $fieldsToCheck = [
-                    // Student table fields
+
+                // All fields the form can touch, across all tables
+                $allTrackableFields = [
+                    // Student table
                     'LRN', 'LastName', 'FirstName', 'MiddleName', 'ExtensionName',
                     'DateOfBirth', 'Age', 'Gender', 'Religion', 'ContactNumber',
                     'IsIPCommunity', 'IPCommunitySpecify', 'IsPWD', 'PWDSpecify',
@@ -915,90 +717,113 @@ try {
                     'FatherLastName', 'FatherFirstName', 'FatherMiddleName',
                     'MotherLastName', 'MotherFirstName', 'MotherMiddleName',
                     'GuardianLastName', 'GuardianFirstName', 'GuardianMiddleName',
-                    // Enrollment table fields
-                    'GradeLevelID', 'StrandID', 'AcademicYear', 'EnrollmentStatus'
+                    // Enrollment table
+                    'GradeLevelID', 'StrandID', 'AcademicYear', 'EnrollmentStatus',
+                    // SectionAssignment table
+                    'SectionID'
                 ];
-                
-                foreach ($fieldsToCheck as $field) {
-                    if (isset($data[$field])) {
-                        // Normalize empty values
-                        $newValue = $data[$field] === '' ? null : $data[$field];
-                        $oldValue = $currentData[$field] === '' ? null : $currentData[$field];
-                        
-                        // Compare values (handle null/empty string equivalence)
-                        if ($newValue != $oldValue) {
-                            $fieldsToChange[] = [
-                                'field' => $field,
-                                'oldValue' => $oldValue ?? '',
-                                'newValue' => $newValue ?? ''
-                            ];
-                        }
+
+                // Fetch current values from DB for authoritative diff
+                $currentStmt = $db->prepare(
+                    "SELECT s.*,
+                        e.GradeLevelID, e.StrandID, e.AcademicYear,
+                        e.EnrollmentID, e.Status AS EnrollmentStatusRaw,
+                        sa.SectionID
+                    FROM Student s
+                    LEFT JOIN (
+                        SELECT StudentID, MAX(EnrollmentID) AS LatestEnrollmentID
+                        FROM Enrollment
+                        GROUP BY StudentID
+                    ) latest ON s.StudentID = latest.StudentID
+                    LEFT JOIN Enrollment e ON latest.LatestEnrollmentID = e.EnrollmentID
+                    LEFT JOIN SectionAssignment sa
+                        ON sa.StudentID = s.StudentID
+                        AND sa.EnrollmentID = e.EnrollmentID
+                        AND sa.IsActive = 1
+                    WHERE s.StudentID = ?"
+                );
+                $currentStmt->execute([$data['StudentID']]);
+                $currentData = $currentStmt->fetch(PDO::FETCH_ASSOC);
+
+                if (!$currentData) {
+                    echo json_encode(['success' => false, 'message' => 'Student not found']);
+                    exit;
+                }
+
+                // Normalise Enrollment.Status → Student.EnrollmentStatus vocabulary
+                $statusMap = [
+                    'Confirmed'   => 'Active',
+                    'Pending'     => 'Active',
+                    'For_Review'  => 'Active',
+                    'Cancelled'   => 'Cancelled',
+                    'Dropped'     => 'Dropped',
+                    'Transferred_Out' => 'Transferred_Out',
+                    'Graduated'   => 'Graduated'
+                ];
+                $currentData['EnrollmentStatus'] =
+                    $statusMap[$currentData['EnrollmentStatusRaw']] ?? $currentData['EnrollmentStatusRaw'];
+
+                // Server-side diff (authoritative)
+                $fieldsToChange = [];
+                foreach ($allTrackableFields as $field) {
+                    if (!isset($data[$field])) continue;
+
+                    $newVal = ($data[$field] === '' || $data[$field] === null) ? null : $data[$field];
+                    $oldVal = ($currentData[$field] === '' || $currentData[$field] === null)
+                              ? null
+                              : $currentData[$field];
+
+                    // Cast to string for consistent comparison (handles int/bool DB values)
+                    if ((string)($newVal ?? '') !== (string)($oldVal ?? '')) {
+                        $fieldsToChange[] = [
+                            'field'    => $field,
+                            'oldValue' => (string)($oldVal ?? ''),
+                            'newValue' => (string)($newVal ?? '')
+                        ];
                     }
                 }
-                
-                // Check if there are any changes
+
                 if (empty($fieldsToChange)) {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'No changes detected'
-                    ]);
+                    echo json_encode(['success' => false, 'message' => 'No changes detected']);
                     exit;
                 }
-                
+
                 $revisionData = [
-                    'StudentID' => $data['StudentID'],
+                    'StudentID'    => $data['StudentID'],
                     'EnrollmentID' => $currentData['EnrollmentID'] ?? null,
-                    'RequestedBy' => $data['UpdatedBy'],
-                    'RequestType' => 'Bulk_Update',
+                    'RequestedBy'  => $data['UpdatedBy'],
+                    'RequestType'  => 'Bulk_Update',
                     'FieldsToChange' => $fieldsToChange,
-                    'Justification' => 'Bulk student information update submitted by Adviser',
-                    'Priority' => 'Normal'
+                    // Use adviser-supplied justification if provided, else generic
+                    'Justification' => $data['Justification']
+                        ?? ('Student information edit submitted for approval — ' .
+                            count($fieldsToChange) . ' field(s) changed'),
+                    'Priority' => $data['Priority'] ?? 'Normal'
                 ];
-                
-                $result = $api->createRequest($revisionData);
-                echo json_encode($result);
-            }
-            
-            elseif ($action === 'create') {
-            
-            $revisionData = [
-                'StudentID' => $data['StudentID'],
-                'EnrollmentID' => null, // fetch if needed
-                'RequestedBy' => $data['UpdatedBy'],
-                'RequestType' => 'Bulk_Update',
-                'FieldsToChange' => $fieldsToChange,
-                'Justification' => 'Bulk student information update',
-                'Priority' => 'Normal'
-            ];
-            
-            $result = $api->createRequest($revisionData);
-            echo json_encode($result);
-            
-        } elseif ($action === 'create') {
+
+                echo json_encode($api->createRequest($revisionData));
+
+            // ── create (standalone revision request form) ───────────────────
+            } elseif ($action === 'create') {
                 $result = $api->createRequest($data);
                 echo json_encode($result);
-                
+
+            // ── approve ─────────────────────────────────────────────────────
             } elseif ($action === 'approve') {
-                $requestId = $data['RequestID'] ?? null;
+                $requestId  = $data['RequestID']  ?? null;
                 $reviewedBy = $data['ReviewedBy'] ?? null;
                 $reviewNotes = $data['ReviewNotes'] ?? null;
-                
                 if (!$requestId || !$reviewedBy) {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'Missing required fields'
-                    ]);
+                    echo json_encode(['success' => false, 'message' => 'Missing required fields']);
                     exit;
                 }
-                
-                $result = $api->approveRequest($requestId, $reviewedBy, $reviewNotes);
-                echo json_encode($result);
-                
+                echo json_encode($api->approveRequest($requestId, $reviewedBy, $reviewNotes));
+
+            // ── reject ──────────────────────────────────────────────────────
             } elseif ($action === 'reject') {
-                $requestId = $data['RequestID'] ?? null;
-                $reviewedBy = $data['ReviewedBy'] ?? null;
+                $requestId   = $data['RequestID']   ?? null;
+                $reviewedBy  = $data['ReviewedBy']  ?? null;
                 $reviewNotes = $data['ReviewNotes'] ?? null;
-                
                 if (!$requestId || !$reviewedBy || !$reviewNotes) {
                     echo json_encode([
                         'success' => false,
@@ -1006,48 +831,32 @@ try {
                     ]);
                     exit;
                 }
-                
-                $result = $api->rejectRequest($requestId, $reviewedBy, $reviewNotes);
-                echo json_encode($result);
-                
+                echo json_encode($api->rejectRequest($requestId, $reviewedBy, $reviewNotes));
+
+            // ── implement (manual, kept for backwards compatibility) ─────────
             } elseif ($action === 'implement') {
-                $requestId = $data['RequestID'] ?? null;
+                $requestId     = $data['RequestID']     ?? null;
                 $implementedBy = $data['ImplementedBy'] ?? null;
-                
                 if (!$requestId || !$implementedBy) {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'Missing required fields'
-                    ]);
+                    echo json_encode(['success' => false, 'message' => 'Missing required fields']);
                     exit;
                 }
-                
-                $result = $api->implementRevision($requestId, $implementedBy);
-                echo json_encode($result);
-                
+                echo json_encode($api->implementRevision($requestId, $implementedBy));
+
             } else {
                 http_response_code(400);
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Invalid action'
-                ]);
+                echo json_encode(['success' => false, 'message' => 'Invalid action']);
             }
             break;
-            
+
         default:
             http_response_code(405);
-            echo json_encode([
-                'success' => false,
-                'message' => 'Method not allowed'
-            ]);
+            echo json_encode(['success' => false, 'message' => 'Method not allowed']);
     }
-    
+
 } catch (Exception $e) {
     http_response_code(500);
     error_log("Revision Request API Error: " . $e->getMessage());
-    echo json_encode([
-        'success' => false,
-        'message' => 'Server error: ' . $e->getMessage()
-    ]);
+    echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
 }
 ?>

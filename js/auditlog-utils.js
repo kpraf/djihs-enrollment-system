@@ -46,25 +46,35 @@ const ACTION_COLORS = {
     'DELETE': 'bg-red-100 text-red-800',
     'STATUS_CHANGE': 'bg-yellow-100 text-yellow-800',
     'PASSWORD_RESET': 'bg-purple-100 text-purple-800',
+    // ── Revision request lifecycle ──────────────────────────────────────────
+    // Adviser submits the Edit Information form → creates a revision request
     'REVISION_REQUEST': 'bg-indigo-100 text-indigo-800',
+    // Registrar/ICT approves the revision request
     'REVISION_APPROVED': 'bg-green-100 text-green-800',
+    // Registrar/ICT rejects the revision request
     'REVISION_REJECTED': 'bg-red-100 text-red-800',
+    // Changes are actually applied to the student record after approval
     'REVISION_IMPLEMENTED': 'bg-blue-100 text-blue-800',
+    // ── Document lifecycle ──────────────────────────────────────────────────
     'DOCUMENT_SUBMISSION': 'bg-cyan-100 text-cyan-800',
     'DOCUMENT_VERIFICATION': 'bg-teal-100 text-teal-800'
 };
 
-// Action label mapping
+// Action label mapping — human-readable strings shown in the audit log table
 const ACTION_LABELS = {
     'INSERT': 'Created',
     'UPDATE': 'Updated',
     'DELETE': 'Deleted',
     'STATUS_CHANGE': 'Status Changed',
     'PASSWORD_RESET': 'Password Reset',
-    'REVISION_REQUEST': 'Revision Requested',
-    'REVISION_APPROVED': 'Revision Approved',
-    'REVISION_REJECTED': 'Revision Rejected',
-    'REVISION_IMPLEMENTED': 'Revision Applied',
+    // Adviser used "Edit Information" → submitted for approval
+    'REVISION_REQUEST': 'Edit Submitted (Pending Approval)',
+    // Registrar/ICT approved the pending edit
+    'REVISION_APPROVED': 'Edit Approved',
+    // Registrar/ICT rejected the pending edit
+    'REVISION_REJECTED': 'Edit Rejected',
+    // Approved changes were applied to the live student record
+    'REVISION_IMPLEMENTED': 'Edit Applied to Record',
     'DOCUMENT_SUBMISSION': 'Document Submitted',
     'DOCUMENT_VERIFICATION': 'Document Verified'
 };
@@ -77,7 +87,10 @@ const TABLE_LABELS = {
     'enrollment': 'Enrollment',
     'section': 'Section',
     'sectionassignment': 'Section Assignment',
-    'StudentRevisionRequest': 'Revision Request',
+    // Revision requests are stored here; actions on this table use the
+    // REVISION_REQUEST / REVISION_APPROVED / REVISION_REJECTED / REVISION_IMPLEMENTED
+    // action types so they display correctly in the log.
+    'StudentRevisionRequest': 'Student Edit Request',
     'strand': 'Strand',
     'documentsubmission': 'Document Submission'
 };
@@ -100,10 +113,7 @@ function initializeAuditLog(role, user) {
     userRole = role;
     currentUser = user;
     
-    // Populate filter dropdowns based on role
     populateTableFilter();
-    
-    // Load initial data
     loadStats();
     loadLogs();
 }
@@ -130,7 +140,6 @@ async function loadStats() {
     try {
         let url = '../backend/api/auditlog.php?action=stats';
         
-        // Add role filter for registrar
         if (userRole === 'Registrar') {
             url += '&user_role=Registrar';
         }
@@ -157,12 +166,10 @@ async function loadLogs() {
     try {
         let url = `../backend/api/auditlog.php?action=all&limit=${pageSize}&offset=${currentPage * pageSize}`;
         
-        // Add role filter
         if (userRole === 'Registrar') {
             url += '&user_role=Registrar';
         }
         
-        // Add filters
         if (currentFilters.table) url += `&table=${currentFilters.table}`;
         if (currentFilters.action) url += `&action_type=${currentFilters.action}`;
         if (currentFilters.startDate) url += `&start_date=${currentFilters.startDate}`;
@@ -204,6 +211,12 @@ function displayLogs(logs) {
             hour: '2-digit',
             minute: '2-digit'
         });
+
+        // Resolve human-readable label; fall back to raw action string
+        const actionLabel = ACTION_LABELS[log.Action] || log.Action;
+        const actionColor = ACTION_COLORS[log.Action] || 'bg-gray-100 text-gray-800';
+        // Resolve table display name
+        const tableLabel = TABLE_LABELS[log.TableName] || log.TableName;
         
         return `
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
@@ -213,11 +226,11 @@ function displayLogs(logs) {
                     <div class="text-xs text-gray-500">${log.ChangedByRole || 'N/A'}</div>
                 </td>
                 <td class="px-6 py-4">
-                    <span class="px-2 py-1 text-xs font-semibold rounded-full ${ACTION_COLORS[log.Action] || 'bg-gray-100 text-gray-800'}">
-                        ${ACTION_LABELS[log.Action] || log.Action}
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full ${actionColor}">
+                        ${actionLabel}
                     </span>
                 </td>
-                <td class="px-6 py-4 text-sm">${TABLE_LABELS[log.TableName] || log.TableName}</td>
+                <td class="px-6 py-4 text-sm">${tableLabel}</td>
                 <td class="px-6 py-4 text-sm">${log.ActionDescription || 'No description'}</td>
                 <td class="px-6 py-4 text-sm">${log.AffectedUserName || '-'}</td>
                 <td class="px-6 py-4 text-right">
@@ -245,9 +258,6 @@ function updatePagination() {
     document.getElementById('nextBtn').disabled = (currentPage + 1) * pageSize >= totalRecords;
 }
 
-/**
- * Go to previous page
- */
 function previousPage() {
     if (currentPage > 0) {
         currentPage--;
@@ -255,9 +265,6 @@ function previousPage() {
     }
 }
 
-/**
- * Go to next page
- */
 function nextPage() {
     if ((currentPage + 1) * pageSize < totalRecords) {
         currentPage++;
@@ -265,9 +272,6 @@ function nextPage() {
     }
 }
 
-/**
- * Apply current filters
- */
 function applyFilters() {
     currentFilters = {
         table: document.getElementById('filterTable').value,
@@ -279,9 +283,6 @@ function applyFilters() {
     loadLogs();
 }
 
-/**
- * Clear all filters
- */
 function clearFilters() {
     document.getElementById('filterTable').value = '';
     document.getElementById('filterAction').value = '';
@@ -292,9 +293,6 @@ function clearFilters() {
     loadLogs();
 }
 
-/**
- * Refresh logs and stats
- */
 async function refreshLogs() {
     await loadStats();
     await loadLogs();
@@ -302,7 +300,6 @@ async function refreshLogs() {
 
 /**
  * View detailed information for a log entry
- * @param {number} logId - Log ID to view
  */
 function viewDetails(logId) {
     const log = allLogs.find(l => l.LogID === logId);
@@ -328,6 +325,41 @@ function viewDetails(logId) {
     } catch (e) {
         newValue = log.NewValue || 'N/A';
     }
+
+    // For revision requests, the NewValue contains the ChangedFields array.
+    // Render it as a readable diff table when available.
+    let diffTable = '';
+    try {
+        if (log.NewValue) {
+            const parsed = JSON.parse(log.NewValue);
+            const fields = parsed.ChangedFields || (Array.isArray(parsed) ? parsed : null);
+            if (fields && fields.length > 0) {
+                diffTable = `
+                    <div class="mt-4">
+                        <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Field Changes</p>
+                        <table class="w-full text-xs border border-gray-200 dark:border-gray-700 rounded">
+                            <thead class="bg-gray-50 dark:bg-gray-900">
+                                <tr>
+                                    <th class="px-3 py-2 text-left text-gray-600 dark:text-gray-400">Field</th>
+                                    <th class="px-3 py-2 text-left text-red-600 dark:text-red-400">Old Value</th>
+                                    <th class="px-3 py-2 text-left text-green-600 dark:text-green-400">New Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${fields.map(f => `
+                                    <tr class="border-t border-gray-100 dark:border-gray-700">
+                                        <td class="px-3 py-2 font-medium text-gray-700 dark:text-gray-300">${f.field}</td>
+                                        <td class="px-3 py-2 text-red-600 dark:text-red-400">${f.oldValue || '—'}</td>
+                                        <td class="px-3 py-2 text-green-600 dark:text-green-400">${f.newValue || '—'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+        }
+    } catch (e) { /* ignore */ }
     
     const detailContent = `
         <div class="grid grid-cols-2 gap-4">
@@ -368,23 +400,22 @@ function viewDetails(logId) {
             <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Description</p>
             <p class="text-sm dark:text-gray-400">${log.ActionDescription || 'No description available'}</p>
         </div>
-        <div class="mt-4">
-            <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Old Value</p>
-            ${oldValue}
-        </div>
-        <div class="mt-4">
-            <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">New Value</p>
-            ${newValue}
-        </div>
+        ${diffTable || `
+            <div class="mt-4">
+                <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Old Value</p>
+                ${oldValue}
+            </div>
+            <div class="mt-4">
+                <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">New Value</p>
+                ${newValue}
+            </div>
+        `}
     `;
     
     document.getElementById('detailContent').innerHTML = detailContent;
     document.getElementById('detailModal').classList.remove('hidden');
 }
 
-/**
- * Close the detail modal
- */
 function closeDetailModal() {
     document.getElementById('detailModal').classList.add('hidden');
 }
@@ -396,12 +427,10 @@ async function exportAuditLog() {
     try {
         let url = `../backend/api/auditlog.php?action=all&limit=10000&offset=0`;
         
-        // Add role filter
         if (userRole === 'Registrar') {
             url += '&user_role=Registrar';
         }
         
-        // Add current filters
         if (currentFilters.table) url += `&table=${currentFilters.table}`;
         if (currentFilters.action) url += `&action_type=${currentFilters.action}`;
         if (currentFilters.startDate) url += `&start_date=${currentFilters.startDate}`;
@@ -411,7 +440,6 @@ async function exportAuditLog() {
         const result = await response.json();
         
         if (result.success && result.data.length > 0) {
-            // Create CSV
             const headers = ['Timestamp', 'User', 'Role', 'Action', 'Table', 'Record ID', 'Description', 'Affected User', 'IP Address'];
             const csvContent = [
                 headers.join(','),
@@ -419,8 +447,9 @@ async function exportAuditLog() {
                     `"${new Date(log.ChangedAt).toLocaleString()}"`,
                     `"${log.ChangedByName || 'System'}"`,
                     `"${log.ChangedByRole || 'N/A'}"`,
-                    `"${log.Action}"`,
-                    `"${log.TableName}"`,
+                    // Use human-readable label in the CSV export too
+                    `"${ACTION_LABELS[log.Action] || log.Action}"`,
+                    `"${TABLE_LABELS[log.TableName] || log.TableName}"`,
                     log.RecordID,
                     `"${(log.ActionDescription || '').replace(/"/g, '""')}"`,
                     `"${log.AffectedUserName || '-'}"`,
@@ -428,7 +457,6 @@ async function exportAuditLog() {
                 ].join(','))
             ].join('\n');
             
-            // Download
             const blob = new Blob([csvContent], { type: 'text/csv' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -445,12 +473,6 @@ async function exportAuditLog() {
     }
 }
 
-/**
- * Get initials from first and last name
- * @param {string} firstName 
- * @param {string} lastName 
- * @returns {string}
- */
 function getInitials(firstName, lastName) {
     return (firstName?.charAt(0) || '') + (lastName?.charAt(0) || '');
 }

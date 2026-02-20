@@ -9,23 +9,18 @@
  * It will redirect to login if user is not authenticated
  */
 function checkAuth(requiredRole = null) {
-    // Check if user is logged in
     const isLoggedIn = localStorage.getItem('isLoggedIn');
     const userDataString = localStorage.getItem('user');
     
     if (!isLoggedIn || isLoggedIn !== 'true' || !userDataString) {
-        // Not logged in - redirect to login page
         window.location.href = '../login.html';
         return null;
     }
     
     try {
-        // Parse user data
         const userData = JSON.parse(userDataString);
         
-        // If specific role is required, check if user has it
         if (requiredRole && userData.Role !== requiredRole) {
-            // Wrong role - redirect to their correct dashboard or login
             alert('Access denied. You do not have permission to view this page.');
             redirectToDashboard(userData.Role);
             return null;
@@ -34,7 +29,6 @@ function checkAuth(requiredRole = null) {
         return userData;
     } catch (error) {
         console.error('Error parsing user data:', error);
-        // Invalid data - clear and redirect to login
         clearAuth();
         window.location.href = '../login.html';
         return null;
@@ -59,7 +53,6 @@ function getCurrentUser() {
 
 /**
  * Logout user
- * Clears all auth data and redirects to login
  */
 function logout() {
     clearAuth();
@@ -97,51 +90,43 @@ function redirectToDashboard(role) {
 
 /**
  * Initialize user display on dashboard
- * Updates the user info section with logged-in user's details
+ * Supports both class-based and ID-based elements in the sidebar
  */
 function initUserDisplay() {
     const user = getCurrentUser();
     if (!user) return;
-    
-    // Update user name displays
-    const userNameElements = document.querySelectorAll('.user-name');
-    userNameElements.forEach(el => {
-        el.textContent = `${user.FirstName} ${user.LastName}`;
-    });
-    
-    // Update user role displays
-    const userRoleElements = document.querySelectorAll('.user-role');
-    userRoleElements.forEach(el => {
-        el.textContent = user.Role.replace('_', ' ');
-    });
-    
-    // Update user initials
-    const userInitialsElements = document.querySelectorAll('.user-initials');
-    userInitialsElements.forEach(el => {
-        const initials = `${user.FirstName.charAt(0)}${user.LastName.charAt(0)}`;
-        el.textContent = initials;
-    });
-    
-    // Update username displays
-    const usernameElements = document.querySelectorAll('.username');
-    usernameElements.forEach(el => {
-        el.textContent = user.Username;
-    });
+
+    const fullName = `${user.FirstName} ${user.LastName}`;
+    const initials = `${user.FirstName.charAt(0)}${user.LastName.charAt(0)}`.toUpperCase();
+    const role = user.Role.replace(/_/g, ' ');
+
+    // --- Class-based selectors (reusable across pages) ---
+    document.querySelectorAll('.user-name').forEach(el => el.textContent = fullName);
+    document.querySelectorAll('.user-role').forEach(el => el.textContent = role);
+    document.querySelectorAll('.user-initials').forEach(el => el.textContent = initials);
+    document.querySelectorAll('.username').forEach(el => el.textContent = user.Username);
+
+    // --- ID-based selectors (sidebar fallback for existing pages) ---
+    const userNameEl = document.getElementById('userName');
+    const userInitialsEl = document.getElementById('userInitials');
+    const userRoleEl = document.getElementById('userRole');
+
+    if (userNameEl) userNameEl.textContent = fullName;
+    if (userInitialsEl) userInitialsEl.textContent = initials;
+    if (userRoleEl) userRoleEl.textContent = role;
 }
 
 /**
  * Setup logout buttons
- * Automatically finds and configures logout buttons on the page
  */
 function setupLogoutButtons() {
-    const logoutButtons = document.querySelectorAll('.logout-btn'); // your page buttons
+    const logoutButtons = document.querySelectorAll('.logout-btn');
     const modal = document.getElementById('logoutModal');
     const confirmBtn = document.getElementById('confirmLogout');
     const cancelBtn = document.getElementById('cancelLogout');
 
     if (!modal) return;
 
-    // Show modal on logout button click
     logoutButtons.forEach(btn => {
         btn.addEventListener('click', e => {
             e.preventDefault();
@@ -149,47 +134,40 @@ function setupLogoutButtons() {
         });
     });
 
-    // Confirm logout
     confirmBtn.addEventListener('click', logout);
 
-    // Cancel logout
     cancelBtn.addEventListener('click', () => {
         modal.classList.add('hidden');
     });
 
-    // Optional: click outside to close
     modal.addEventListener('click', e => {
-        if (e.target === modal) {
-            modal.classList.add('hidden');
-        }
+        if (e.target === modal) modal.classList.add('hidden');
     });
 
-    // Optional: ESC key closes modal
     document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') {
-            modal.classList.add('hidden');
-        }
+        if (e.key === 'Escape') modal.classList.add('hidden');
     });
 }
 
-
-
 /**
- * Initialize authentication on page load
+ * Load logout modal HTML into the page
  */
 async function loadLogoutModal() {
     if (document.getElementById('logoutModal')) return;
 
-    const res = await fetch('../partials/logout-modal.html'); // path relative to page
+    const res = await fetch('../partials/logout-modal.html');
     const html = await res.text();
     document.body.insertAdjacentHTML('beforeend', html);
 }
 
+/**
+ * Initialize authentication on page load
+ */
 async function initAuth(requiredRole = null) {
     const user = checkAuth(requiredRole);
 
     if (user) {
-        await loadLogoutModal(); // inject modal HTML
+        await loadLogoutModal();
         initUserDisplay();
         setupLogoutButtons();
     }
