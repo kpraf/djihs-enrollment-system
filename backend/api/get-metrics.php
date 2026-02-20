@@ -37,7 +37,7 @@ try {
     // Build WHERE clause for school year filter
     $syCondition = "";
     if ($sy !== 'all') {
-        $syCondition = "AND e.AcademicYear = :sy";
+        $syCondition = "AND AcademicYear = :sy";  // Remove the "e." prefix
     }
     
     // Get current academic year if 'all' is selected (for default calculations)
@@ -61,7 +61,7 @@ try {
         SELECT COUNT(DISTINCT e.StudentID) as totalEnrollment
         FROM enrollment e
         WHERE e.Status IN ('Confirmed', 'Pending')
-        $syCondition
+        " . ($sy !== 'all' ? "AND e.AcademicYear = :sy" : "") . "
     ";
     $gerStmt = $conn->prepare($gerQuery);
     if ($sy !== 'all') {
@@ -271,33 +271,34 @@ try {
     // ==========================================
     // 10. STUDENT-TEACHER RATIO
     // ==========================================
-    $resourceQuery = "
-        SELECT 
-            COUNT(DISTINCT e.StudentID) as totalStudents,
-            COUNT(DISTINCT emp.EmployeeID) as totalTeachers,
-            COUNT(DISTINCT s.SectionID) as totalSections,
-            SUM(s.Capacity) as totalCapacity
-        FROM enrollment e
-        LEFT JOIN employee emp ON emp.EmploymentType = 'Teaching' AND emp.IsActive = 1
-        LEFT JOIN section s ON s.IsActive = 1
-        WHERE e.Status IN ('Confirmed', 'Pending')
-        $syCondition
-    ";
-    $resourceStmt = $conn->prepare($resourceQuery);
+    $totalStudents = $gerData['totalEnrollment'];
+
+    // Total active teaching employees
+    $teacherQuery = "SELECT COUNT(*) as totalTeachers FROM employee WHERE EmploymentType = 'Teaching' AND IsActive = 1";
+    $teacherStmt = $conn->prepare($teacherQuery);
+    $teacherStmt->execute();
+    $teacherData = $teacherStmt->fetch(PDO::FETCH_ASSOC);
+
+    // Total active sections (filter by AcademicYear if sy is set)
     if ($sy !== 'all') {
-        $resourceStmt->bindParam(':sy', $sy);
+        $sectionQuery = "SELECT COUNT(*) as totalSections, SUM(Capacity) as totalCapacity FROM section WHERE IsActive = 1 AND AcademicYear = :sy";
+        $sectionStmt = $conn->prepare($sectionQuery);
+        $sectionStmt->bindParam(':sy', $sy);
+    } else {
+        $sectionQuery = "SELECT COUNT(*) as totalSections, SUM(Capacity) as totalCapacity FROM section WHERE IsActive = 1";
+        $sectionStmt = $conn->prepare($sectionQuery);
     }
-    $resourceStmt->execute();
-    $resourceData = $resourceStmt->fetch(PDO::FETCH_ASSOC);
-    
-    $metrics['studentTeacherRatio'] = $resourceData['totalTeachers'] > 0 ? 
-        $resourceData['totalStudents'] / $resourceData['totalTeachers'] : 0;
-    
-    $metrics['studentClassroomRatio'] = $resourceData['totalSections'] > 0 ? 
-        $resourceData['totalStudents'] / $resourceData['totalSections'] : 0;
-    
-    $metrics['sectionUtilization'] = $resourceData['totalCapacity'] > 0 ? 
-        ($resourceData['totalStudents'] / $resourceData['totalCapacity']) * 100 : 0;
+    $sectionStmt->execute();
+    $sectionData = $sectionStmt->fetch(PDO::FETCH_ASSOC);
+
+    $metrics['studentTeacherRatio'] = $teacherData['totalTeachers'] > 0 ? 
+        $totalStudents / $teacherData['totalTeachers'] : 0;
+
+    $metrics['studentClassroomRatio'] = $sectionData['totalSections'] > 0 ? 
+        $totalStudents / $sectionData['totalSections'] : 0;
+
+    $metrics['sectionUtilization'] = $sectionData['totalCapacity'] > 0 ? 
+        ($totalStudents / $sectionData['totalCapacity']) * 100 : 0;
     
     // ==========================================
     // GRADE LEVEL BREAKDOWN

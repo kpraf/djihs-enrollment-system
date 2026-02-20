@@ -52,6 +52,8 @@ function getAllUsersWithPasswords($conn) {
     // This endpoint should only be accessible to ICT Coordinator
     // In production, add proper authentication check here
     
+    // NOTE: We cannot retrieve actual passwords as they are hashed
+    // This returns a placeholder indicating password reset is required
     $sql = "SELECT 
                 u.UserID,
                 u.Username,
@@ -66,7 +68,7 @@ function getAllUsersWithPasswords($conn) {
                 e.Department,
                 e.ContactNumber,
                 e.Email,
-                'RESET_PASSWORD_REQUIRED' as InitialPassword
+                'PASSWORD_MUST_BE_RESET' as InitialPassword
             FROM user u
             LEFT JOIN employee e ON u.EmployeeID = e.EmployeeID
             ORDER BY u.CreatedAt DESC";
@@ -79,7 +81,7 @@ function getAllUsersWithPasswords($conn) {
         'success' => true,
         'data' => $users,
         'count' => count($users),
-        'note' => 'Actual passwords are hashed and cannot be retrieved. Users must use password reset functionality.'
+        'note' => 'Actual passwords are hashed and cannot be retrieved. Users must use the password change feature to set their own password.'
     ]);
 }
 
@@ -156,6 +158,7 @@ function createUserWithPasswordReturn($conn, $data) {
         $userId = $conn->lastInsertId();
         
         // Return the plain password ONLY in this response for ICT Coordinator record-keeping
+        // IMPORTANT: This is the ONLY time this password will be available in plain text
         echo json_encode([
             'success' => true,
             'message' => 'User account created successfully',
@@ -163,7 +166,7 @@ function createUserWithPasswordReturn($conn, $data) {
             'credentials' => [
                 'username' => $data['Username'],
                 'password' => $plainPassword,
-                'warning' => 'This password will not be shown again. Please record it securely.'
+                'warning' => 'CRITICAL: This password will NEVER be shown again. Save it immediately or the user will need to use the "Change Password" feature to reset it.'
             ]
         ]);
         

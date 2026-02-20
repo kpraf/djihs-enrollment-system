@@ -2,6 +2,7 @@
 // Document Submission Handler
 // File: js/document-submission-handler.js
 // Created: 2026-02-08
+// Fixed: 2026-02-14 - Better error handling and validation
 // =====================================================
 
 class DocumentSubmissionHandler {
@@ -390,30 +391,58 @@ class DocumentSubmissionHandler {
 
         const documentType = documentTypeMap[docId];
 
+        if (!this.currentSubmissionId) {
+            alert('Error: No submission ID found');
+            const checkbox = document.getElementById(docId);
+            if (checkbox) checkbox.checked = !isChecked;
+            return;
+        }
+
+        if (!this.currentUser || !this.currentUser.UserID) {
+            alert('Error: User information not available');
+            const checkbox = document.getElementById(docId);
+            if (checkbox) checkbox.checked = !isChecked;
+            return;
+        }
+
         try {
+            // Prepare payload - ensure all required fields are present
+            const payload = {
+                SubmissionID: this.currentSubmissionId,
+                DocumentType: documentType,
+                IsChecked: isChecked ? 1 : 0,  // Explicitly convert to 1 or 0
+                UserID: this.currentUser.UserID
+            };
+
+            console.log('Sending payload:', payload); // Debug log
+
             const response = await fetch('../backend/api/document-submission.php?action=update_checklist', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    SubmissionID: this.currentSubmissionId,
-                    DocumentType: documentType,
-                    IsChecked: isChecked ? 1 : 0,
-                    UserID: this.currentUser.UserID
-                })
+                headers: { 
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
             });
 
             const result = await response.json();
+            console.log('Server response:', result); // Debug log
 
             if (!result.success) {
                 alert('Error updating document: ' + result.message);
                 // Revert checkbox
                 const checkbox = document.getElementById(docId);
                 if (checkbox) checkbox.checked = !isChecked;
+            } else {
+                // Show subtle success feedback
+                console.log('Document updated successfully');
             }
 
         } catch (error) {
             console.error('Error updating document:', error);
-            alert('Error updating document');
+            alert('Error updating document: ' + error.message);
+            // Revert checkbox
+            const checkbox = document.getElementById(docId);
+            if (checkbox) checkbox.checked = !isChecked;
         }
     }
 

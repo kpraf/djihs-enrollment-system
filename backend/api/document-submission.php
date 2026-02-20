@@ -3,7 +3,7 @@
 // Document Submission API
 // File: backend/api/document-submission.php
 // Created: 2026-02-08
-// Fixed: 2026-02-08 - Resolved JSON parsing errors
+// Fixed: 2026-02-14 - Resolved ActionBy NULL constraint violation
 // =====================================================
 
 // Suppress all errors from being displayed
@@ -91,15 +91,24 @@ class DocumentSubmissionAPI {
         try {
             $this->conn->beginTransaction();
             
-            $submissionId = $data['SubmissionID'];
-            $documentType = $data['DocumentType'];
-            $isChecked = $data['IsChecked'];
-            $userId = $data['UserID'];
+            $submissionId = $data['SubmissionID'] ?? null;
+            $documentType = $data['DocumentType'] ?? null;
+            $isChecked = isset($data['IsChecked']) ? $data['IsChecked'] : null;
+            $userId = $data['UserID'] ?? null;
             $notes = $data['Notes'] ?? null;
+            
+            // Validate required fields - use isset for IsChecked since it can be 0
+            if (!$submissionId || !$documentType || $isChecked === null || !$userId) {
+                throw new Exception('Missing required fields');
+            }
             
             // Build update query based on document type
             $updateFields = [];
-            $params = [':submissionId' => $submissionId];
+            $params = [
+                ':submissionId' => $submissionId,
+                ':userId' => $userId,  // Always set userId first
+                ':isChecked' => $isChecked
+            ];
             
             switch ($documentType) {
                 case 'PSA':
@@ -192,11 +201,9 @@ class DocumentSubmissionAPI {
                     throw new Exception('Invalid document type');
             }
             
-            $params[':isChecked'] = $isChecked;
-            
+            // CRITICAL FIX: Always set UpdatedBy to ensure trigger has valid ActionBy value
             $updateFields[] = "UpdatedBy = :userId";
             $updateFields[] = "UpdatedAt = NOW()";
-            $params[':userId'] = $userId;
             
             $query = "UPDATE DocumentSubmission SET " . 
                      implode(", ", $updateFields) . 

@@ -513,37 +513,54 @@ class EnrollmentAPI {
     /**
      * Approve enrollment
      */
-    public function approveEnrollment($enrollmentID, $reviewerID) {
-        try {
-            $query = "UPDATE Enrollment 
-                      SET Status = 'Confirmed',
-                          ProcessedBy = :reviewerID,
-                          ProcessedDate = NOW()
-                      WHERE EnrollmentID = :enrollmentID";
-            
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':enrollmentID', $enrollmentID, PDO::PARAM_INT);
-            $stmt->bindParam(':reviewerID', $reviewerID, PDO::PARAM_INT);
-            
-            if ($stmt->execute()) {
-                return [
-                    'success' => true,
-                    'message' => 'Enrollment approved successfully'
-                ];
-            } else {
-                return [
-                    'success' => false,
-                    'message' => 'Failed to approve enrollment'
-                ];
-            }
-            
-        } catch (PDOException $e) {
-            return [
-                'success' => false,
-                'message' => 'Error approving enrollment: ' . $e->getMessage()
-            ];
+public function approveEnrollment($enrollmentID, $reviewerID) {
+    try {
+        $this->conn->beginTransaction();
+
+        // Update enrollment status
+        $query = "UPDATE Enrollment 
+                  SET Status = 'Confirmed',
+                      ProcessedBy = :reviewerID,
+                      ProcessedDate = NOW()
+                  WHERE EnrollmentID = :enrollmentID";
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':enrollmentID', $enrollmentID, PDO::PARAM_INT);
+        $stmt->bindParam(':reviewerID', $reviewerID, PDO::PARAM_INT);
+        $stmt->execute();
+
+        // Auto-create documentsubmission record if it doesn't exist yet
+        $docQuery = "INSERT INTO documentsubmission (StudentID, EnrollmentID, AcademicYear, CreatedBy)
+                     SELECT e.StudentID, e.EnrollmentID, e.AcademicYear, :reviewerID
+                     FROM enrollment e
+                     WHERE e.EnrollmentID = :enrollmentID
+                     AND NOT EXISTS (
+                         SELECT 1 FROM documentsubmission ds 
+                         WHERE ds.EnrollmentID = :enrollmentID
+                     )";
+
+        $docStmt = $this->conn->prepare($docQuery);
+        $docStmt->bindParam(':enrollmentID', $enrollmentID, PDO::PARAM_INT);
+        $docStmt->bindParam(':reviewerID', $reviewerID, PDO::PARAM_INT);
+        $docStmt->execute();
+
+        $this->conn->commit();
+
+        return [
+            'success' => true,
+            'message' => 'Enrollment approved successfully'
+        ];
+
+    } catch (PDOException $e) {
+        if ($this->conn->inTransaction()) {
+            $this->conn->rollBack();
         }
+        return [
+            'success' => false,
+            'message' => 'Error approving enrollment: ' . $e->getMessage()
+        ];
     }
+}
     
     /**
      * Reject enrollment

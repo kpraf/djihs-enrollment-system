@@ -4,6 +4,7 @@ class UserAccountManager {
         this.allUsers = [];
         this.employeesWithoutAccount = [];
         this.hasAdminAccount = false;
+        this.lastCreatedCredentials = null; // Store last created credentials in memory
     }
 
     // Helper function for initials
@@ -198,7 +199,8 @@ class UserAccountManager {
         }
         
         try {
-            const response = await fetch('../backend/api/users.php?action=create', {
+            // Use the special endpoint that returns credentials
+            const response = await fetch('../backend/api/users-with-credentials.php?action=create-with-return', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(formData)
@@ -207,7 +209,18 @@ class UserAccountManager {
             const result = await response.json();
             
             if (result.success) {
-                alert('User account created successfully!');
+                // Store credentials for later use (in memory only)
+                this.lastCreatedCredentials = {
+                    username: result.credentials.username,
+                    password: result.credentials.password,
+                    name: `${formData.FirstName} ${formData.LastName}`,
+                    role: formData.Role,
+                    timestamp: new Date()
+                };
+                
+                // Show success message with credentials
+                this.showCredentialsModal(result.credentials);
+                
                 this.closeCreateModal();
                 await this.loadStats();
                 await this.loadUsers();
@@ -222,6 +235,68 @@ class UserAccountManager {
             alert('Failed to create user account');
             return false;
         }
+    }
+
+    showCredentialsModal(credentials) {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        modal.innerHTML = `
+            <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">Account Created Successfully</h3>
+                    <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div class="bg-red-50 border-l-4 border-red-400 p-4">
+                        <div class="flex">
+                            <span class="material-symbols-outlined text-red-400 mr-2">warning</span>
+                            <div>
+                                <p class="text-sm text-red-700 font-semibold">CRITICAL: Save These Credentials NOW!</p>
+                                <p class="text-xs text-red-600 mt-1">${credentials.warning}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <div class="border border-gray-200 rounded p-3">
+                            <label class="text-xs text-gray-500 uppercase">Username</label>
+                            <div class="flex items-center justify-between">
+                                <code class="text-sm font-mono font-bold">${credentials.username}</code>
+                                <button onclick="navigator.clipboard.writeText('${credentials.username}'); this.innerHTML='<span class=\\'material-symbols-outlined text-sm\\'>check</span>'" 
+                                        class="text-primary hover:text-primary-dark">
+                                    <span class="material-symbols-outlined text-sm">content_copy</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="border border-gray-200 rounded p-3 bg-yellow-50">
+                            <label class="text-xs text-gray-500 uppercase">Temporary Password</label>
+                            <div class="flex items-center justify-between">
+                                <code class="text-sm font-mono font-bold">${credentials.password}</code>
+                                <button onclick="navigator.clipboard.writeText('${credentials.password}'); this.innerHTML='<span class=\\'material-symbols-outlined text-sm\\'>check</span>'" 
+                                        class="text-primary hover:text-primary-dark">
+                                    <span class="material-symbols-outlined text-sm">content_copy</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                        <p class="text-xs text-blue-700">
+                            <strong>Important:</strong> The user can change this temporary password using the "Change Password" link on the login page. They will need to enter their username and this temporary password to set a new one.
+                        </p>
+                    </div>
+                    
+                    <button onclick="this.closest('.fixed').remove()" 
+                            class="w-full bg-primary text-white py-2 rounded hover:bg-primary-dark">
+                        I Have Saved These Credentials
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
     }
 
     async toggleStatus(userId) {
@@ -249,7 +324,7 @@ class UserAccountManager {
     }
 
     async resetPassword(userId, username) {
-        const newPassword = prompt(`Enter new password for ${username}:`);
+        const newPassword = prompt(`Enter new password for ${username}:\n\nNote: Make sure to save this password and give it to the user, as you won't be able to retrieve it later.`);
         if (!newPassword) return;
         
         if (newPassword.length < 6) {
@@ -267,7 +342,8 @@ class UserAccountManager {
             const result = await response.json();
             
             if (result.success) {
-                alert('Password reset successfully!');
+                // Show the new password one more time
+                alert(`Password reset successfully!\n\nNew Password: ${newPassword}\n\n⚠️ IMPORTANT: Save this password now and give it to ${username}.\nThe user can change it using the "Change Password" link on the login page.`);
             } else {
                 alert('Error: ' + result.message);
             }
@@ -283,6 +359,19 @@ class UserAccountManager {
             return;
         }
 
+        // Show warning about passwords
+        const proceed = confirm(
+            'IMPORTANT NOTICE:\n\n' +
+            'Passwords are encrypted and cannot be retrieved from the database.\n\n' +
+            'The exported list will show:\n' +
+            '• Username for each account\n' +
+            '• A note that users must use "Change Password" feature\n\n' +
+            'Only the temporary password shown when creating an account can be saved.\n\n' +
+            'Continue with export?'
+        );
+        
+        if (!proceed) return;
+
         // Create printable HTML content
         const printContent = `
             <div style="padding: 40px; font-family: Arial, sans-serif;">
@@ -290,6 +379,13 @@ class UserAccountManager {
                     <h1 style="margin: 0; color: #085019;">Don Jose Integrated High School</h1>
                     <h2 style="margin: 10px 0 0 0; font-weight: normal;">User Account List</h2>
                     <p style="margin: 5px 0; color: #666;">Generated on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                </div>
+                
+                <div style="margin: 20px 0; padding: 15px; background-color: #fef3c7; border-left: 4px solid #f59e0b;">
+                    <p style="margin: 0; color: #92400e;">
+                        <strong>PASSWORD INFORMATION:</strong> For security reasons, passwords are encrypted and cannot be retrieved. 
+                        Users can set their own password using the "Change Password" feature on the login page.
+                    </p>
                 </div>
                 
                 <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
@@ -308,7 +404,7 @@ class UserAccountManager {
                             <tr style="background-color: ${index % 2 === 0 ? '#f9f9f9' : 'white'};">
                                 <td style="border: 1px solid #ddd; padding: 10px;">${index + 1}</td>
                                 <td style="border: 1px solid #ddd; padding: 10px;">${user.FirstName} ${user.LastName}</td>
-                                <td style="border: 1px solid #ddd; padding: 10px; font-family: monospace;">${user.Username}</td>
+                                <td style="border: 1px solid #ddd; padding: 10px; font-family: monospace; font-weight: bold;">${user.Username}</td>
                                 <td style="border: 1px solid #ddd; padding: 10px;">${user.Role.replace('_', ' ')}</td>
                                 <td style="border: 1px solid #ddd; padding: 10px;">${user.Position || 'N/A'}</td>
                                 <td style="border: 1px solid #ddd; padding: 10px;">
@@ -327,8 +423,19 @@ class UserAccountManager {
                     <p style="margin: 5px 0;"><strong>Inactive:</strong> ${this.allUsers.filter(u => u.IsActive == 0).length}</p>
                 </div>
                 
-                <div style="margin-top: 30px; padding: 15px; background-color: #fef3c7; border-left: 4px solid #f59e0b;">
-                    <p style="margin: 0; color: #92400e;"><strong>⚠️ CONFIDENTIAL:</strong> This document contains sensitive login credentials. Please handle with care and store securely.</p>
+                <div style="margin-top: 30px; padding: 15px; background-color: #eff6ff; border-left: 4px solid #3b82f6;">
+                    <p style="margin: 0 0 10px 0; color: #1e40af; font-weight: bold;">Instructions for Users:</p>
+                    <ol style="margin: 0; padding-left: 20px; color: #1e40af;">
+                        <li>Go to the login page</li>
+                        <li>Click "Change Password" link at the bottom</li>
+                        <li>Enter your username and the temporary password given to you</li>
+                        <li>Create a new secure password (minimum 6 characters)</li>
+                        <li>Login with your username and new password</li>
+                    </ol>
+                </div>
+                
+                <div style="margin-top: 20px; padding: 15px; background-color: #fef3c7; border-left: 4px solid #f59e0b;">
+                    <p style="margin: 0; color: #92400e;"><strong>CONFIDENTIAL:</strong> This document contains sensitive login information. Please handle with care and store securely.</p>
                 </div>
             </div>
         `;

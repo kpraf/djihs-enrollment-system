@@ -1171,7 +1171,7 @@ class StudentManagementHandler {
                 let endpoint, successMessage;
                 if (userRole === 'Adviser') {
                     endpoint = '../backend/api/revision-requests.php?action=create_bulk_update';
-                    successMessage = 'Changes submitted for approval. A registrar will review your updates.';
+                    successMessage = 'Changes submitted for approval. A registrar or ICT coordinator will review your updates.';
                 } else {
                     endpoint = '../backend/api/student-update.php?action=update';
                     successMessage = 'Student information updated successfully!';

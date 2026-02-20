@@ -28,14 +28,13 @@
          };
       </script>
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
-      <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
       <link rel="icon" type="image/png" href="assets/favicons/favicon-96x96.png" sizes="96x96" />
       <link rel="icon" type="image/svg+xml" href="assets/favicons/favicon.svg" />
       <link rel="shortcut icon" href="assets/favicons/favicon.ico" />
       <link rel="apple-touch-icon" sizes="180x180" href="assets/favicons/apple-touch-icon.png" />
       <meta name="apple-mobile-web-app-title" content="DJIHS" />
       <link rel="manifest" href="assets/favicons/site.webmanifest" />
-
 
       <style>
          ::-webkit-scrollbar {
@@ -104,10 +103,12 @@
             <span class="material-symbols-outlined">menu</span>
          </button>
       </header>
+      
       <main class="flex-grow flex relative w-full overflow-hidden">
          <div class="absolute inset-0 z-0 flex items-center justify-start overflow-hidden pointer-events-none">
             <img alt="School Logo Watermark Pattern" class="w-[140vw] max-w-[1000px] md:w-[50vw] opacity-[0.07] dark:opacity-[0.05] -translate-x-1/4 translate-y-12 md:translate-x-0 md:ml-12 object-contain" src="./assets/images/DJIHS-Logo.png"/>
          </div>
+         
          <div class="container mx-auto px-4 py-8 md:py-12 z-10 flex flex-col md:flex-row items-center justify-center md:justify-end h-full">
             <div class="hidden md:block md:w-1/2 lg:w-3/5"></div>
             <div class="w-full md:w-1/2 lg:w-2/5 max-w-md">
@@ -159,6 +160,18 @@
                            <div id="btnSpinner" class="spinner ml-2 hidden"></div>
                         </button>
                      </form>
+                     
+                     <!-- Change Password Link -->
+                     <div class="mt-6 text-center border-t border-gray-200 dark:border-gray-700 pt-6">
+                        <button onclick="openChangePasswordModal()" class="text-sm text-primary hover:text-primary-dark font-medium flex items-center justify-center gap-1 mx-auto">
+                           <span class="material-symbols-outlined text-base">lock_reset</span>
+                           <span>Change Password</span>
+                        </button>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                           First time login? Change your temporary password here.
+                        </p>
+                     </div>
+                     
                      <div class="mt-8 border-t border-gray-100 dark:border-gray-700 pt-6">
                         <p class="text-center text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
                            © 2026 Don Jose Integrated High School.<br/>
@@ -170,10 +183,76 @@
             </div>
          </div>
       </main>
+
+      <!-- Change Password Modal -->
+      <div id="changePasswordModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="display: none;">
+         <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <div class="flex items-center justify-between mb-4">
+               <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <span class="material-symbols-outlined">lock_reset</span>
+                  <span>Change Password</span>
+               </h3>
+               <button onclick="closeChangePasswordModal()" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                  <span class="material-symbols-outlined">close</span>
+               </button>
+            </div>
+            
+            <div id="changePasswordAlert" class="hidden mb-4"></div>
+            
+            <form id="changePasswordForm" class="space-y-4">
+               <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Username</label>
+                  <input type="text" id="changeUsername" required
+                         class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2.5 px-3"
+                         placeholder="Enter your username"/>
+               </div>
+               
+               <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Current/Temporary Password</label>
+                  <input type="password" id="currentPassword" required
+                         class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2.5 px-3"
+                         placeholder="Enter your current password"/>
+               </div>
+               
+               <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">New Password</label>
+                  <input type="password" id="newPassword" required
+                         class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2.5 px-3"
+                         placeholder="Enter new password (min 6 characters)"/>
+               </div>
+               
+               <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Confirm New Password</label>
+                  <input type="password" id="confirmPassword" required
+                         class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2.5 px-3"
+                         placeholder="Confirm new password"/>
+               </div>
+               
+               <div class="flex gap-3">
+                  <button type="button" onclick="closeChangePasswordModal()"
+                          class="flex-1 py-2.5 px-4 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                     Cancel
+                  </button>
+                  <button type="submit" id="changePasswordBtn"
+                          class="flex-1 py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-bold text-white bg-primary hover:bg-opacity-90">
+                     <span id="changePasswordBtnText">Change Password</span>
+                     <div id="changePasswordSpinner" class="spinner ml-2 hidden inline-block"></div>
+                  </button>
+               </div>
+            </form>
+            
+            <div class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+               <p class="text-xs text-blue-700 dark:text-blue-300">
+                  <strong>Note:</strong> After changing your password, you can login with your new credentials.
+               </p>
+            </div>
+         </div>
+      </div>
       
       <script>
-         // API Configuration - Update this to match your folder name
+         // API Configuration
          const API_URL = './backend/api/login.php';
+         const CHANGE_PASSWORD_URL = './backend/api/change-password.php';
          
          // Get form elements
          const loginForm = document.getElementById('loginForm');
@@ -182,14 +261,23 @@
          const btnText = document.getElementById('btnText');
          const btnSpinner = document.getElementById('btnSpinner');
          
+         // Change password elements
+         const changePasswordModal = document.getElementById('changePasswordModal');
+         const changePasswordForm = document.getElementById('changePasswordForm');
+         const changePasswordAlert = document.getElementById('changePasswordAlert');
+         const changePasswordBtn = document.getElementById('changePasswordBtn');
+         const changePasswordBtnText = document.getElementById('changePasswordBtnText');
+         const changePasswordSpinner = document.getElementById('changePasswordSpinner');
+         
          // Show alert message
-         function showAlert(message, type = 'error') {
-            alertMessage.className = `alert alert-${type}`;
-            alertMessage.textContent = message;
-            alertMessage.classList.remove('hidden');
+         function showAlert(message, type = 'error', elementId = 'alertMessage') {
+            const alertElement = document.getElementById(elementId);
+            alertElement.className = `alert alert-${type}`;
+            alertElement.textContent = message;
+            alertElement.classList.remove('hidden');
             
             setTimeout(() => {
-               alertMessage.classList.add('hidden');
+               alertElement.classList.add('hidden');
             }, 5000);
          }
          
@@ -204,6 +292,19 @@
                btnText.textContent = 'Login';
                btnSpinner.classList.add('hidden');
             }
+         }
+         
+         // Change password modal functions
+         function openChangePasswordModal() {
+            changePasswordModal.style.display = 'flex';
+            changePasswordForm.reset();
+            changePasswordAlert.classList.add('hidden');
+         }
+         
+         function closeChangePasswordModal() {
+            changePasswordModal.style.display = 'none';
+            changePasswordForm.reset();
+            changePasswordAlert.classList.add('hidden');
          }
          
          // Handle form submission
@@ -259,7 +360,7 @@
                   localStorage.setItem('user', JSON.stringify(data.user));
                   localStorage.setItem('isLoggedIn', 'true');
                   
-                  // Redirect based on role - using your folder structure
+                  // Redirect based on role
                   setTimeout(() => {
                      const dashboardMap = {
                         'Admin': './admin/dashboard.html',
@@ -290,6 +391,81 @@
                console.error('Login error:', error);
                showAlert('Connection error. Please check if the server is running.');
                setLoading(false);
+            }
+         });
+         
+         // Handle change password form submission
+         changePasswordForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('changeUsername').value.trim();
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            // Validate inputs
+            if (!username || !currentPassword || !newPassword || !confirmPassword) {
+               showAlert('All fields are required', 'error', 'changePasswordAlert');
+               return;
+            }
+            
+            if (newPassword.length < 6) {
+               showAlert('New password must be at least 6 characters long', 'error', 'changePasswordAlert');
+               return;
+            }
+            
+            if (newPassword !== confirmPassword) {
+               showAlert('New passwords do not match', 'error', 'changePasswordAlert');
+               return;
+            }
+            
+            // Show loading
+            changePasswordBtn.disabled = true;
+            changePasswordBtnText.textContent = 'Changing...';
+            changePasswordSpinner.classList.remove('hidden');
+            changePasswordAlert.classList.add('hidden');
+            
+            try {
+               const response = await fetch(CHANGE_PASSWORD_URL, {
+                  method: 'POST',
+                  headers: {
+                     'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                     username: username,
+                     currentPassword: currentPassword,
+                     newPassword: newPassword
+                  })
+               });
+               
+               const data = await response.json();
+               
+               if (data.success) {
+                  showAlert('Password changed successfully! You can now login with your new password.', 'success', 'changePasswordAlert');
+                  
+                  // Reset form and close modal after 2 seconds
+                  setTimeout(() => {
+                     closeChangePasswordModal();
+                  }, 2000);
+                  
+               } else {
+                  showAlert(data.message || 'Failed to change password', 'error', 'changePasswordAlert');
+               }
+               
+            } catch (error) {
+               console.error('Change password error:', error);
+               showAlert('Connection error. Please try again.', 'error', 'changePasswordAlert');
+            } finally {
+               changePasswordBtn.disabled = false;
+               changePasswordBtnText.textContent = 'Change Password';
+               changePasswordSpinner.classList.add('hidden');
+            }
+         });
+         
+         // Close modal on outside click
+         changePasswordModal.addEventListener('click', (e) => {
+            if (e.target === changePasswordModal) {
+               closeChangePasswordModal();
             }
          });
          

@@ -445,7 +445,6 @@ public function updateStudent($data) {
         try {
             $this->conn->beginTransaction();
 
-            // Validate status
             $validStatuses = ['Cancelled', 'Dropped', 'Transferred_Out', 'Transferred_In'];
             if (!in_array($newStatus, $validStatuses)) {
                 throw new Exception('Invalid status');
@@ -463,35 +462,45 @@ public function updateStudent($data) {
                 throw new Exception('No enrollment found for student');
             }
 
-            // Use stored procedure for status change (handles date tracking)
-            $spQuery = "CALL sp_UpdateEnrollmentStatus(:enrollmentId, :newStatus, :userId, :reason)";
-            $spStmt = $this->conn->prepare($spQuery);
-            $spStmt->execute([
-                ':enrollmentId' => $enrollmentId,
+            // Direct SQL instead of stored procedure
+            $updateEnrollment = $this->conn->prepare("
+                UPDATE Enrollment
+                SET Status = :newStatus,
+                    Remarks = :reason,
+                    StatusChangedBy = :userId,
+                    StatusChangedDate = NOW(),
+                    UpdatedAt = NOW()
+                WHERE EnrollmentID = :enrollmentId
+            ");
+            $updateEnrollment->execute([
                 ':newStatus' => $newStatus,
+                ':reason' => $reason,
                 ':userId' => $userId,
-                ':reason' => $reason
+                ':enrollmentId' => $enrollmentId
             ]);
 
-            // Update student table status
-            $updateStudentQuery = "UPDATE Student 
+            // Update student table
+            $updateStudent = $this->conn->prepare("
+                UPDATE Student 
                 SET EnrollmentStatus = :newStatus,
-                    UpdatedBy = :userId
-                WHERE StudentID = :studentId";
-            $stmt2 = $this->conn->prepare($updateStudentQuery);
-            $stmt2->execute([
+                    UpdatedBy = :userId,
+                    UpdatedAt = NOW()
+                WHERE StudentID = :studentId
+            ");
+            $updateStudent->execute([
                 ':newStatus' => $newStatus,
                 ':userId' => $userId,
                 ':studentId' => $studentId
             ]);
 
-            // Deactivate section assignments for non-active statuses
+            // Deactivate section assignments
             if (in_array($newStatus, ['Cancelled', 'Dropped', 'Transferred_Out'])) {
-                $deactivateSections = "UPDATE SectionAssignment 
+                $deactivate = $this->conn->prepare("
+                    UPDATE SectionAssignment 
                     SET IsActive = 0 
-                    WHERE StudentID = :studentId";
-                $stmt3 = $this->conn->prepare($deactivateSections);
-                $stmt3->execute([':studentId' => $studentId]);
+                    WHERE StudentID = :studentId
+                ");
+                $deactivate->execute([':studentId' => $studentId]);
             }
 
             $this->conn->commit();
