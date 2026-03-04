@@ -1,8 +1,19 @@
 <?php
 // =====================================================
-// Student Update API - Enhanced with Approval Workflow
-// File: backend/api/student-update-enhanced-v2.php
-// Updated: 2026-02-09 - Added approval workflow for dropout/transfer
+// Student Update API — djihs_enrollment_v2 schema
+// File: backend/api/student-update.php
+//
+// FIXES vs old version:
+//  - updateStudent(): removed Age, ZipCode (not in schema), removed all flat
+//    Father/Mother/Guardian columns (not in student table) → upsertGuardians() instead,
+//    removed UpdatedBy/UpdatedAt (not in schema), removed enrollment.AcademicYear (string),
+//    removed StatusChangedDate/StatusChangedBy (not in schema)
+//  - upsertGuardians(): new — writes Father/Mother/Guardian rows to parentguardian table
+//  - sectionassignment: no StudentID column in schema → deactivate/insert via EnrollmentID
+//  - getSections(): removed CurrentEnrollment (not in schema)
+//  - executeStatusChange(): removed all phantom enrollment/student columns
+//  - addRemarks(): simplified to use only enrollment.Remarks (exists in schema)
+//  - getGradeLevels(): unchanged ✓
 // =====================================================
 
 header('Content-Type: application/json');
@@ -10,536 +21,533 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit; }
 
 require_once '../config/database.php';
 
 class StudentUpdateAPI {
     private $conn;
-    
+
     public function __construct($db) {
         $this->conn = $db;
     }
-    
+
+    // ──────────────────────────────────────────────
+    // GET GRADE LEVELS — unchanged ✓
+    // ──────────────────────────────────────────────
     public function getGradeLevels() {
         try {
             $stmt = $this->conn->prepare("
                 SELECT GradeLevelID, GradeLevelName, GradeLevelNumber, Department
-                FROM GradeLevel
-                WHERE IsActive = 1
-                ORDER BY GradeLevelNumber
+                FROM   gradelevel
+                WHERE  IsActive = 1
+                ORDER  BY GradeLevelNumber
             ");
             $stmt->execute();
-
-            return [
-                'success' => true,
-                'gradeLevels' => $stmt->fetchAll(PDO::FETCH_ASSOC)
-            ];
+            return ['success' => true, 'gradeLevels' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
         } catch (PDOException $e) {
-            return [
-                'success' => false,
-                'message' => 'Error fetching grade levels: ' . $e->getMessage()
-            ];
+            return ['success' => false, 'message' => 'Error fetching grade levels: ' . $e->getMessage()];
         }
     }
 
+    // ──────────────────────────────────────────────
+    // GET SECTIONS
+    //
+    // FIX: Removed CurrentEnrollment column (not in schema).
+    //      section table: SectionID, SectionName, GradeLevelID, StrandID,
+    //                     AdviserID, Capacity, AcademicYearID, IsActive
+    // ──────────────────────────────────────────────
     public function getSections($gradeLevelId, $strandId = null) {
         try {
-            $query = "
-                SELECT SectionID, SectionName, Capacity, CurrentEnrollment
-                FROM Section
-                WHERE GradeLevelID = :gradeLevelId
-                AND IsActive = 1
+            $sql = "
+                SELECT sec.SectionID, sec.SectionName, sec.Capacity,
+                       COUNT(sa.AssignmentID) AS CurrentEnrollment
+                FROM   section sec
+                LEFT   JOIN sectionassignment sa
+                            ON sa.SectionID = sec.SectionID AND sa.IsActive = 1
+                WHERE  sec.GradeLevelID = :gradeLevelId
+                  AND  sec.IsActive = 1
             ";
-            
+            $params = [':gradeLevelId' => (int)$gradeLevelId];
+
             if ($strandId) {
-                $query .= " AND StrandID = :strandId";
+                $sql .= " AND sec.StrandID = :strandId";
+                $params[':strandId'] = (int)$strandId;
             }
-            
-            $query .= " ORDER BY SectionName";
-            
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':gradeLevelId', $gradeLevelId);
-            if ($strandId) {
-                $stmt->bindParam(':strandId', $strandId);
-            }
-            $stmt->execute();
 
-            return [
-                'success' => true,
-                'sections' => $stmt->fetchAll(PDO::FETCH_ASSOC)
-            ];
+            $sql .= " GROUP BY sec.SectionID, sec.SectionName, sec.Capacity ORDER BY sec.SectionName";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute($params);
+            return ['success' => true, 'sections' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
+
         } catch (PDOException $e) {
-            return [
-                'success' => false,
-                'message' => 'Error fetching sections: ' . $e->getMessage()
-            ];
+            return ['success' => false, 'message' => 'Error fetching sections: ' . $e->getMessage()];
         }
     }
 
-public function updateStudent($data) {
-    try {
-        $this->conn->beginTransaction();
-
-        // Update Student table
-        $query = "UPDATE Student SET
-            LRN = :lrn,
-            LastName = :lastName,
-            FirstName = :firstName,
-            MiddleName = :middleName,
-            ExtensionName = :extensionName,
-            DateOfBirth = :dateOfBirth,
-            Age = :age,
-            Gender = :gender,
-            Religion = :religion,
-            ContactNumber = :contactNumber,
-            IsIPCommunity = :isIPCommunity,
-            IPCommunitySpecify = :ipCommunitySpecify,
-            IsPWD = :isPWD,
-            PWDSpecify = :pwdSpecify,
-            HouseNumber = :houseNumber,
-            SitioStreet = :sitioStreet,
-            Barangay = :barangay,
-            Municipality = :municipality,
-            Province = :province,
-            ZipCode = :zipCode,
-            FatherLastName = :fatherLastName,
-            FatherFirstName = :fatherFirstName,
-            FatherMiddleName = :fatherMiddleName,
-            MotherLastName = :motherLastName,
-            MotherFirstName = :motherFirstName,
-            MotherMiddleName = :motherMiddleName,
-            GuardianLastName = :guardianLastName,
-            GuardianFirstName = :guardianFirstName,
-            GuardianMiddleName = :guardianMiddleName,
-            EnrollmentStatus = :enrollmentStatus,
-            UpdatedBy = :updatedBy
-        WHERE StudentID = :studentId";
-
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute([
-            ':lrn' => $data['LRN'],
-            ':lastName' => $data['LastName'],
-            ':firstName' => $data['FirstName'],
-            ':middleName' => $data['MiddleName'],
-            ':extensionName' => $data['ExtensionName'],
-            ':dateOfBirth' => $data['DateOfBirth'],
-            ':age' => $data['Age'],
-            ':gender' => $data['Gender'],
-            ':religion' => $data['Religion'],
-            ':contactNumber' => $data['ContactNumber'],
-            ':isIPCommunity' => $data['IsIPCommunity'],
-            ':ipCommunitySpecify' => $data['IPCommunitySpecify'],
-            ':isPWD' => $data['IsPWD'],
-            ':pwdSpecify' => $data['PWDSpecify'],
-            ':houseNumber' => $data['HouseNumber'],
-            ':sitioStreet' => $data['SitioStreet'],
-            ':barangay' => $data['Barangay'],
-            ':municipality' => $data['Municipality'],
-            ':province' => $data['Province'],
-            ':zipCode' => $data['ZipCode'],
-            ':fatherLastName' => $data['FatherLastName'],
-            ':fatherFirstName' => $data['FatherFirstName'],
-            ':fatherMiddleName' => $data['FatherMiddleName'],
-            ':motherLastName' => $data['MotherLastName'],
-            ':motherFirstName' => $data['MotherFirstName'],
-            ':motherMiddleName' => $data['MotherMiddleName'],
-            ':guardianLastName' => $data['GuardianLastName'],
-            ':guardianFirstName' => $data['GuardianFirstName'],
-            ':guardianMiddleName' => $data['GuardianMiddleName'],
-            ':enrollmentStatus' => $data['EnrollmentStatus'],
-            ':updatedBy' => $data['UpdatedBy'],
-            ':studentId' => $data['StudentID']
-        ]);
-
-        // *** ADD THIS: Update Enrollment table Status ***
-        if (isset($data['EnrollmentStatus'])) {
-            // Map Student.EnrollmentStatus to Enrollment.Status
-            $enrollmentStatusMap = [
-                'Active' => 'Confirmed',
-                'Cancelled' => 'Cancelled',
-                'Dropped' => 'Dropped',
-                'Transferred_Out' => 'Transferred_Out',
-                'Graduated' => 'Confirmed' // Graduated students have Confirmed enrollment
-            ];
-            
-            $enrollmentStatus = $enrollmentStatusMap[$data['EnrollmentStatus']] ?? 'Confirmed';
-            
-            $updateEnrollmentStatusQuery = "UPDATE Enrollment e
-                INNER JOIN (
-                    SELECT StudentID, MAX(EnrollmentID) as LatestEnrollmentID
-                    FROM Enrollment
-                    WHERE StudentID = :studentId
-                    GROUP BY StudentID
-                ) latest ON e.EnrollmentID = latest.LatestEnrollmentID
-                SET e.Status = :enrollmentStatus,
-                    e.StatusChangedDate = NOW(),
-                    e.StatusChangedBy = :updatedBy
-                WHERE e.StudentID = :studentId2";
-            
-            $enrollStatusStmt = $this->conn->prepare($updateEnrollmentStatusQuery);
-            $enrollStatusStmt->execute([
-                ':enrollmentStatus' => $enrollmentStatus,
-                ':updatedBy' => $data['UpdatedBy'],
-                ':studentId' => $data['StudentID'],
-                ':studentId2' => $data['StudentID']
-            ]);
-        }
-
-        // Update Grade Level, Strand, Academic Year
-        if (isset($data['GradeLevelID'])) {
-            $enrollQuery = "UPDATE Enrollment e
-                INNER JOIN (
-                    SELECT StudentID, MAX(EnrollmentID) as LatestEnrollmentID
-                    FROM Enrollment
-                    WHERE StudentID = :studentId
-                    GROUP BY StudentID
-                ) latest ON e.EnrollmentID = latest.LatestEnrollmentID
-                SET e.GradeLevelID = :gradeLevelId,
-                    e.StrandID = :strandId,
-                    e.AcademicYear = :academicYear
-                WHERE e.StudentID = :studentId2";
-            
-            $enrollStmt = $this->conn->prepare($enrollQuery);
-            $enrollStmt->execute([
-                ':gradeLevelId' => $data['GradeLevelID'],
-                ':strandId' => $data['StrandID'],
-                ':academicYear' => $data['AcademicYear'],
-                ':studentId' => $data['StudentID'],
-                ':studentId2' => $data['StudentID']
-            ]);
-        }
-
-        // Update Section Assignment
-        if (isset($data['SectionID']) && $data['SectionID']) {
-            $deactivateQuery = "UPDATE SectionAssignment 
-                SET IsActive = 0 
-                WHERE StudentID = :studentId AND IsActive = 1";
-            $deactivateStmt = $this->conn->prepare($deactivateQuery);
-            $deactivateStmt->execute([':studentId' => $data['StudentID']]);
-
-            $getEnrollmentQuery = "SELECT MAX(EnrollmentID) as EnrollmentID 
-                FROM Enrollment 
-                WHERE StudentID = :studentId";
-            $getEnrollmentStmt = $this->conn->prepare($getEnrollmentQuery);
-            $getEnrollmentStmt->execute([':studentId' => $data['StudentID']]);
-            $enrollmentId = $getEnrollmentStmt->fetch(PDO::FETCH_ASSOC)['EnrollmentID'];
-
-            $assignQuery = "INSERT INTO SectionAssignment 
-                (StudentID, SectionID, EnrollmentID, AssignmentMethod, AssignedBy, IsActive)
-                VALUES (:studentId, :sectionId, :enrollmentId, 'Manual', :assignedBy, 1)";
-            $assignStmt = $this->conn->prepare($assignQuery);
-            $assignStmt->execute([
-                ':studentId' => $data['StudentID'],
-                ':sectionId' => $data['SectionID'],
-                ':enrollmentId' => $enrollmentId,
-                ':assignedBy' => $data['UpdatedBy']
-            ]);
-        }
-
-        // *** ADD THIS: Deactivate section assignments for non-active statuses ***
-        if (isset($data['EnrollmentStatus']) && 
-            in_array($data['EnrollmentStatus'], ['Cancelled', 'Dropped', 'Transferred_Out'])) {
-            $deactivateSections = "UPDATE SectionAssignment 
-                SET IsActive = 0 
-                WHERE StudentID = :studentId";
-            $stmt3 = $this->conn->prepare($deactivateSections);
-            $stmt3->execute([':studentId' => $data['StudentID']]);
-        }
-
-        $this->conn->commit();
-
-        return [
-            'success' => true,
-            'message' => 'Student updated successfully'
-        ];
-
-    } catch (PDOException $e) {
-        $this->conn->rollBack();
-        error_log("Update student error: " . $e->getMessage());
-        return [
-            'success' => false,
-            'message' => 'Error updating student: ' . $e->getMessage()
-        ];
-    }
-}
-
-    public function addRemarks($studentId, $remarks, $userId) {
-        try {
-            $query = "UPDATE Enrollment 
-                SET Remarks = CONCAT(IFNULL(Remarks, ''), '\n[', NOW(), ' - ', 
-                    (SELECT CONCAT(FirstName, ' ', LastName) FROM User WHERE UserID = :userId), 
-                    ']: ', :remarks)
-                WHERE StudentID = :studentId 
-                AND EnrollmentID = (
-                    SELECT MAX(EnrollmentID) 
-                    FROM (SELECT * FROM Enrollment) e2 
-                    WHERE e2.StudentID = :studentId2
-                )";
-            
-            $stmt = $this->conn->prepare($query);
-            $stmt->execute([
-                ':studentId' => $studentId,
-                ':studentId2' => $studentId,
-                ':userId' => $userId,
-                ':remarks' => $remarks
-            ]);
-
-            return [
-                'success' => true,
-                'message' => 'Remarks added successfully'
-            ];
-        } catch (PDOException $e) {
-            return [
-                'success' => false,
-                'message' => 'Error adding remarks: ' . $e->getMessage()
-            ];
-        }
-    }
-
-    /**
-     * REQUEST status change for dropout/transfer (requires approval)
-     */
-    public function requestStatusChange($studentId, $newStatus, $reason, $requestedBy, $additionalInfo = null) {
+    // ──────────────────────────────────────────────
+    // UPDATE STUDENT
+    //
+    // KEY FIXES:
+    //  - student UPDATE: removed Age, ZipCode, all flat parent columns,
+    //    UpdatedBy, UpdatedAt (none in schema)
+    //  - parentguardian: upserted via upsertGuardians() (separate table)
+    //  - enrollment UPDATE: removed AcademicYear string, StatusChangedDate,
+    //    StatusChangedBy, UpdatedAt; StrandID updated as nullable FK
+    //  - sectionassignment: deactivated and re-inserted via EnrollmentID
+    //    (schema has no StudentID column on sectionassignment)
+    // ──────────────────────────────────────────────
+    public function updateStudent($data) {
         try {
             $this->conn->beginTransaction();
 
-            // Validate status
-            $statusesRequiringApproval = ['Dropped', 'Transferred_Out'];
-            
-            if (!in_array($newStatus, $statusesRequiringApproval)) {
-                throw new Exception('This status does not require approval request');
-            }
-
-            // Get latest enrollment ID and student info
-            $getEnrollmentQuery = "SELECT e.EnrollmentID, s.LRN, 
-                CONCAT(s.LastName, ', ', s.FirstName) as StudentName
-                FROM Enrollment e
-                INNER JOIN Student s ON e.StudentID = s.StudentID
-                WHERE e.StudentID = :studentId
-                ORDER BY e.EnrollmentID DESC
-                LIMIT 1";
-            $getStmt = $this->conn->prepare($getEnrollmentQuery);
-            $getStmt->execute([':studentId' => $studentId]);
-            $enrollmentData = $getStmt->fetch(PDO::FETCH_ASSOC);
-
-            if (!$enrollmentData) {
-                throw new Exception('No enrollment found for student');
-            }
-
-            // Create status change revision request
-            $fieldsToChange = [
-                [
-                    'field' => 'EnrollmentStatus',
-                    'oldValue' => 'Active',
-                    'newValue' => $newStatus
-                ]
-            ];
-
-            // Add transfer destination if provided
-            if ($newStatus === 'Transferred_Out' && $additionalInfo) {
-                $reason = "Transfer to: " . $additionalInfo . ". " . $reason;
-            }
-
-            $requestQuery = "INSERT INTO StudentRevisionRequest (
-                StudentID, EnrollmentID, RequestedBy, RequestType,
-                FieldsToChange, Justification, Priority
-            ) VALUES (
-                :studentId, :enrollmentId, :requestedBy, :requestType,
-                :fieldsToChange, :justification, :priority
-            )";
-            
-            $stmt = $this->conn->prepare($requestQuery);
-            $stmt->execute([
-                ':studentId' => $studentId,
-                ':enrollmentId' => $enrollmentData['EnrollmentID'],
-                ':requestedBy' => $requestedBy,
-                ':requestType' => $newStatus === 'Dropped' ? 'Other' : 'Enrollment_Info',
-                ':fieldsToChange' => json_encode($fieldsToChange),
-                ':justification' => $reason,
-                ':priority' => 'High' // Status changes are high priority
+            // ── 1. Update student table (schema-exact columns only) ──
+            $this->conn->prepare("
+                UPDATE student SET
+                    LRN                = :lrn,
+                    LastName           = :lastName,
+                    FirstName          = :firstName,
+                    MiddleName         = :middleName,
+                    ExtensionName      = :extensionName,
+                    DateOfBirth        = :dateOfBirth,
+                    Gender             = :gender,
+                    Religion           = :religion,
+                    MotherTongue       = :motherTongue,
+                    IsIPCommunity      = :isIPCommunity,
+                    IPCommunitySpecify = :ipCommunitySpecify,
+                    IsPWD              = :isPWD,
+                    PWDSpecify         = :pwdSpecify,
+                    HouseNumber        = :houseNumber,
+                    SitioStreet        = :sitioStreet,
+                    Barangay           = :barangay,
+                    Municipality       = :municipality,
+                    Province           = :province,
+                    ContactNumber      = :contactNumber,
+                    Is4PsBeneficiary   = :is4Ps,
+                    EnrollmentStatus   = :enrollmentStatus
+                WHERE StudentID = :studentId
+            ")->execute([
+                ':lrn'               => $data['LRN']                ?? null,
+                ':lastName'          => $data['LastName']           ?? '',
+                ':firstName'         => $data['FirstName']          ?? '',
+                ':middleName'        => $data['MiddleName']         ?? null,
+                ':extensionName'     => $data['ExtensionName']      ?? null,
+                ':dateOfBirth'       => $data['DateOfBirth']        ?? null,
+                ':gender'            => $data['Gender']             ?? 'Male',
+                ':religion'          => $data['Religion']           ?? null,
+                ':motherTongue'      => $data['MotherTongue']       ?? 'Tagalog',
+                ':isIPCommunity'     => (int)($data['IsIPCommunity']     ?? 0),
+                ':ipCommunitySpecify'=> $data['IPCommunitySpecify'] ?? null,
+                ':isPWD'             => (int)($data['IsPWD']             ?? 0),
+                ':pwdSpecify'        => $data['PWDSpecify']         ?? null,
+                ':houseNumber'       => $data['HouseNumber']        ?? null,
+                ':sitioStreet'       => $data['SitioStreet']        ?? null,
+                ':barangay'          => $data['Barangay']           ?? '',
+                ':municipality'      => $data['Municipality']       ?? '',
+                ':province'          => $data['Province']           ?? '',
+                ':contactNumber'     => $data['ContactNumber']      ?? '',
+                ':is4Ps'             => (int)($data['Is4PsBeneficiary'] ?? 0),
+                ':enrollmentStatus'  => $data['EnrollmentStatus']   ?? 'Active',
+                ':studentId'         => (int)$data['StudentID'],
             ]);
 
-            $requestId = $this->conn->lastInsertId();
+            // ── 2. Upsert parent/guardian rows (parentguardian table) ──
+            $this->upsertGuardians((int)$data['StudentID'], $data);
 
-            // Log to audit
-            $this->logAudit(
-                'StudentRevisionRequest',
-                $requestId,
-                'REVISION_REQUEST',
-                null,
-                json_encode([
-                    'type' => 'status_change',
-                    'newStatus' => $newStatus,
-                    'reason' => $reason
-                ]),
-                $requestedBy,
-                "Status change request: {$newStatus} for {$enrollmentData['StudentName']}"
-            );
+            // ── 3. Update enrollment (latest) — schema-exact columns only ──
+            if (!empty($data['GradeLevelID'])) {
+                // Map student EnrollmentStatus → enrollment.Status ENUM
+                $statusMap = [
+                    'Active'         => 'Confirmed',
+                    'Cancelled'      => 'Cancelled',
+                    'Dropped'        => 'Dropped',
+                    'Transferred_Out'=> 'Transferred_Out',
+                    'Graduated'      => 'Confirmed',
+                ];
+                $enrollStatus = $statusMap[$data['EnrollmentStatus'] ?? 'Active'] ?? 'Confirmed';
+
+                $this->conn->prepare("
+                    UPDATE enrollment e
+                    JOIN (
+                        SELECT MAX(EnrollmentID) AS LatestID
+                        FROM   enrollment
+                        WHERE  StudentID = :sid
+                    ) latest ON e.EnrollmentID = latest.LatestID
+                    SET e.GradeLevelID = :gradeLevelId,
+                        e.StrandID     = :strandId,
+                        e.Status       = :enrollStatus
+                    WHERE e.StudentID = :sid2
+                ")->execute([
+                    ':gradeLevelId' => (int)$data['GradeLevelID'],
+                    ':strandId'     => !empty($data['StrandID']) ? (int)$data['StrandID'] : null,
+                    ':enrollStatus' => $enrollStatus,
+                    ':sid'          => (int)$data['StudentID'],
+                    ':sid2'         => (int)$data['StudentID'],
+                ]);
+            }
+
+            // ── 4. Update section assignment ──
+            // sectionassignment has no StudentID column — must work via EnrollmentID
+            if (!empty($data['SectionID'])) {
+                // Get latest EnrollmentID for this student
+                $latestEnroll = $this->conn->prepare(
+                    "SELECT MAX(EnrollmentID) AS EID FROM enrollment WHERE StudentID = :sid"
+                );
+                $latestEnroll->execute([':sid' => (int)$data['StudentID']]);
+                $enrollmentId = (int)$latestEnroll->fetchColumn();
+
+                if ($enrollmentId) {
+                    // Deactivate current assignment for this enrollment
+                    $this->conn->prepare("
+                        UPDATE sectionassignment
+                        SET    IsActive = 0
+                        WHERE  EnrollmentID = :eid
+                    ")->execute([':eid' => $enrollmentId]);
+
+                    // Insert new assignment
+                    $this->conn->prepare("
+                        INSERT INTO sectionassignment
+                            (EnrollmentID, SectionID, AssignmentMethod, AssignedBy, IsActive)
+                        VALUES
+                            (:eid, :sid, 'Manual', :assignedBy, 1)
+                    ")->execute([
+                        ':eid'        => $enrollmentId,
+                        ':sid'        => (int)$data['SectionID'],
+                        ':assignedBy' => (int)$data['UpdatedBy'],
+                    ]);
+                }
+            }
+
+            // ── 5. Deactivate sections for inactive enrollment statuses ──
+            if (in_array($data['EnrollmentStatus'] ?? '', ['Cancelled', 'Dropped', 'Transferred_Out'])) {
+                $this->conn->prepare("
+                    UPDATE sectionassignment sa
+                    JOIN   enrollment e ON e.EnrollmentID = sa.EnrollmentID
+                    SET    sa.IsActive = 0
+                    WHERE  e.StudentID = :sid
+                ")->execute([':sid' => (int)$data['StudentID']]);
+            }
 
             $this->conn->commit();
+            return ['success' => true, 'message' => 'Student updated successfully'];
 
-            return [
-                'success' => true,
-                'message' => 'Status change request submitted for approval',
-                'requestId' => $requestId,
-                'requiresApproval' => true
-            ];
-
-        } catch (Exception $e) {
-            $this->conn->rollBack();
-            return [
-                'success' => false,
-                'message' => 'Error creating status change request: ' . $e->getMessage()
-            ];
+        } catch (PDOException $e) {
+            if ($this->conn->inTransaction()) $this->conn->rollBack();
+            error_log("Update student error: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Error updating student: ' . $e->getMessage()];
         }
     }
 
-    /**
-     * Change student status (with approval workflow)
-     * - Cancelled: Direct (no approval needed)
-     * - Dropped: Requires approval
-     * - Transferred_Out: Requires approval
-     */
-    public function changeStatus($studentId, $newStatus, $reason, $userId, $userRole, $additionalInfo = null) {
+    // ──────────────────────────────────────────────
+    // UPSERT GUARDIANS
+    // Writes Father / Mother / Guardian rows to parentguardian table.
+    // Called from updateStudent(); also usable standalone.
+    // ──────────────────────────────────────────────
+    private function upsertGuardians(int $studentId, array $data) {
+        // Expected keys in $data:
+        //   guardians.Father.LastName / FirstName / MiddleName / ContactNumber
+        //   guardians.Mother.*
+        //   guardians.Guardian.* (+ GuardianRelationship)
+        // OR flat:
+        //   fatherLastName / fatherFirstName / fatherMiddleName
+        //   motherLastName / motherFirstName / motherMiddleName
+        //   guardianLastName / guardianFirstName / guardianMiddleName / guardianRelationship
+
+        $sets = [
+            ['Father',   'fatherLastName',   'fatherFirstName',   'fatherMiddleName',   null,                   null           ],
+            ['Mother',   'motherLastName',   'motherFirstName',   'motherMiddleName',   null,                   null           ],
+            ['Guardian', 'guardianLastName', 'guardianFirstName', 'guardianMiddleName', 'guardianRelationship', 'guardianContact'],
+        ];
+
+        // Support both flat keys and nested guardians map
+        $g = $data['guardians'] ?? [];
+
+        foreach ($sets as [$relType, $lnKey, $fnKey, $mnKey, $relKey, $ctKey]) {
+            // Try nested map first, fall back to flat keys
+            $nested = $g[$relType] ?? [];
+            $ln = trim($nested['LastName']  ?? $data[$lnKey] ?? '');
+            $fn = trim($nested['FirstName'] ?? $data[$fnKey] ?? '');
+            $mn = trim($nested['MiddleName'] ?? $data[$mnKey] ?? '') ?: null;
+            $gr = $relKey ? trim($nested['GuardianRelationship'] ?? $data[$relKey] ?? '') ?: null : null;
+            $ct = $ctKey  ? trim($nested['ContactNumber']        ?? $data[$ctKey]  ?? '') ?: null : null;
+
+            if (!$fn && !$ln) continue; // skip empty rows
+
+            $exist = $this->conn->prepare(
+                "SELECT ParentGuardianID FROM parentguardian WHERE StudentID = :sid AND RelationshipType = :rel LIMIT 1"
+            );
+            $exist->execute([':sid' => $studentId, ':rel' => $relType]);
+            $row = $exist->fetch(PDO::FETCH_ASSOC);
+
+            if ($row) {
+                $this->conn->prepare("
+                    UPDATE parentguardian
+                    SET LastName = :ln, FirstName = :fn, MiddleName = :mn,
+                        GuardianRelationship = :gr, ContactNumber = :ct
+                    WHERE ParentGuardianID = :pgid
+                ")->execute([
+                    ':ln' => $ln, ':fn' => $fn, ':mn' => $mn,
+                    ':gr' => $gr, ':ct' => $ct,
+                    ':pgid' => $row['ParentGuardianID'],
+                ]);
+            } else {
+                $this->conn->prepare("
+                    INSERT INTO parentguardian
+                        (StudentID, RelationshipType, LastName, FirstName, MiddleName, GuardianRelationship, ContactNumber)
+                    VALUES (:sid, :rel, :ln, :fn, :mn, :gr, :ct)
+                ")->execute([
+                    ':sid' => $studentId, ':rel' => $relType,
+                    ':ln'  => $ln, ':fn' => $fn, ':mn' => $mn,
+                    ':gr'  => $gr, ':ct' => $ct,
+                ]);
+            }
+        }
+    }
+
+    // ──────────────────────────────────────────────
+    // ADD REMARKS
+    //
+    // FIX: enrollment.Remarks column exists in schema ✓
+    //      Removed phantom StatusChangedDate, UpdatedAt columns.
+    //      Appends timestamped note to existing Remarks text.
+    // ──────────────────────────────────────────────
+    public function addRemarks($studentId, $remarks, $userId) {
         try {
-            // Check if status requires approval
-            $statusesRequiringApproval = ['Dropped', 'Transferred_Out'];
-            
-            if (in_array($newStatus, $statusesRequiringApproval)) {
-                // Only Registrar and ICT Coordinator can approve directly
-                if (!in_array($userRole, ['Registrar', 'ICT_Coordinator'])) {
-                    // Create approval request instead
-                    return $this->requestStatusChange($studentId, $newStatus, $reason, $userId, $additionalInfo);
-                }
-                
-                // Registrar/ICT can proceed with direct change
-                return $this->executeStatusChange($studentId, $newStatus, $reason, $userId, $additionalInfo);
-            }
-            
-            // Cancelled doesn't require approval
-            if ($newStatus === 'Cancelled') {
-                return $this->executeStatusChange($studentId, $newStatus, $reason, $userId, $additionalInfo);
-            }
+            // Get user name for the note prefix
+            $userStmt = $this->conn->prepare(
+                "SELECT CONCAT(FirstName, ' ', LastName) AS Name FROM user WHERE UserID = :uid"
+            );
+            $userStmt->execute([':uid' => (int)$userId]);
+            $userName = $userStmt->fetchColumn() ?: "User #{$userId}";
 
-            return [
-                'success' => false,
-                'message' => 'Invalid status'
-            ];
+            $prefix = '[' . date('Y-m-d H:i') . " – {$userName}]: ";
 
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'message' => 'Error changing status: ' . $e->getMessage()
-            ];
+            $this->conn->prepare("
+                UPDATE enrollment e
+                JOIN (
+                    SELECT MAX(EnrollmentID) AS LatestID
+                    FROM   enrollment
+                    WHERE  StudentID = :sid
+                ) latest ON e.EnrollmentID = latest.LatestID
+                SET e.Remarks = CONCAT(
+                    IFNULL(NULLIF(TRIM(e.Remarks), ''), ''),
+                    IF(e.Remarks IS NULL OR TRIM(e.Remarks) = '', '', '\n'),
+                    :prefix, :remarks
+                )
+                WHERE e.StudentID = :sid2
+            ")->execute([
+                ':sid'     => (int)$studentId,
+                ':sid2'    => (int)$studentId,
+                ':prefix'  => $prefix,
+                ':remarks' => trim($remarks),
+            ]);
+
+            return ['success' => true, 'message' => 'Remarks added successfully'];
+
+        } catch (PDOException $e) {
+            return ['success' => false, 'message' => 'Error adding remarks: ' . $e->getMessage()];
         }
     }
 
-    /**
-     * Execute the actual status change (called directly or after approval)
-     */
+    // ──────────────────────────────────────────────
+    // CHANGE STATUS (with approval workflow)
+    //
+    // Dropped / Transferred_Out → approval required unless Registrar/ICT
+    // Cancelled → direct (no approval needed)
+    // ──────────────────────────────────────────────
+    public function changeStatus($studentId, $newStatus, $reason, $userId, $userRole, $additionalInfo = null) {
+        $requireApproval = ['Dropped', 'Transferred_Out'];
+        $direct          = ['Cancelled'];
+        $valid           = array_merge($requireApproval, $direct);
+
+        if (!in_array($newStatus, $valid)) {
+            return ['success' => false, 'message' => 'Invalid status for change'];
+        }
+
+        if (in_array($newStatus, $requireApproval) && !in_array($userRole, ['Registrar', 'ICT_Coordinator'])) {
+            return $this->requestStatusChange($studentId, $newStatus, $reason, $userId, $additionalInfo);
+        }
+
+        return $this->executeStatusChange($studentId, $newStatus, $reason, $userId, $additionalInfo);
+    }
+
+    // ──────────────────────────────────────────────
+    // EXECUTE STATUS CHANGE
+    //
+    // KEY FIXES:
+    //  - enrollment UPDATE: removed StatusChangedDate, StatusChangedBy, UpdatedAt
+    //  - student UPDATE: removed UpdatedBy, UpdatedAt (not in schema)
+    //  - sectionassignment: deactivate via EnrollmentID (not StudentID)
+    // ──────────────────────────────────────────────
     private function executeStatusChange($studentId, $newStatus, $reason, $userId, $additionalInfo = null) {
         try {
             $this->conn->beginTransaction();
 
-            $validStatuses = ['Cancelled', 'Dropped', 'Transferred_Out', 'Transferred_In'];
-            if (!in_array($newStatus, $validStatuses)) {
-                throw new Exception('Invalid status');
+            // Map to enrollment.Status ENUM value
+            $enrollStatusMap = [
+                'Cancelled'       => 'Cancelled',
+                'Dropped'         => 'Dropped',
+                'Transferred_Out' => 'Transferred_Out',
+            ];
+            $enrollStatus = $enrollStatusMap[$newStatus] ?? 'Cancelled';
+
+            // Build remark
+            $remark = trim($reason);
+            if ($newStatus === 'Transferred_Out' && $additionalInfo) {
+                $remark = "Transfer to: {$additionalInfo}. {$remark}";
             }
 
-            // Get latest enrollment ID
-            $getEnrollmentQuery = "SELECT MAX(EnrollmentID) as EnrollmentID 
-                FROM Enrollment 
-                WHERE StudentID = :studentId";
-            $getStmt = $this->conn->prepare($getEnrollmentQuery);
-            $getStmt->execute([':studentId' => $studentId]);
-            $enrollmentId = $getStmt->fetch(PDO::FETCH_ASSOC)['EnrollmentID'];
+            // Get latest EnrollmentID
+            $eidStmt = $this->conn->prepare(
+                "SELECT MAX(EnrollmentID) FROM enrollment WHERE StudentID = :sid"
+            );
+            $eidStmt->execute([':sid' => (int)$studentId]);
+            $enrollmentId = (int)$eidStmt->fetchColumn();
 
             if (!$enrollmentId) {
-                throw new Exception('No enrollment found for student');
+                $this->conn->rollBack();
+                return ['success' => false, 'message' => 'No enrollment found for student'];
             }
 
-            // Direct SQL instead of stored procedure
-            $updateEnrollment = $this->conn->prepare("
-                UPDATE Enrollment
-                SET Status = :newStatus,
-                    Remarks = :reason,
-                    StatusChangedBy = :userId,
-                    StatusChangedDate = NOW(),
-                    UpdatedAt = NOW()
-                WHERE EnrollmentID = :enrollmentId
-            ");
-            $updateEnrollment->execute([
-                ':newStatus' => $newStatus,
-                ':reason' => $reason,
-                ':userId' => $userId,
-                ':enrollmentId' => $enrollmentId
+            // Update enrollment (only schema columns: Status, Remarks)
+            $this->conn->prepare("
+                UPDATE enrollment
+                SET    Status  = :status,
+                       Remarks = CONCAT(IFNULL(NULLIF(TRIM(Remarks),''),''),
+                                        IF(Remarks IS NULL OR TRIM(Remarks)='','','\n'),
+                                        :remark)
+                WHERE  EnrollmentID = :eid
+            ")->execute([
+                ':status' => $enrollStatus,
+                ':remark' => '[Status change] ' . $remark,
+                ':eid'    => $enrollmentId,
             ]);
 
-            // Update student table
-            $updateStudent = $this->conn->prepare("
-                UPDATE Student 
-                SET EnrollmentStatus = :newStatus,
-                    UpdatedBy = :userId,
-                    UpdatedAt = NOW()
-                WHERE StudentID = :studentId
-            ");
-            $updateStudent->execute([
-                ':newStatus' => $newStatus,
-                ':userId' => $userId,
-                ':studentId' => $studentId
+            // Update student.EnrollmentStatus (exact ENUM: Active|Cancelled|Transferred_Out|Graduated|Dropped)
+            $this->conn->prepare("
+                UPDATE student
+                SET    EnrollmentStatus = :status
+                WHERE  StudentID = :sid
+            ")->execute([
+                ':status' => $newStatus,
+                ':sid'    => (int)$studentId,
             ]);
 
-            // Deactivate section assignments
-            if (in_array($newStatus, ['Cancelled', 'Dropped', 'Transferred_Out'])) {
-                $deactivate = $this->conn->prepare("
-                    UPDATE SectionAssignment 
-                    SET IsActive = 0 
-                    WHERE StudentID = :studentId
-                ");
-                $deactivate->execute([':studentId' => $studentId]);
-            }
+            // Deactivate all active section assignments for this enrollment
+            $this->conn->prepare("
+                UPDATE sectionassignment
+                SET    IsActive = 0
+                WHERE  EnrollmentID = :eid
+            ")->execute([':eid' => $enrollmentId]);
+
+            // Audit log
+            $this->logAudit(
+                'enrollment', $enrollmentId, 'STATUS_CHANGE',
+                null, $enrollStatus, $userId,
+                "Status changed to {$newStatus}: {$remark}"
+            );
 
             $this->conn->commit();
+            return ['success' => true, 'message' => 'Status updated successfully'];
 
-            return [
-                'success' => true,
-                'message' => 'Status updated successfully'
-            ];
-
-        } catch (Exception $e) {
-            $this->conn->rollBack();
-            throw $e;
+        } catch (PDOException $e) {
+            if ($this->conn->inTransaction()) $this->conn->rollBack();
+            return ['success' => false, 'message' => 'Error changing status: ' . $e->getMessage()];
         }
     }
 
+    // ──────────────────────────────────────────────
+    // REQUEST STATUS CHANGE (creates revision request)
+    // ──────────────────────────────────────────────
+    private function requestStatusChange($studentId, $newStatus, $reason, $requestedBy, $additionalInfo = null) {
+        try {
+            $this->conn->beginTransaction();
+
+            $eidStmt = $this->conn->prepare(
+                "SELECT MAX(EnrollmentID) FROM enrollment WHERE StudentID = :sid"
+            );
+            $eidStmt->execute([':sid' => (int)$studentId]);
+            $enrollmentId = (int)$eidStmt->fetchColumn();
+
+            if (!$enrollmentId) {
+                $this->conn->rollBack();
+                return ['success' => false, 'message' => 'No enrollment found for student'];
+            }
+
+            $remark = trim($reason);
+            if ($newStatus === 'Transferred_Out' && $additionalInfo) {
+                $remark = "Transfer to: {$additionalInfo}. {$remark}";
+            }
+
+            $fieldsToChange = json_encode([[
+                'field'    => 'EnrollmentStatus',
+                'oldValue' => 'Active',
+                'newValue' => $newStatus,
+            ]]);
+
+            $stmt = $this->conn->prepare("
+                INSERT INTO studentrevisionrequest
+                    (StudentID, EnrollmentID, RequestedBy, RequestType,
+                     FieldsToChange, Justification, Priority)
+                VALUES
+                    (:sid, :eid, :reqBy, 'Other', :fields, :just, 'High')
+            ");
+            $stmt->execute([
+                ':sid'   => (int)$studentId,
+                ':eid'   => $enrollmentId,
+                ':reqBy' => (int)$requestedBy,
+                ':fields'=> $fieldsToChange,
+                ':just'  => $remark,
+            ]);
+            $requestId = (int)$this->conn->lastInsertId();
+
+            $this->logAudit(
+                'studentrevisionrequest', $requestId, 'REVISION_REQUEST',
+                null, $newStatus, $requestedBy,
+                "Status change request: {$newStatus}"
+            );
+
+            $this->conn->commit();
+            return [
+                'success'         => true,
+                'message'         => 'Status change request submitted for approval',
+                'requestId'       => $requestId,
+                'requiresApproval'=> true,
+            ];
+
+        } catch (PDOException $e) {
+            if ($this->conn->inTransaction()) $this->conn->rollBack();
+            return ['success' => false, 'message' => 'Error creating request: ' . $e->getMessage()];
+        }
+    }
+
+    // ──────────────────────────────────────────────
+    // CANCEL ENROLLMENT (direct, no approval)
+    // ──────────────────────────────────────────────
     public function cancelEnrollment($studentId, $reason, $userId) {
-        // Cancelled doesn't require approval
         return $this->executeStatusChange($studentId, 'Cancelled', $reason, $userId);
     }
 
-    private function logAudit($tableName, $recordId, $action, $oldValue, $newValue, $userId, $description) {
+    // ──────────────────────────────────────────────
+    // AUDIT LOG
+    // ──────────────────────────────────────────────
+    private function logAudit($table, $recordId, $action, $old, $new, $userId, $desc = null) {
         try {
-            $query = "INSERT INTO AuditLog (
-                TableName, RecordID, Action, OldValue, NewValue, 
-                ChangedBy, ActionDescription
-            ) VALUES (
-                :tableName, :recordId, :action, :oldValue, :newValue,
-                :userId, :description
-            )";
-            
-            $stmt = $this->conn->prepare($query);
-            $stmt->execute([
-                ':tableName' => $tableName,
-                ':recordId' => $recordId,
-                ':action' => $action,
-                ':oldValue' => $oldValue,
-                ':newValue' => $newValue,
-                ':userId' => $userId,
-                ':description' => $description
+            $this->conn->prepare("
+                INSERT INTO auditlog
+                    (TableName, RecordID, Action, OldValue, NewValue, ChangedBy, ActionDescription, IPAddress)
+                VALUES
+                    (:tbl, :rid, :act, :old, :new, :uid, :desc, :ip)
+            ")->execute([
+                ':tbl'  => $table,
+                ':rid'  => $recordId,
+                ':act'  => $action,
+                ':old'  => $old,
+                ':new'  => $new,
+                ':uid'  => $userId,
+                ':desc' => $desc,
+                ':ip'   => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
             ]);
         } catch (PDOException $e) {
             error_log("Audit log error: " . $e->getMessage());
@@ -547,160 +555,104 @@ public function updateStudent($data) {
     }
 }
 
-// =====================================================
-// API Route Handler
-// =====================================================
-
+// ──────────────────────────────────────────────
+// ROUTER
+// ──────────────────────────────────────────────
 try {
-    $database = new Database();
-    $db = $database->getConnection();
-    
-    if ($db === null) {
-        throw new Exception('Database connection failed');
-    }
-    
-    $api = new StudentUpdateAPI($db);
+    $db = (new Database())->getConnection();
+    if (!$db) throw new Exception('Database connection failed');
+
+    $api    = new StudentUpdateAPI($db);
     $action = $_GET['action'] ?? '';
-    
+
     switch ($_SERVER['REQUEST_METHOD']) {
         case 'GET':
             if ($action === 'get_grade_levels') {
-                $result = $api->getGradeLevels();
-                echo json_encode($result);
-                
+                echo json_encode($api->getGradeLevels());
             } elseif ($action === 'get_sections') {
                 $gradeLevelId = $_GET['grade_level'] ?? null;
-                $strandId = $_GET['strand_id'] ?? null;
-                
-                if (!$gradeLevelId) {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'Grade level ID required'
-                    ]);
-                    exit;
-                }
-                
-                $result = $api->getSections($gradeLevelId, $strandId);
-                echo json_encode($result);
-                
+                $strandId     = $_GET['strand_id']   ?? null;
+                echo json_encode($gradeLevelId
+                    ? $api->getSections($gradeLevelId, $strandId)
+                    : ['success' => false, 'message' => 'Grade level ID required']);
             } else {
                 http_response_code(400);
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Invalid action'
-                ]);
+                echo json_encode(['success' => false, 'message' => 'Invalid GET action']);
             }
             break;
-            
+
         case 'POST':
             $data = json_decode(file_get_contents('php://input'), true);
-            
+
             if ($action === 'update') {
                 $userId = $data['UpdatedBy'] ?? null;
-                
                 if (!$userId) {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'User ID required'
-                    ]);
+                    echo json_encode(['success' => false, 'message' => 'User ID required']);
                     exit;
                 }
-                
-                // Get user role
-                $userStmt = $db->prepare("SELECT Role FROM User WHERE UserID = ?");
+                $userStmt = $db->prepare("SELECT Role FROM user WHERE UserID = ?");
                 $userStmt->execute([$userId]);
-                $userRole = $userStmt->fetch(PDO::FETCH_ASSOC)['Role'] ?? null;
-                
-                if ($userRole === 'Adviser') {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'Advisers must use revision request endpoint',
-                        'redirect' => 'revision_request'
-                    ]);
-                    exit;
-                }
-                
-                $result = $api->updateStudent($data);
-                echo json_encode($result);
-                
-            } elseif ($action === 'add_remarks') {
-                $studentId = $data['StudentID'] ?? null;
-                $remarks = $data['Remarks'] ?? null;
-                $userId = $data['UserID'] ?? null;
-                
-                if (!$studentId || !$remarks || !$userId) {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'Missing required fields'
-                    ]);
-                    exit;
-                }
-                
-                $result = $api->addRemarks($studentId, $remarks, $userId);
-                echo json_encode($result);
-                
-            } elseif ($action === 'change_status') {
-                $studentId = $data['StudentID'] ?? null;
-                $newStatus = $data['NewStatus'] ?? null;
-                $reason = $data['Reason'] ?? null;
-                $userId = $data['UserID'] ?? null;
-                $additionalInfo = $data['AdditionalInfo'] ?? null;
-                
-                if (!$studentId || !$newStatus || !$reason || !$userId) {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'Missing required fields'
-                    ]);
-                    exit;
-                }
+                $role = $userStmt->fetchColumn();
 
-                // Get user role
-                $userStmt = $db->prepare("SELECT Role FROM User WHERE UserID = ?");
-                $userStmt->execute([$userId]);
-                $userRole = $userStmt->fetch(PDO::FETCH_ASSOC)['Role'] ?? null;
-                
-                $result = $api->changeStatus($studentId, $newStatus, $reason, $userId, $userRole, $additionalInfo);
-                echo json_encode($result);
-                
-            } elseif ($action === 'cancel_enrollment') {
-                $studentId = $data['StudentID'] ?? null;
-                $reason = $data['Reason'] ?? null;
-                $userId = $data['UserID'] ?? null;
-                
-                if (!$studentId || !$reason || !$userId) {
+                if ($role === 'Adviser') {
                     echo json_encode([
-                        'success' => false,
-                        'message' => 'Missing required fields'
+                        'success'  => false,
+                        'message'  => 'Advisers must use revision request endpoint',
+                        'redirect' => 'revision_request',
                     ]);
                     exit;
                 }
-                
-                $result = $api->cancelEnrollment($studentId, $reason, $userId);
-                echo json_encode($result);
-                
+                echo json_encode($api->updateStudent($data));
+
+            } elseif ($action === 'add_remarks') {
+                ['StudentID' => $sid, 'Remarks' => $rem, 'UserID' => $uid] =
+                    array_merge(['StudentID' => null, 'Remarks' => null, 'UserID' => null], $data);
+                if (!$sid || !$rem || !$uid) {
+                    echo json_encode(['success' => false, 'message' => 'Missing required fields']);
+                    exit;
+                }
+                echo json_encode($api->addRemarks($sid, $rem, $uid));
+
+            } elseif ($action === 'change_status') {
+                $sid    = $data['StudentID']     ?? null;
+                $status = $data['NewStatus']     ?? null;
+                $reason = $data['Reason']        ?? null;
+                $uid    = $data['UserID']        ?? null;
+                $extra  = $data['AdditionalInfo']?? null;
+
+                if (!$sid || !$status || !$reason || !$uid) {
+                    echo json_encode(['success' => false, 'message' => 'Missing required fields']);
+                    exit;
+                }
+                $userStmt = $db->prepare("SELECT Role FROM user WHERE UserID = ?");
+                $userStmt->execute([$uid]);
+                $role = $userStmt->fetchColumn();
+
+                echo json_encode($api->changeStatus($sid, $status, $reason, $uid, $role, $extra));
+
+            } elseif ($action === 'cancel_enrollment') {
+                ['StudentID' => $sid, 'Reason' => $reason, 'UserID' => $uid] =
+                    array_merge(['StudentID' => null, 'Reason' => null, 'UserID' => null], $data);
+                if (!$sid || !$reason || !$uid) {
+                    echo json_encode(['success' => false, 'message' => 'Missing required fields']);
+                    exit;
+                }
+                echo json_encode($api->cancelEnrollment($sid, $reason, $uid));
+
             } else {
                 http_response_code(400);
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Invalid action'
-                ]);
+                echo json_encode(['success' => false, 'message' => 'Invalid POST action']);
             }
             break;
-            
+
         default:
             http_response_code(405);
-            echo json_encode([
-                'success' => false,
-                'message' => 'Method not allowed'
-            ]);
+            echo json_encode(['success' => false, 'message' => 'Method not allowed']);
     }
-    
+
 } catch (Exception $e) {
     http_response_code(500);
     error_log("Student Update API Error: " . $e->getMessage());
-    echo json_encode([
-        'success' => false,
-        'message' => 'Server error: ' . $e->getMessage()
-    ]);
+    echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
 }
 ?>

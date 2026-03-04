@@ -1,9 +1,9 @@
 <?php
 // =====================================================
-// Document Submission API
+// Document Submission API - REVISED FOR NORMALIZED DB
 // File: backend/api/document-submission.php
-// Created: 2026-02-08
-// Fixed: 2026-02-14 - Resolved ActionBy NULL constraint violation
+// Updated: 2026-03-04
+// Revised to work with normalized documentsubmission table
 // =====================================================
 
 // Suppress all errors from being displayed
@@ -25,54 +25,98 @@ require_once '../config/database.php';
 class DocumentSubmissionAPI {
     private $conn;
     
+    // Document type mapping
+    private $documentTypes = [
+        'PSA_Birth_Cert',
+        'Local_Birth_Cert', 
+        'Report_Card',
+        'Form_137',
+        'Good_Moral',
+        'Transfer_Cert'
+    ];
+    
     public function __construct($db) {
         $this->conn = $db;
     }
     
     /**
-     * Get document submission status for a student
+     * Get document submission status for a student enrollment
      */
-    public function getDocumentStatus($studentId, $enrollmentId = null) {
+    public function getDocumentStatus($enrollmentId) {
         try {
+            // Get all document submissions for this enrollment
             $query = "SELECT 
-                ds.*,
-                CONCAT(psa_user.FirstName, ' ', psa_user.LastName) AS PSAVerifiedByName,
-                CONCAT(local_user.FirstName, ' ', local_user.LastName) AS LocalBirthCertVerifiedByName,
-                CONCAT(rc_user.FirstName, ' ', rc_user.LastName) AS ReportCardVerifiedByName,
-                CONCAT(f137_user.FirstName, ' ', f137_user.LastName) AS Form137VerifiedByName,
-                CONCAT(final_user.FirstName, ' ', final_user.LastName) AS FinalVerifiedByName
-            FROM DocumentSubmission ds
-            LEFT JOIN User psa_user ON ds.PSAVerifiedBy = psa_user.UserID
-            LEFT JOIN User local_user ON ds.LocalBirthCertVerifiedBy = local_user.UserID
-            LEFT JOIN User rc_user ON ds.ReportCardVerifiedBy = rc_user.UserID
-            LEFT JOIN User f137_user ON ds.Form137VerifiedBy = f137_user.UserID
-            LEFT JOIN User final_user ON ds.FinalVerifiedBy = final_user.UserID
-            WHERE ds.StudentID = :studentId";
-            
-            if ($enrollmentId) {
-                $query .= " AND ds.EnrollmentID = :enrollmentId";
-            } else {
-                $query .= " ORDER BY ds.CreatedAt DESC LIMIT 1";
-            }
+                ds.SubmissionID,
+                ds.EnrollmentID,
+                ds.DocumentType,
+                ds.IsSubmitted,
+                ds.IsVerified,
+                ds.Notes,
+                e.StudentID,
+                CONCAT(s.LastName, ', ', s.FirstName, 
+                    CASE WHEN s.MiddleName IS NOT NULL 
+                    THEN CONCAT(' ', SUBSTRING(s.MiddleName, 1, 1), '.') 
+                    ELSE '' END) AS StudentName
+            FROM documentsubmission ds
+            INNER JOIN enrollment e ON ds.EnrollmentID = e.EnrollmentID
+            INNER JOIN student s ON e.StudentID = s.StudentID
+            WHERE ds.EnrollmentID = :enrollmentId
+            ORDER BY 
+                CASE ds.DocumentType
+                    WHEN 'PSA_Birth_Cert' THEN 1
+                    WHEN 'Local_Birth_Cert' THEN 2
+                    WHEN 'Report_Card' THEN 3
+                    WHEN 'Form_137' THEN 4
+                    WHEN 'Good_Moral' THEN 5
+                    WHEN 'Transfer_Cert' THEN 6
+                END";
             
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':studentId', $studentId);
-            if ($enrollmentId) {
-                $stmt->bindParam(':enrollmentId', $enrollmentId);
-            }
+            $stmt->bindParam(':enrollmentId', $enrollmentId);
             $stmt->execute();
             
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            $documents = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            if ($result) {
+            if ($documents) {
+                // Calculate completion status
+                $requiredDocs = ['PSA_Birth_Cert', 'Local_Birth_Cert', 'Report_Card', 'Form_137'];
+                $hasBirthCert = false;
+                $hasReportCard = false;
+                $hasForm137 = false;
+                
+                foreach ($documents as $doc) {
+                    if ($doc['DocumentType'] === 'PSA_Birth_Cert' && $doc['IsSubmitted']) {
+                        $hasBirthCert = true;
+                    }
+                    if ($doc['DocumentType'] === 'Local_Birth_Cert' && $doc['IsSubmitted']) {
+                        $hasBirthCert = true;
+                    }
+                    if ($doc['DocumentType'] === 'Report_Card' && $doc['IsSubmitted']) {
+                        $hasReportCard = true;
+                    }
+                    if ($doc['DocumentType'] === 'Form_137' && $doc['IsSubmitted']) {
+                        $hasForm137 = true;
+                    }
+                }
+                
+                $isComplete = $hasBirthCert && $hasReportCard && $hasForm137;
+                
                 return [
                     'success' => true,
-                    'data' => $result
+                    'data' => [
+                        'documents' => $documents,
+                        'studentName' => $documents[0]['StudentName'],
+                        'enrollmentId' => $enrollmentId,
+                        'isComplete' => $isComplete,
+                        'hasBirthCert' => $hasBirthCert,
+                        'hasReportCard' => $hasReportCard,
+                        'hasForm137' => $hasForm137
+                    ]
                 ];
             } else {
                 return [
                     'success' => false,
-                    'message' => 'No document submission record found'
+                    'message' => 'No document submission records found'
                 ];
             }
             
@@ -85,141 +129,59 @@ class DocumentSubmissionAPI {
     }
     
     /**
-     * Update document submission checklist
+     * Update a single document submission
      */
-    public function updateDocumentChecklist($data) {
+    public function updateDocument($data) {
         try {
             $this->conn->beginTransaction();
             
             $submissionId = $data['SubmissionID'] ?? null;
-            $documentType = $data['DocumentType'] ?? null;
-            $isChecked = isset($data['IsChecked']) ? $data['IsChecked'] : null;
-            $userId = $data['UserID'] ?? null;
+            $isSubmitted = isset($data['IsSubmitted']) ? (int)$data['IsSubmitted'] : null;
+            $isVerified = isset($data['IsVerified']) ? (int)$data['IsVerified'] : null;
             $notes = $data['Notes'] ?? null;
             
-            // Validate required fields - use isset for IsChecked since it can be 0
-            if (!$submissionId || !$documentType || $isChecked === null || !$userId) {
-                throw new Exception('Missing required fields');
+            if (!$submissionId) {
+                throw new Exception('Submission ID is required');
             }
             
-            // Build update query based on document type
-            $updateFields = [];
-            $params = [
-                ':submissionId' => $submissionId,
-                ':userId' => $userId,  // Always set userId first
-                ':isChecked' => $isChecked
-            ];
+            // Build update query
+            $updates = [];
+            $params = [':submissionId' => $submissionId];
             
-            switch ($documentType) {
-                case 'PSA':
-                    $updateFields[] = "HasPSABirthCert = :isChecked";
-                    if ($isChecked) {
-                        $updateFields[] = "PSASubmissionDate = NOW()";
-                        $updateFields[] = "PSAVerifiedBy = :verifiedBy";
-                        $params[':verifiedBy'] = $userId;
-                    } else {
-                        $updateFields[] = "PSASubmissionDate = NULL";
-                        $updateFields[] = "PSAVerifiedBy = NULL";
-                    }
-                    if ($notes) {
-                        $updateFields[] = "PSANotes = :notes";
-                        $params[':notes'] = $notes;
-                    }
-                    break;
-                    
-                case 'Local':
-                    $updateFields[] = "HasLocalBirthCert = :isChecked";
-                    if ($isChecked) {
-                        $updateFields[] = "LocalBirthCertSubmissionDate = NOW()";
-                        $updateFields[] = "LocalBirthCertVerifiedBy = :verifiedBy";
-                        $params[':verifiedBy'] = $userId;
-                    } else {
-                        $updateFields[] = "LocalBirthCertSubmissionDate = NULL";
-                        $updateFields[] = "LocalBirthCertVerifiedBy = NULL";
-                    }
-                    if ($notes) {
-                        $updateFields[] = "LocalBirthCertNotes = :notes";
-                        $params[':notes'] = $notes;
-                    }
-                    if (isset($data['CertType'])) {
-                        $updateFields[] = "LocalBirthCertType = :certType";
-                        $params[':certType'] = $data['CertType'];
-                    }
-                    break;
-                    
-                case 'ReportCard':
-                    $updateFields[] = "HasReportCard = :isChecked";
-                    if ($isChecked) {
-                        $updateFields[] = "ReportCardSubmissionDate = NOW()";
-                        $updateFields[] = "ReportCardVerifiedBy = :verifiedBy";
-                        $params[':verifiedBy'] = $userId;
-                    } else {
-                        $updateFields[] = "ReportCardSubmissionDate = NULL";
-                        $updateFields[] = "ReportCardVerifiedBy = NULL";
-                    }
-                    if ($notes) {
-                        $updateFields[] = "ReportCardNotes = :notes";
-                        $params[':notes'] = $notes;
-                    }
-                    break;
-                    
-                case 'Form137':
-                    $updateFields[] = "HasForm137 = :isChecked";
-                    if ($isChecked) {
-                        $updateFields[] = "Form137SubmissionDate = NOW()";
-                        $updateFields[] = "Form137VerifiedBy = :verifiedBy";
-                        $params[':verifiedBy'] = $userId;
-                    } else {
-                        $updateFields[] = "Form137SubmissionDate = NULL";
-                        $updateFields[] = "Form137VerifiedBy = NULL";
-                    }
-                    if ($notes) {
-                        $updateFields[] = "Form137Notes = :notes";
-                        $params[':notes'] = $notes;
-                    }
-                    break;
-                    
-                case 'GoodMoral':
-                    $updateFields[] = "HasGoodMoral = :isChecked";
-                    if ($isChecked) {
-                        $updateFields[] = "GoodMoralSubmissionDate = NOW()";
-                    } else {
-                        $updateFields[] = "GoodMoralSubmissionDate = NULL";
-                    }
-                    break;
-                    
-                case 'TransferCert':
-                    $updateFields[] = "HasTransferCert = :isChecked";
-                    if ($isChecked) {
-                        $updateFields[] = "TransferCertSubmissionDate = NOW()";
-                    } else {
-                        $updateFields[] = "TransferCertSubmissionDate = NULL";
-                    }
-                    break;
-                    
-                default:
-                    throw new Exception('Invalid document type');
+            if ($isSubmitted !== null) {
+                $updates[] = "IsSubmitted = :isSubmitted";
+                $params[':isSubmitted'] = $isSubmitted;
             }
             
-            // CRITICAL FIX: Always set UpdatedBy to ensure trigger has valid ActionBy value
-            $updateFields[] = "UpdatedBy = :userId";
-            $updateFields[] = "UpdatedAt = NOW()";
+            if ($isVerified !== null) {
+                $updates[] = "IsVerified = :isVerified";
+                $params[':isVerified'] = $isVerified;
+            }
             
-            $query = "UPDATE DocumentSubmission SET " . 
-                     implode(", ", $updateFields) . 
+            if ($notes !== null) {
+                $updates[] = "Notes = :notes";
+                $params[':notes'] = $notes;
+            }
+            
+            if (empty($updates)) {
+                throw new Exception('No fields to update');
+            }
+            
+            $query = "UPDATE documentsubmission SET " . 
+                     implode(", ", $updates) . 
                      " WHERE SubmissionID = :submissionId";
             
             $stmt = $this->conn->prepare($query);
             $stmt->execute($params);
             
-            // Check if all required documents are complete
-            $this->checkAndUpdateCompletion($submissionId);
+            // Log the action in audit log
+            $this->logDocumentAction($submissionId, $isSubmitted, $isVerified);
             
             $this->conn->commit();
             
             return [
                 'success' => true,
-                'message' => 'Document checklist updated successfully'
+                'message' => 'Document updated successfully'
             ];
             
         } catch (Exception $e) {
@@ -234,98 +196,63 @@ class DocumentSubmissionAPI {
     }
     
     /**
-     * Check and update completion status
+     * Create document submission records for a new enrollment
      */
-    private function checkAndUpdateCompletion($submissionId) {
-        $query = "SELECT 
-            (HasPSABirthCert OR HasLocalBirthCert) AS HasBirthCert,
-            HasReportCard,
-            HasForm137
-        FROM DocumentSubmission
-        WHERE SubmissionID = :submissionId";
-        
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute([':submissionId' => $submissionId]);
-        $status = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if ($status['HasBirthCert'] && $status['HasReportCard'] && $status['HasForm137']) {
-            $updateQuery = "UPDATE DocumentSubmission 
-                SET AllDocsComplete = 1,
-                    CompletionDate = NOW()
-                WHERE SubmissionID = :submissionId 
-                AND AllDocsComplete = 0";
-            
-            $updateStmt = $this->conn->prepare($updateQuery);
-            $updateStmt->execute([':submissionId' => $submissionId]);
-        } else {
-            $updateQuery = "UPDATE DocumentSubmission 
-                SET AllDocsComplete = 0,
-                    CompletionDate = NULL
-                WHERE SubmissionID = :submissionId 
-                AND AllDocsComplete = 1";
-            
-            $updateStmt = $this->conn->prepare($updateQuery);
-            $updateStmt->execute([':submissionId' => $submissionId]);
-        }
-    }
-    
-    /**
-     * Mark all documents as verified (final verification)
-     */
-    public function finalVerification($submissionId, $userId) {
+    public function createDocumentSubmissions($enrollmentId) {
         try {
-            $query = "UPDATE DocumentSubmission
-                SET AllDocsComplete = 1,
-                    FinalVerifiedBy = :userId,
-                    FinalVerificationDate = NOW(),
-                    CompletionDate = NOW()
-                WHERE SubmissionID = :submissionId";
+            $this->conn->beginTransaction();
             
-            $stmt = $this->conn->prepare($query);
-            $stmt->execute([
-                ':submissionId' => $submissionId,
-                ':userId' => $userId
-            ]);
+            // Check if enrollment exists
+            $checkQuery = "SELECT EnrollmentID FROM enrollment WHERE EnrollmentID = :enrollmentId";
+            $checkStmt = $this->conn->prepare($checkQuery);
+            $checkStmt->execute([':enrollmentId' => $enrollmentId]);
+            
+            if (!$checkStmt->fetch()) {
+                throw new Exception('Enrollment not found');
+            }
+            
+            // Check if records already exist
+            $existQuery = "SELECT COUNT(*) as count FROM documentsubmission 
+                          WHERE EnrollmentID = :enrollmentId";
+            $existStmt = $this->conn->prepare($existQuery);
+            $existStmt->execute([':enrollmentId' => $enrollmentId]);
+            $existResult = $existStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($existResult['count'] > 0) {
+                return [
+                    'success' => false,
+                    'message' => 'Document submission records already exist for this enrollment'
+                ];
+            }
+            
+            // Create a record for each document type
+            $insertQuery = "INSERT INTO documentsubmission 
+                           (EnrollmentID, DocumentType, IsSubmitted, IsVerified, Notes)
+                           VALUES (:enrollmentId, :docType, 0, 0, NULL)";
+            
+            $insertStmt = $this->conn->prepare($insertQuery);
+            
+            foreach ($this->documentTypes as $docType) {
+                $insertStmt->execute([
+                    ':enrollmentId' => $enrollmentId,
+                    ':docType' => $docType
+                ]);
+            }
+            
+            $this->conn->commit();
             
             return [
                 'success' => true,
-                'message' => 'Documents verified successfully'
+                'message' => 'Document submission records created successfully'
             ];
             
-        } catch (PDOException $e) {
+        } catch (Exception $e) {
+            if ($this->conn->inTransaction()) {
+                $this->conn->rollBack();
+            }
             return [
                 'success' => false,
-                'message' => 'Error verifying documents: ' . $e->getMessage()
-            ];
-        }
-    }
-    
-    /**
-     * Get document submission history
-     */
-    public function getDocumentHistory($submissionId) {
-        try {
-            $query = "SELECT 
-                dsh.*,
-                CONCAT(u.FirstName, ' ', u.LastName) AS ActionByName,
-                u.Role AS ActionByRole
-            FROM DocumentSubmissionHistory dsh
-            INNER JOIN User u ON dsh.ActionBy = u.UserID
-            WHERE dsh.SubmissionID = :submissionId
-            ORDER BY dsh.ActionDate DESC";
-            
-            $stmt = $this->conn->prepare($query);
-            $stmt->execute([':submissionId' => $submissionId]);
-            
-            return [
-                'success' => true,
-                'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)
-            ];
-            
-        } catch (PDOException $e) {
-            return [
-                'success' => false,
-                'message' => 'Error fetching history: ' . $e->getMessage()
+                'message' => 'Error creating document submissions: ' . $e->getMessage()
             ];
         }
     }
@@ -333,24 +260,56 @@ class DocumentSubmissionAPI {
     /**
      * Get all students with incomplete documents
      */
-    public function getIncompleteDocuments($academicYear = null, $gradeLevel = null) {
+    public function getIncompleteDocuments($academicYearId = null, $gradeLevelId = null) {
         try {
-            $query = "SELECT * FROM vw_DocumentCompletionStatus
-                WHERE RequiredDocsComplete = 0";
+            $query = "SELECT 
+                s.StudentID,
+                s.LRN,
+                CONCAT(s.LastName, ', ', s.FirstName, 
+                    CASE WHEN s.MiddleName IS NOT NULL 
+                    THEN CONCAT(' ', SUBSTRING(s.MiddleName, 1, 1), '.') 
+                    ELSE '' END) AS StudentName,
+                e.EnrollmentID,
+                e.AcademicYearID,
+                ay.YearLabel,
+                gl.GradeLevelName,
+                st.StrandCode,
+                sec.SectionName,
+                -- Count documents
+                COUNT(ds.SubmissionID) as TotalDocs,
+                SUM(CASE WHEN ds.IsSubmitted = 1 THEN 1 ELSE 0 END) as SubmittedDocs,
+                -- Check required docs
+                MAX(CASE WHEN ds.DocumentType IN ('PSA_Birth_Cert', 'Local_Birth_Cert') 
+                    AND ds.IsSubmitted = 1 THEN 1 ELSE 0 END) as HasBirthCert,
+                MAX(CASE WHEN ds.DocumentType = 'Report_Card' 
+                    AND ds.IsSubmitted = 1 THEN 1 ELSE 0 END) as HasReportCard,
+                MAX(CASE WHEN ds.DocumentType = 'Form_137' 
+                    AND ds.IsSubmitted = 1 THEN 1 ELSE 0 END) as HasForm137
+            FROM student s
+            INNER JOIN enrollment e ON s.StudentID = e.StudentID
+            INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
+            INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
+            LEFT JOIN strand st ON e.StrandID = st.StrandID
+            LEFT JOIN sectionassignment sa ON e.EnrollmentID = sa.EnrollmentID AND sa.IsActive = 1
+            LEFT JOIN section sec ON sa.SectionID = sec.SectionID
+            LEFT JOIN documentsubmission ds ON e.EnrollmentID = ds.EnrollmentID
+            WHERE e.Status IN ('Pending', 'Confirmed', 'For_Review')";
             
             $params = [];
             
-            if ($academicYear) {
-                $query .= " AND AcademicYear = :academicYear";
-                $params[':academicYear'] = $academicYear;
+            if ($academicYearId) {
+                $query .= " AND e.AcademicYearID = :academicYearId";
+                $params[':academicYearId'] = $academicYearId;
             }
             
-            if ($gradeLevel) {
-                $query .= " AND GradeLevelName = :gradeLevel";
-                $params[':gradeLevel'] = $gradeLevel;
+            if ($gradeLevelId) {
+                $query .= " AND e.GradeLevelID = :gradeLevelId";
+                $params[':gradeLevelId'] = $gradeLevelId;
             }
             
-            $query .= " ORDER BY StudentName";
+            $query .= " GROUP BY s.StudentID, e.EnrollmentID
+                       HAVING (HasBirthCert = 0 OR HasReportCard = 0 OR HasForm137 = 0)
+                       ORDER BY s.LastName, s.FirstName";
             
             $stmt = $this->conn->prepare($query);
             $stmt->execute($params);
@@ -369,92 +328,55 @@ class DocumentSubmissionAPI {
     }
     
     /**
-     * Create document submission record for new enrollment
-     */
-    public function createDocumentSubmission($enrollmentId, $userId) {
-        try {
-            // Get enrollment details
-            $query = "SELECT StudentID, AcademicYear 
-                FROM Enrollment 
-                WHERE EnrollmentID = :enrollmentId";
-            $stmt = $this->conn->prepare($query);
-            $stmt->execute([':enrollmentId' => $enrollmentId]);
-            $enrollment = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if (!$enrollment) {
-                throw new Exception('Enrollment not found');
-            }
-            
-            // Check if record already exists
-            $checkQuery = "SELECT SubmissionID FROM DocumentSubmission 
-                WHERE EnrollmentID = :enrollmentId";
-            $checkStmt = $this->conn->prepare($checkQuery);
-            $checkStmt->execute([':enrollmentId' => $enrollmentId]);
-            
-            if ($checkStmt->fetch()) {
-                return [
-                    'success' => false,
-                    'message' => 'Document submission record already exists'
-                ];
-            }
-            
-            // Create new record
-            $insertQuery = "INSERT INTO DocumentSubmission 
-                (StudentID, EnrollmentID, AcademicYear, CreatedBy, UpdatedBy)
-                VALUES (:studentId, :enrollmentId, :academicYear, :userId, :userId)";
-            
-            $insertStmt = $this->conn->prepare($insertQuery);
-            $insertStmt->execute([
-                ':studentId' => $enrollment['StudentID'],
-                ':enrollmentId' => $enrollmentId,
-                ':academicYear' => $enrollment['AcademicYear'],
-                ':userId' => $userId
-            ]);
-            
-            $submissionId = $this->conn->lastInsertId();
-            
-            return [
-                'success' => true,
-                'message' => 'Document submission record created',
-                'submissionId' => $submissionId
-            ];
-            
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'message' => 'Error creating document submission: ' . $e->getMessage()
-            ];
-        }
-    }
-    
-    /**
      * Get document completion summary
      */
-    public function getCompletionSummary($academicYear) {
+    public function getCompletionSummary($academicYearId = null) {
         try {
             $query = "SELECT 
-                COUNT(*) AS TotalStudents,
-                SUM(CASE WHEN RequiredDocsComplete = 1 THEN 1 ELSE 0 END) AS CompleteCount,
-                SUM(CASE WHEN RequiredDocsComplete = 0 THEN 1 ELSE 0 END) AS IncompleteCount,
-                SUM(CASE WHEN HasPSABirthCert = 1 OR HasLocalBirthCert = 1 THEN 1 ELSE 0 END) AS HasBirthCertCount,
-                SUM(CASE WHEN HasReportCard = 1 THEN 1 ELSE 0 END) AS HasReportCardCount,
-                SUM(CASE WHEN HasForm137 = 1 THEN 1 ELSE 0 END) AS HasForm137Count
-            FROM vw_DocumentCompletionStatus";
+                COUNT(DISTINCT e.EnrollmentID) as TotalEnrollments,
+                COUNT(DISTINCT CASE 
+                    WHEN (SELECT COUNT(*) 
+                          FROM documentsubmission ds2 
+                          WHERE ds2.EnrollmentID = e.EnrollmentID 
+                          AND ds2.DocumentType IN ('PSA_Birth_Cert', 'Local_Birth_Cert')
+                          AND ds2.IsSubmitted = 1) > 0
+                    AND (SELECT COUNT(*) 
+                         FROM documentsubmission ds3 
+                         WHERE ds3.EnrollmentID = e.EnrollmentID 
+                         AND ds3.DocumentType = 'Report_Card'
+                         AND ds3.IsSubmitted = 1) > 0
+                    AND (SELECT COUNT(*) 
+                         FROM documentsubmission ds4 
+                         WHERE ds4.EnrollmentID = e.EnrollmentID 
+                         AND ds4.DocumentType = 'Form_137'
+                         AND ds4.IsSubmitted = 1) > 0
+                    THEN e.EnrollmentID 
+                END) as CompleteCount,
+                COUNT(DISTINCT ds.SubmissionID) as TotalDocSubmissions,
+                SUM(CASE WHEN ds.IsSubmitted = 1 THEN 1 ELSE 0 END) as SubmittedCount,
+                SUM(CASE WHEN ds.IsVerified = 1 THEN 1 ELSE 0 END) as VerifiedCount
+            FROM enrollment e
+            LEFT JOIN documentsubmission ds ON e.EnrollmentID = ds.EnrollmentID
+            WHERE e.Status IN ('Pending', 'Confirmed', 'For_Review')";
             
-            if ($academicYear && $academicYear !== 'all') {
-                $query .= " WHERE AcademicYear = :academicYear";
+            if ($academicYearId) {
+                $query .= " AND e.AcademicYearID = :academicYearId";
             }
             
             $stmt = $this->conn->prepare($query);
-            if ($academicYear && $academicYear !== 'all') {
-                $stmt->execute([':academicYear' => $academicYear]);
+            
+            if ($academicYearId) {
+                $stmt->execute([':academicYearId' => $academicYearId]);
             } else {
                 $stmt->execute();
             }
             
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            $result['IncompleteCount'] = $result['TotalEnrollments'] - $result['CompleteCount'];
+            
             return [
                 'success' => true,
-                'data' => $stmt->fetch(PDO::FETCH_ASSOC)
+                'data' => $result
             ];
             
         } catch (PDOException $e) {
@@ -462,6 +384,57 @@ class DocumentSubmissionAPI {
                 'success' => false,
                 'message' => 'Error fetching summary: ' . $e->getMessage()
             ];
+        }
+    }
+    
+    /**
+     * Log document action to audit log
+     */
+    private function logDocumentAction($submissionId, $isSubmitted, $isVerified) {
+        try {
+            // Get document info
+            $query = "SELECT ds.EnrollmentID, ds.DocumentType, e.StudentID
+                     FROM documentsubmission ds
+                     INNER JOIN enrollment e ON ds.EnrollmentID = e.EnrollmentID
+                     WHERE ds.SubmissionID = :submissionId";
+            
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute([':submissionId' => $submissionId]);
+            $docInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($docInfo) {
+                $action = 'UPDATE';
+                $actionDesc = "Document {$docInfo['DocumentType']} updated";
+                
+                if ($isSubmitted !== null) {
+                    $action = 'DOCUMENT_SUBMISSION';
+                    $actionDesc = $isSubmitted 
+                        ? "Document {$docInfo['DocumentType']} marked as submitted"
+                        : "Document {$docInfo['DocumentType']} marked as not submitted";
+                }
+                
+                if ($isVerified !== null) {
+                    $action = 'DOCUMENT_VERIFICATION';
+                    $actionDesc = $isVerified
+                        ? "Document {$docInfo['DocumentType']} verified"
+                        : "Document {$docInfo['DocumentType']} unverified";
+                }
+                
+                $auditQuery = "INSERT INTO auditlog 
+                              (TableName, RecordID, Action, ActionDescription, ChangedAt)
+                              VALUES ('documentsubmission', :recordId, :action, :actionDesc, NOW())";
+                
+                $auditStmt = $this->conn->prepare($auditQuery);
+                $auditStmt->execute([
+                    ':recordId' => $submissionId,
+                    ':action' => $action,
+                    ':actionDesc' => $actionDesc
+                ]);
+            }
+            
+        } catch (PDOException $e) {
+            // Log error but don't fail the main operation
+            error_log("Audit log error: " . $e->getMessage());
         }
     }
 }
@@ -484,45 +457,30 @@ try {
     switch ($_SERVER['REQUEST_METHOD']) {
         case 'GET':
             if ($action === 'get_status') {
-                $studentId = $_GET['student_id'] ?? null;
                 $enrollmentId = $_GET['enrollment_id'] ?? null;
                 
-                if (!$studentId) {
+                if (!$enrollmentId) {
                     echo json_encode([
                         'success' => false,
-                        'message' => 'Student ID required'
+                        'message' => 'Enrollment ID required'
                     ]);
                     exit;
                 }
                 
-                $result = $api->getDocumentStatus($studentId, $enrollmentId);
-                echo json_encode($result);
-                
-            } elseif ($action === 'get_history') {
-                $submissionId = $_GET['submission_id'] ?? null;
-                
-                if (!$submissionId) {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'Submission ID required'
-                    ]);
-                    exit;
-                }
-                
-                $result = $api->getDocumentHistory($submissionId);
+                $result = $api->getDocumentStatus($enrollmentId);
                 echo json_encode($result);
                 
             } elseif ($action === 'get_incomplete') {
-                $academicYear = $_GET['academic_year'] ?? null;
-                $gradeLevel = $_GET['grade_level'] ?? null;
+                $academicYearId = $_GET['academic_year_id'] ?? null;
+                $gradeLevelId = $_GET['grade_level_id'] ?? null;
                 
-                $result = $api->getIncompleteDocuments($academicYear, $gradeLevel);
+                $result = $api->getIncompleteDocuments($academicYearId, $gradeLevelId);
                 echo json_encode($result);
                 
             } elseif ($action === 'get_summary') {
-                $academicYear = $_GET['academic_year'] ?? date('Y') . '-' . (date('Y') + 1);
+                $academicYearId = $_GET['academic_year_id'] ?? null;
                 
-                $result = $api->getCompletionSummary($academicYear);
+                $result = $api->getCompletionSummary($academicYearId);
                 echo json_encode($result);
                 
             } else {
@@ -537,38 +495,22 @@ try {
         case 'POST':
             $data = json_decode(file_get_contents('php://input'), true);
             
-            if ($action === 'update_checklist') {
-                $result = $api->updateDocumentChecklist($data);
-                echo json_encode($result);
-                
-            } elseif ($action === 'final_verification') {
-                $submissionId = $data['SubmissionID'] ?? null;
-                $userId = $data['UserID'] ?? null;
-                
-                if (!$submissionId || !$userId) {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'Missing required fields'
-                    ]);
-                    exit;
-                }
-                
-                $result = $api->finalVerification($submissionId, $userId);
+            if ($action === 'update_document') {
+                $result = $api->updateDocument($data);
                 echo json_encode($result);
                 
             } elseif ($action === 'create') {
                 $enrollmentId = $data['EnrollmentID'] ?? null;
-                $userId = $data['UserID'] ?? null;
                 
-                if (!$enrollmentId || !$userId) {
+                if (!$enrollmentId) {
                     echo json_encode([
                         'success' => false,
-                        'message' => 'Missing required fields'
+                        'message' => 'Enrollment ID required'
                     ]);
                     exit;
                 }
                 
-                $result = $api->createDocumentSubmission($enrollmentId, $userId);
+                $result = $api->createDocumentSubmissions($enrollmentId);
                 echo json_encode($result);
                 
             } else {

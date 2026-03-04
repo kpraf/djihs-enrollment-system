@@ -1,15 +1,15 @@
 // =====================================================
-// Document Submission Handler
+// Document Submission Handler - REVISED FOR NORMALIZED DB
 // File: js/document-submission-handler.js
-// Created: 2026-02-08
-// Fixed: 2026-02-14 - Better error handling and validation
+// Updated: 2026-03-04
+// Revised to work with normalized documentsubmission table
 // =====================================================
 
 class DocumentSubmissionHandler {
     constructor() {
         this.currentUser = null;
-        this.currentStudentId = null;
-        this.currentSubmissionId = null;
+        this.currentEnrollmentId = null;
+        this.documentData = null;
         this.init();
     }
 
@@ -36,55 +36,47 @@ class DocumentSubmissionHandler {
     }
 
     /**
-     * Show document checklist modal for a student
+     * Show document checklist modal for a student enrollment
      */
-    async showDocumentChecklist(studentId, studentName, enrollmentId = null) {
-        this.currentStudentId = studentId;
+    async showDocumentChecklist(enrollmentId, studentName) {
+        this.currentEnrollmentId = enrollmentId;
 
         try {
             // Fetch document status
-            const url = enrollmentId 
-                ? `../backend/api/document-submission.php?action=get_status&student_id=${studentId}&enrollment_id=${enrollmentId}`
-                : `../backend/api/document-submission.php?action=get_status&student_id=${studentId}`;
+            const url = `../backend/api/document-submission.php?action=get_status&enrollment_id=${enrollmentId}`;
             
             const response = await fetch(url);
             const result = await response.json();
 
-            let documentData = null;
-            
             if (result.success && result.data) {
-                documentData = result.data;
-                this.currentSubmissionId = documentData.SubmissionID;
+                this.documentData = result.data;
+                this.renderDocumentModal(studentName || result.data.studentName);
             } else {
-                // Create new document submission record if doesn't exist
-                if (enrollmentId) {
-                    const createResponse = await fetch('../backend/api/document-submission.php?action=create', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            EnrollmentID: enrollmentId,
-                            UserID: this.currentUser.UserID
-                        })
-                    });
-                    
-                    const createResult = await createResponse.json();
-                    if (createResult.success) {
-                        this.currentSubmissionId = createResult.submissionId;
-                        // Fetch the newly created record
-                        return this.showDocumentChecklist(studentId, studentName, enrollmentId);
-                    }
+                // Create new document submission records if they don't exist
+                const createResponse = await fetch('../backend/api/document-submission.php?action=create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        EnrollmentID: enrollmentId
+                    })
+                });
+                
+                const createResult = await createResponse.json();
+                if (createResult.success) {
+                    // Retry loading the documents
+                    return this.showDocumentChecklist(enrollmentId, studentName);
+                } else {
+                    alert('Error creating document records: ' + createResult.message);
                 }
             }
 
-            this.renderDocumentModal(studentName, documentData);
-
         } catch (error) {
             console.error('Error loading document checklist:', error);
-            alert('Error loading document checklist');
+            alert('Error loading document checklist: ' + error.message);
         }
     }
 
-    renderDocumentModal(studentName, documentData) {
+    renderDocumentModal(studentName) {
         const existingModal = document.getElementById('documentChecklistModal');
         if (existingModal) existingModal.remove();
 
@@ -92,7 +84,14 @@ class DocumentSubmissionHandler {
         modal.id = 'documentChecklistModal';
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
         
-        const data = documentData || {};
+        const documents = this.documentData.documents || [];
+        const isComplete = this.documentData.isComplete || false;
+        
+        // Organize documents by type for easier access
+        const docMap = {};
+        documents.forEach(doc => {
+            docMap[doc.DocumentType] = doc;
+        });
         
         modal.innerHTML = `
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
@@ -115,11 +114,11 @@ class DocumentSubmissionHandler {
                             <div>
                                 <h4 class="font-semibold text-blue-900 dark:text-blue-300">Document Completion Status</h4>
                                 <p class="text-sm text-blue-700 dark:text-blue-400 mt-1">
-                                    ${this.getCompletionText(data)}
+                                    ${this.getCompletionText()}
                                 </p>
                             </div>
                             <div class="text-right">
-                                ${data.AllDocsComplete ? `
+                                ${isComplete ? `
                                     <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300">
                                         <span class="material-icons-outlined text-sm mr-1">check_circle</span>
                                         Complete
@@ -138,114 +137,14 @@ class DocumentSubmissionHandler {
                     <div>
                         <h4 class="font-semibold text-gray-900 dark:text-white mb-4">Required Documents</h4>
                         
-                        <!-- Birth Certificate -->
                         <div class="space-y-4">
-                            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                                <div class="flex items-start gap-4">
-                                    <input 
-                                        type="checkbox" 
-                                        id="doc-psa"
-                                        ${data.HasPSABirthCert ? 'checked' : ''}
-                                        class="form-checkbox h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary dark:border-gray-600 dark:bg-gray-700 mt-1"
-                                    />
-                                    <div class="flex-1">
-                                        <label for="doc-psa" class="block font-medium text-gray-900 dark:text-white cursor-pointer">
-                                            PSA Birth Certificate
-                                            <span class="ml-2 text-xs text-red-600 dark:text-red-400">(Required)</span>
-                                        </label>
-                                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                            Original and photocopy from Philippine Statistics Authority
-                                        </p>
-                                        ${data.PSASubmissionDate ? `
-                                            <p class="text-xs text-green-600 dark:text-green-400 mt-2">
-                                                ✓ Submitted: ${new Date(data.PSASubmissionDate).toLocaleDateString()}
-                                                ${data.PSAVerifiedByName ? ` by ${data.PSAVerifiedByName}` : ''}
-                                            </p>
-                                        ` : ''}
-                                        ${data.PSANotes ? `
-                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 italic">${data.PSANotes}</p>
-                                        ` : ''}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                                <div class="flex items-start gap-4">
-                                    <input 
-                                        type="checkbox" 
-                                        id="doc-local"
-                                        ${data.HasLocalBirthCert ? 'checked' : ''}
-                                        class="form-checkbox h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary dark:border-gray-600 dark:bg-gray-700 mt-1"
-                                    />
-                                    <div class="flex-1">
-                                        <label for="doc-local" class="block font-medium text-gray-900 dark:text-white cursor-pointer">
-                                            Secondary Birth Certificate
-                                            <span class="ml-2 text-xs text-gray-600 dark:text-gray-400">(If PSA unavailable)</span>
-                                        </label>
-                                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                            Local Civil Registrar, Baptismal Certificate, or Barangay Certification
-                                        </p>
-                                        ${data.LocalBirthCertSubmissionDate ? `
-                                            <p class="text-xs text-green-600 dark:text-green-400 mt-2">
-                                                ✓ Submitted: ${new Date(data.LocalBirthCertSubmissionDate).toLocaleDateString()}
-                                                ${data.LocalBirthCertVerifiedByName ? ` by ${data.LocalBirthCertVerifiedByName}` : ''}
-                                            </p>
-                                        ` : ''}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                                <div class="flex items-start gap-4">
-                                    <input 
-                                        type="checkbox" 
-                                        id="doc-reportcard"
-                                        ${data.HasReportCard ? 'checked' : ''}
-                                        class="form-checkbox h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary dark:border-gray-600 dark:bg-gray-700 mt-1"
-                                    />
-                                    <div class="flex-1">
-                                        <label for="doc-reportcard" class="block font-medium text-gray-900 dark:text-white cursor-pointer">
-                                            Report Card (SF9/Form 138)
-                                            <span class="ml-2 text-xs text-red-600 dark:text-red-400">(Required)</span>
-                                        </label>
-                                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                            For transferees and moving-up students
-                                        </p>
-                                        ${data.ReportCardSubmissionDate ? `
-                                            <p class="text-xs text-green-600 dark:text-green-400 mt-2">
-                                                ✓ Submitted: ${new Date(data.ReportCardSubmissionDate).toLocaleDateString()}
-                                                ${data.ReportCardVerifiedByName ? ` by ${data.ReportCardVerifiedByName}` : ''}
-                                            </p>
-                                        ` : ''}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                                <div class="flex items-start gap-4">
-                                    <input 
-                                        type="checkbox" 
-                                        id="doc-form137"
-                                        ${data.HasForm137 ? 'checked' : ''}
-                                        class="form-checkbox h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary dark:border-gray-600 dark:bg-gray-700 mt-1"
-                                    />
-                                    <div class="flex-1">
-                                        <label for="doc-form137" class="block font-medium text-gray-900 dark:text-white cursor-pointer">
-                                            Form 137 (SF10 - Permanent Record)
-                                            <span class="ml-2 text-xs text-red-600 dark:text-red-400">(Required)</span>
-                                        </label>
-                                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                            Required for verifying student records from previous schools
-                                        </p>
-                                        ${data.Form137SubmissionDate ? `
-                                            <p class="text-xs text-green-600 dark:text-green-400 mt-2">
-                                                ✓ Submitted: ${new Date(data.Form137SubmissionDate).toLocaleDateString()}
-                                                ${data.Form137VerifiedByName ? ` by ${data.Form137VerifiedByName}` : ''}
-                                            </p>
-                                        ` : ''}
-                                    </div>
-                                </div>
-                            </div>
+                            ${this.renderDocumentItem(docMap['PSA_Birth_Cert'], 'PSA Birth Certificate', 'Original and photocopy from Philippine Statistics Authority', true)}
+                            
+                            ${this.renderDocumentItem(docMap['Local_Birth_Cert'], 'Secondary Birth Certificate', 'Local Civil Registrar, Baptismal Certificate, or Barangay Certification (If PSA unavailable)', false)}
+                            
+                            ${this.renderDocumentItem(docMap['Report_Card'], 'Report Card (SF9/Form 138)', 'For transferees and moving-up students', true)}
+                            
+                            ${this.renderDocumentItem(docMap['Form_137'], 'Form 137 (SF10 - Permanent Record)', 'Required for verifying student records from previous schools', true)}
                         </div>
                     </div>
 
@@ -254,73 +153,11 @@ class DocumentSubmissionHandler {
                         <h4 class="font-semibold text-gray-900 dark:text-white mb-4">Additional Documents (Optional)</h4>
                         
                         <div class="space-y-4">
-                            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                                <div class="flex items-start gap-4">
-                                    <input 
-                                        type="checkbox" 
-                                        id="doc-goodmoral"
-                                        ${data.HasGoodMoral ? 'checked' : ''}
-                                        class="form-checkbox h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary dark:border-gray-600 dark:bg-gray-700 mt-1"
-                                    />
-                                    <div class="flex-1">
-                                        <label for="doc-goodmoral" class="block font-medium text-gray-900 dark:text-white cursor-pointer">
-                                            Certificate of Good Moral Character
-                                        </label>
-                                        ${data.GoodMoralSubmissionDate ? `
-                                            <p class="text-xs text-green-600 dark:text-green-400 mt-2">
-                                                ✓ Submitted: ${new Date(data.GoodMoralSubmissionDate).toLocaleDateString()}
-                                            </p>
-                                        ` : ''}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                                <div class="flex items-start gap-4">
-                                    <input 
-                                        type="checkbox" 
-                                        id="doc-transfer"
-                                        ${data.HasTransferCert ? 'checked' : ''}
-                                        class="form-checkbox h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary dark:border-gray-600 dark:bg-gray-700 mt-1"
-                                    />
-                                    <div class="flex-1">
-                                        <label for="doc-transfer" class="block font-medium text-gray-900 dark:text-white cursor-pointer">
-                                            Transfer Certificate
-                                            <span class="ml-2 text-xs text-gray-600 dark:text-gray-400">(For transferees)</span>
-                                        </label>
-                                        ${data.TransferCertSubmissionDate ? `
-                                            <p class="text-xs text-green-600 dark:text-green-400 mt-2">
-                                                ✓ Submitted: ${new Date(data.TransferCertSubmissionDate).toLocaleDateString()}
-                                            </p>
-                                        ` : ''}
-                                    </div>
-                                </div>
-                            </div>
+                            ${this.renderDocumentItem(docMap['Good_Moral'], 'Certificate of Good Moral Character', 'From previous school', false)}
+                            
+                            ${this.renderDocumentItem(docMap['Transfer_Cert'], 'Transfer Certificate', 'For transferees from other schools', false)}
                         </div>
                     </div>
-
-                    <!-- General Notes -->
-                    <div>
-                        <label class="block font-medium text-gray-900 dark:text-white mb-2">General Notes</label>
-                        <textarea 
-                            id="doc-general-notes"
-                            rows="3" 
-                            class="form-textarea w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary"
-                            placeholder="Add notes about document submission..."
-                        >${data.GeneralNotes || ''}</textarea>
-                    </div>
-
-                    ${data.FinalVerificationDate ? `
-                        <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                            <div class="flex items-center gap-2 text-green-800 dark:text-green-300">
-                                <span class="material-icons-outlined">verified</span>
-                                <div>
-                                    <p class="font-semibold">All Documents Verified</p>
-                                    <p class="text-sm">Verified by ${data.FinalVerifiedByName} on ${new Date(data.FinalVerificationDate).toLocaleDateString()}</p>
-                                </div>
-                            </div>
-                        </div>
-                    ` : ''}
                 </div>
 
                 <!-- Footer -->
@@ -328,171 +165,161 @@ class DocumentSubmissionHandler {
                     <button onclick="document.getElementById('documentChecklistModal').remove()" class="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
                         Close
                     </button>
-                    ${!data.AllDocsComplete && this.canVerify() ? `
-                        <button id="btn-verify-all" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
-                            <span class="material-icons-outlined text-[18px]">verified</span>
-                            Final Verification
-                        </button>
-                    ` : ''}
-                    ${this.canCheckDocuments() ? `
-                        <button id="btn-save-documents" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
-                            <span class="material-icons-outlined text-[18px]">save</span>
-                            ${this.currentUser.Role === 'Adviser' ? 'Update Checklist' : 'Save Changes'}
-                        </button>
-                    ` : ''}
                 </div>
             </div>
         `;
         
         document.body.appendChild(modal);
 
-        // Bind events
-        this.bindDocumentModalEvents();
+        // Bind checkbox events
+        this.bindDocumentEvents();
     }
 
-    bindDocumentModalEvents() {
-        const saveBtn = document.getElementById('btn-save-documents');
-        const verifyBtn = document.getElementById('btn-verify-all');
+    renderDocumentItem(doc, title, description, isRequired) {
+        if (!doc) return '';
+        
+        const canEdit = this.canCheckDocuments();
+        const isSubmitted = doc.IsSubmitted == 1;
+        const isVerified = doc.IsVerified == 1;
+        
+        return `
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <div class="flex items-start gap-4">
+                    <input 
+                        type="checkbox" 
+                        id="doc-${doc.SubmissionID}"
+                        data-submission-id="${doc.SubmissionID}"
+                        ${isSubmitted ? 'checked' : ''}
+                        ${canEdit ? '' : 'disabled'}
+                        class="form-checkbox h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary dark:border-gray-600 dark:bg-gray-700 mt-1 document-checkbox"
+                    />
+                    <div class="flex-1">
+                        <label for="doc-${doc.SubmissionID}" class="block font-medium text-gray-900 dark:text-white cursor-pointer">
+                            ${title}
+                            ${isRequired ? '<span class="ml-2 text-xs text-red-600 dark:text-red-400">(Required)</span>' : ''}
+                        </label>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                            ${description}
+                        </p>
+                        ${isSubmitted ? `
+                            <p class="text-xs text-green-600 dark:text-green-400 mt-2">
+                                ✓ Submitted and verified
+                            </p>
+                        ` : ''}
+                        ${doc.Notes ? `
+                            <div class="mt-2">
+                                <p class="text-xs text-gray-500 dark:text-gray-400 italic">${doc.Notes}</p>
+                            </div>
+                        ` : ''}
+                        ${canEdit ? `
+                            <div class="mt-2">
+                                <input 
+                                    type="text" 
+                                    id="doc-notes-${doc.SubmissionID}"
+                                    data-submission-id="${doc.SubmissionID}"
+                                    placeholder="Add notes..."
+                                    value="${doc.Notes || ''}"
+                                    class="form-input text-xs w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white document-notes"
+                                />
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
 
-        if (saveBtn) {
-            saveBtn.addEventListener('click', () => this.saveDocumentChanges());
-        }
+    bindDocumentEvents() {
+        // Bind checkbox change events
+        const checkboxes = document.querySelectorAll('.document-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                this.updateDocument(e.target);
+            });
+        });
 
-        if (verifyBtn) {
-            verifyBtn.addEventListener('click', () => this.finalVerification());
-        }
-
-        // Bind checkbox events
-        const checkboxes = [
-            'doc-psa', 'doc-local', 'doc-reportcard', 
-            'doc-form137', 'doc-goodmoral', 'doc-transfer'
-        ];
-
-        checkboxes.forEach(id => {
-            const checkbox = document.getElementById(id);
-            if (checkbox) {
-                checkbox.addEventListener('change', (e) => {
-                    // Auto-save on change for better UX
-                    this.updateSingleDocument(id, e.target.checked);
-                });
-            }
+        // Bind notes blur events (save when user leaves field)
+        const notesInputs = document.querySelectorAll('.document-notes');
+        notesInputs.forEach(input => {
+            input.addEventListener('blur', (e) => {
+                this.updateDocumentNotes(e.target);
+            });
         });
     }
 
-    async updateSingleDocument(docId, isChecked) {
-        const documentTypeMap = {
-            'doc-psa': 'PSA',
-            'doc-local': 'Local',
-            'doc-reportcard': 'ReportCard',
-            'doc-form137': 'Form137',
-            'doc-goodmoral': 'GoodMoral',
-            'doc-transfer': 'TransferCert'
-        };
-
-        const documentType = documentTypeMap[docId];
-
-        if (!this.currentSubmissionId) {
-            alert('Error: No submission ID found');
-            const checkbox = document.getElementById(docId);
-            if (checkbox) checkbox.checked = !isChecked;
-            return;
-        }
-
-        if (!this.currentUser || !this.currentUser.UserID) {
-            alert('Error: User information not available');
-            const checkbox = document.getElementById(docId);
-            if (checkbox) checkbox.checked = !isChecked;
-            return;
-        }
+    async updateDocument(checkbox) {
+        const submissionId = checkbox.dataset.submissionId;
+        const value = checkbox.checked ? 1 : 0;
 
         try {
-            // Prepare payload - ensure all required fields are present
             const payload = {
-                SubmissionID: this.currentSubmissionId,
-                DocumentType: documentType,
-                IsChecked: isChecked ? 1 : 0,  // Explicitly convert to 1 or 0
-                UserID: this.currentUser.UserID
+                SubmissionID: parseInt(submissionId),
+                IsSubmitted: value,
+                IsVerified: value  // When checked, mark as both submitted AND verified
             };
 
-            console.log('Sending payload:', payload); // Debug log
-
-            const response = await fetch('../backend/api/document-submission.php?action=update_checklist', {
+            const response = await fetch('../backend/api/document-submission.php?action=update_document', {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
             const result = await response.json();
-            console.log('Server response:', result); // Debug log
 
             if (!result.success) {
                 alert('Error updating document: ' + result.message);
                 // Revert checkbox
-                const checkbox = document.getElementById(docId);
-                if (checkbox) checkbox.checked = !isChecked;
+                checkbox.checked = !checkbox.checked;
             } else {
-                // Show subtle success feedback
                 console.log('Document updated successfully');
+                // Optionally refresh the modal to show updated completion status
+                // this.showDocumentChecklist(this.currentEnrollmentId);
             }
 
         } catch (error) {
             console.error('Error updating document:', error);
             alert('Error updating document: ' + error.message);
-            // Revert checkbox
-            const checkbox = document.getElementById(docId);
-            if (checkbox) checkbox.checked = !isChecked;
+            checkbox.checked = !checkbox.checked;
         }
     }
 
-    async saveDocumentChanges() {
-        // This is for saving notes or any other manual changes
-        const notes = document.getElementById('doc-general-notes')?.value;
-
-        // Save is already handled by individual checkbox changes
-        alert('Changes saved successfully!');
-    }
-
-    async finalVerification() {
-        if (!confirm('Mark all documents as complete and verified?')) {
-            return;
-        }
+    async updateDocumentNotes(input) {
+        const submissionId = input.dataset.submissionId;
+        const notes = input.value.trim();
 
         try {
-            const response = await fetch('../backend/api/document-submission.php?action=final_verification', {
+            const payload = {
+                SubmissionID: parseInt(submissionId),
+                Notes: notes || null
+            };
+
+            const response = await fetch('../backend/api/document-submission.php?action=update_document', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    SubmissionID: this.currentSubmissionId,
-                    UserID: this.currentUser.UserID
-                })
+                body: JSON.stringify(payload)
             });
 
             const result = await response.json();
 
-            if (result.success) {
-                alert('Documents verified successfully!');
-                document.getElementById('documentChecklistModal').remove();
-                // Refresh parent page if needed
-                if (typeof window.studentManagement !== 'undefined') {
-                    window.studentManagement.loadStudents();
-                }
+            if (!result.success) {
+                console.error('Error updating notes:', result.message);
             } else {
-                alert('Error verifying documents: ' + result.message);
+                console.log('Notes updated successfully');
             }
 
         } catch (error) {
-            console.error('Error verifying documents:', error);
-            alert('Error verifying documents');
+            console.error('Error updating notes:', error);
         }
     }
 
-    getCompletionText(data) {
-        if (!data) return 'No documents submitted yet';
+    getCompletionText() {
+        if (!this.documentData) return 'No documents submitted yet';
         
-        const hasBirthCert = data.HasPSABirthCert || data.HasLocalBirthCert;
-        const requiredCount = (hasBirthCert ? 1 : 0) + (data.HasReportCard ? 1 : 0) + (data.HasForm137 ? 1 : 0);
+        const hasBirthCert = this.documentData.hasBirthCert;
+        const hasReportCard = this.documentData.hasReportCard;
+        const hasForm137 = this.documentData.hasForm137;
+        
+        const requiredCount = (hasBirthCert ? 1 : 0) + (hasReportCard ? 1 : 0) + (hasForm137 ? 1 : 0);
         
         if (requiredCount === 3) {
             return 'All required documents submitted ✓';
@@ -501,14 +328,8 @@ class DocumentSubmissionHandler {
         }
     }
 
-    canVerify() {
-        // Registrar and ICT Coordinator can do final verification
-        // Advisers can check/uncheck but not do final verification
-        return ['Registrar', 'ICT_Coordinator'].includes(this.currentUser.Role);
-    }
-
     canCheckDocuments() {
-        // All three roles can check/uncheck documents
+        // Adviser, Registrar, and ICT Coordinator can check/submit documents
         return ['Adviser', 'Registrar', 'ICT_Coordinator'].includes(this.currentUser.Role);
     }
 }

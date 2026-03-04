@@ -1,378 +1,282 @@
 // =====================================================
-// Enhanced Student Management Handler
+// Student Management Handler — djihs_enrollment_v2 schema
 // File: js/student-management.js
-// Updated: 2026-02-20 - Removed specific revision request, unified edit flow, fixed audit alignment
+//
+// FIXES vs old version:
+//  - renderStudentForm(): removed Age input (derived, not stored), removed ZipCode
+//    (not in schema), replaced flat Father/Mother/Guardian inputs with data from
+//    data.guardians{} (parentguardian table), fixed EnrollmentStatus dropdown
+//    (removed Transferred_In — not in student.EnrollmentStatus ENUM),
+//    Academic Year is now read-only (derived from enrollment.AcademicYearID FK),
+//    removed IsTransferee/CreatedAt/UpdatedAt from "Additional Information" section
+//  - buildFieldDiff(): removed Age, ZipCode, flat parent fields;
+//    guardian diff now tracks Father/Mother/Guardian via guardians{} structure
+//  - saveStudent() formData: same removals, guardian data sent as nested guardians{}
+//  - normalizeStatus(): removed Transferred_In (not in enrollment.Status ENUM)
+//  - getStatusBadge(): maps all 6 enrollment.Status values correctly
+//  - showStudentDetailsModal(): passes student.guardians{} to renderStudentForm
 // =====================================================
 
 class StudentManagementHandler {
     constructor() {
-        this.currentUser = null;
-        this.students = [];
-        this.filteredStudents = [];
-        this.currentPage = 1;
-        this.itemsPerPage = 10;
-        this.selectedStudents = new Set();
-        this.strands = [];
-        this.gradeLevels = [];
-        this.sections = [];
+        this.currentUser          = null;
+        this.students             = [];
+        this.filteredStudents     = [];
+        this.currentPage          = 1;
+        this.itemsPerPage         = 10;
+        this.selectedStudents     = new Set();
+        this.strands              = [];
+        this.gradeLevels          = [];
         this.currentEditingStudent = null;
         this.init();
     }
 
     init() {
         this.currentUser = this.getCurrentUser();
-        
         if (!this.currentUser) {
-            alert('You must be logged in to access this page');
+            alert('You must be logged in to access this page.');
             window.location.href = '../login.html';
             return;
         }
-
         this.bindEventListeners();
         this.loadGradeLevels();
         this.loadStrands();
         this.loadStudents();
         this.displayUserInfo();
-        // Initialize new handlers
         this.documentHandler = new DocumentSubmissionHandler();
     }
 
     displayUserInfo() {
-        const userData = this.currentUser;
-        const userNameEl = document.querySelector('.user-name');
-        const userInitialsEl = document.querySelector('.user-initials');
-        
-        if (userData.FirstName && userData.LastName && userNameEl && userInitialsEl) {
-            userNameEl.textContent = `${userData.FirstName} ${userData.LastName}`;
-            userInitialsEl.textContent = `${userData.FirstName[0]}${userData.LastName[0]}`.toUpperCase();
+        const u  = this.currentUser;
+        const el = (id) => document.getElementById(id);
+        if (u.FirstName && u.LastName) {
+            if (el('userName'))    el('userName').textContent    = `${u.FirstName} ${u.LastName}`;
+            if (el('userInitials'))el('userInitials').textContent = (u.FirstName[0] + u.LastName[0]).toUpperCase();
+            if (el('userRole'))    el('userRole').textContent    = u.Role?.replace(/_/g, ' ') || '--';
         }
     }
 
     getCurrentUser() {
-        const userDataString = localStorage.getItem('user');
-        if (!userDataString) return null;
-        
-        try {
-            return JSON.parse(userDataString);
-        } catch (error) {
-            console.error('Error parsing user data:', error);
-            return null;
-        }
+        try { return JSON.parse(localStorage.getItem('user') || 'null'); }
+        catch { return null; }
     }
 
+    // ──────────────────────────────────────────────
+    // EVENT LISTENERS
+    // ──────────────────────────────────────────────
     bindEventListeners() {
-        // Search input - debounced
+        // Search — debounced
         const searchInput = document.getElementById('search');
         if (searchInput) {
-            let searchTimeout;
-            searchInput.addEventListener('input', (e) => {
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(() => {
-                    this.applyFilters();
-                }, 300);
+            let t;
+            searchInput.addEventListener('input', () => {
+                clearTimeout(t);
+                t = setTimeout(() => this.applyFilters(), 300);
             });
         }
 
-        // Filter dropdowns
-        const filters = ['grade-level', 'section', 'enrollment-status', 'academic-year', 'strand'];
-        filters.forEach(filterId => {
-            const filter = document.getElementById(filterId);
-            if (filter) filter.addEventListener('change', () => this.applyFilters());
+        ['grade-level','section','enrollment-status','academic-year','strand'].forEach(id => {
+            document.getElementById(id)?.addEventListener('change', () => this.applyFilters());
         });
 
-        // Buttons
-        const applyBtn = document.querySelector('button[data-action="apply-filters"]');
-        const clearBtn = document.querySelector('button[data-action="clear-filters"]');
-        const addBtn = document.querySelector('button[data-action="add-student"]');
+        document.querySelector('button[data-action="apply-filters"]')
+            ?.addEventListener('click',  () => this.applyFilters());
+        document.querySelector('button[data-action="clear-filters"]')
+            ?.addEventListener('click',  () => this.clearFilters());
+        document.querySelector('button[data-action="add-student"]')
+            ?.addEventListener('click',  () => this.addNewStudent());
 
-        if (applyBtn) applyBtn.addEventListener('click', () => this.applyFilters());
-        if (clearBtn) clearBtn.addEventListener('click', () => this.clearFilters());
-        if (addBtn) addBtn.addEventListener('click', () => this.addNewStudent());
+        document.querySelector('thead input[type="checkbox"]')
+            ?.addEventListener('change', (e) => this.handleSelectAll(e.target.checked));
 
-        // Select all checkbox
-        const selectAllCheckbox = document.querySelector('thead input[type="checkbox"]');
-        if (selectAllCheckbox) {
-            selectAllCheckbox.addEventListener('change', (e) => {
-                this.handleSelectAll(e.target.checked);
-            });
-        }
-
-        // Grade level change to show/hide strand filter
-        const gradeFilter = document.getElementById('grade-level');
-        if (gradeFilter) {
-            gradeFilter.addEventListener('change', () => this.toggleStrandFilter());
-        }
+        document.getElementById('grade-level')
+            ?.addEventListener('change', () => this.toggleStrandFilter());
     }
 
     toggleStrandFilter() {
-        const gradeFilter = document.getElementById('grade-level');
-        const strandFilter = document.getElementById('strand');
-        const strandContainer = strandFilter?.closest('.flex.flex-col');
-        
-        if (!gradeFilter || !strandContainer) return;
-
-        const selectedGrade = gradeFilter.value;
-        
-        // Show strand filter only for grades 11 and 12
-        if (selectedGrade === '11' || selectedGrade === '12') {
-            strandContainer.classList.remove('hidden');
-        } else {
-            strandContainer.classList.add('hidden');
-            if (strandFilter) strandFilter.selectedIndex = 0;
-        }
+        const grade  = document.getElementById('grade-level');
+        const strand = document.getElementById('strand');
+        const wrap   = strand?.closest('.flex.flex-col');
+        if (!grade || !wrap) return;
+        const show = (grade.value === '11' || grade.value === '12');
+        wrap.classList.toggle('hidden', !show);
+        if (!show && strand) strand.selectedIndex = 0;
     }
 
+    // ──────────────────────────────────────────────
+    // DATA LOADING
+    // ──────────────────────────────────────────────
     async loadGradeLevels() {
         try {
-            const response = await fetch('../backend/api/student-update.php?action=get_grade_levels');
-            const result = await response.json();
-
-            if (result.success) {
-                this.gradeLevels = result.gradeLevels || [];
-            } else {
-                console.error('Failed to load grade levels:', result.message);
-            }
-        } catch (error) {
-            console.error('Error loading grade levels:', error);
-        }
+            const r = await fetch('../backend/api/student-update.php?action=get_grade_levels');
+            const d = await r.json();
+            if (d.success) this.gradeLevels = d.gradeLevels || [];
+        } catch (e) { console.error('Error loading grade levels:', e); }
     }
 
     async loadStrands() {
         try {
-            const response = await fetch('../backend/api/students.php?action=get_strands');
-            const result = await response.json();
-
-            if (result.success) {
-                this.strands = result.strands || [];
+            const r = await fetch('../backend/api/students.php?action=get_strands');
+            const d = await r.json();
+            if (d.success) {
+                this.strands = d.strands || [];
                 this.populateStrandFilter();
             }
-        } catch (error) {
-            console.error('Error loading strands:', error);
-        }
+        } catch (e) { console.error('Error loading strands:', e); }
     }
 
     populateStrandFilter() {
-        const strandFilter = document.getElementById('strand');
-        if (!strandFilter) return;
-
-        strandFilter.innerHTML = '<option value="">All Strands</option>';
-        this.strands.forEach(strand => {
-            strandFilter.innerHTML += `<option value="${strand.StrandName}">${strand.StrandCode} - ${strand.StrandName}</option>`;
+        const sel = document.getElementById('strand');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">All Strands</option>';
+        this.strands.forEach(s => {
+            sel.innerHTML += `<option value="${this.esc(s.StrandName)}">${this.esc(s.StrandCode)} – ${this.esc(s.StrandName)}</option>`;
         });
     }
 
     async loadStudents() {
         try {
             this.showLoading(true);
-
-            const response = await fetch('../backend/api/students.php?action=list');
-            const result = await response.json();
-
-            if (result.success) {
-                this.students = result.data || [];
-                this.filteredStudents = [...this.students];
-                this.populateFilterOptions();
-                this.renderTable();
-                this.updatePagination();
-            } else {
-                throw new Error(result.message || 'Failed to load students');
-            }
-
-        } catch (error) {
-            console.error('Error loading students:', error);
+            const r = await fetch('../backend/api/students.php?action=list');
+            const d = await r.json();
+            if (!d.success) throw new Error(d.message || 'Failed to load students');
+            this.students         = d.data || [];
+            this.filteredStudents = [...this.students];
+            this.populateFilterOptions();
+            this.renderTable();
+            this.updatePagination();
+        } catch (e) {
+            console.error('Error loading students:', e);
             alert('Error loading students. Please refresh the page.');
         } finally {
             this.showLoading(false);
         }
     }
 
+    // ──────────────────────────────────────────────
+    // FILTER OPTIONS
+    // ──────────────────────────────────────────────
     populateFilterOptions() {
-        const grades = new Set();
-        const sections = new Set();
-        const statuses = new Set();
-        const academicYears = new Set();
+        const grades  = new Set();
+        const sections= new Set();
+        const statuses= new Set();
+        const years   = new Set();
 
-        this.students.forEach(student => {
-            const gradeMatch = student.GradeLevel?.match(/\d+/);
-            if (gradeMatch) grades.add(gradeMatch[0]);
-            if (student.Section) sections.add(student.Section);
-            if (student.EnrollmentStatus || student.Status) {
-                statuses.add(student.EnrollmentStatus || student.Status);
-            }
-            if (student.AcademicYear) academicYears.add(student.AcademicYear);
+        this.students.forEach(s => {
+            const gm = s.GradeLevel?.match(/\d+/);
+            if (gm) grades.add(gm[0]);
+            if (s.Section)     sections.add(s.Section);
+            // enrollment.Status (Pending|Confirmed|Cancelled|For_Review|Dropped|Transferred_Out)
+            if (s.EnrollmentConfirmStatus) statuses.add(s.EnrollmentConfirmStatus);
+            // student.EnrollmentStatus (Active|Cancelled|Transferred_Out|Graduated|Dropped)
+            if (s.EnrollmentStatus)        statuses.add(s.EnrollmentStatus);
+            if (s.AcademicYear) years.add(s.AcademicYear);
         });
 
-        // Populate Grade Level
-        const gradeFilter = document.getElementById('grade-level');
-        if (gradeFilter) {
-            const currentValue = gradeFilter.value;
-            gradeFilter.innerHTML = '<option value="">All Grades</option>';
-            Array.from(grades).sort((a, b) => Number(a) - Number(b)).forEach(grade => {
-                gradeFilter.innerHTML += `<option value="${grade}">Grade ${grade}</option>`;
-            });
-            if (currentValue) gradeFilter.value = currentValue;
-        }
+        this.populate('grade-level', Array.from(grades).sort((a,b)=>+a-+b)
+            .map(g => `<option value="${g}">Grade ${g}</option>`));
 
-        // Populate Section
-        const sectionFilter = document.getElementById('section');
-        if (sectionFilter) {
-            const currentValue = sectionFilter.value;
-            sectionFilter.innerHTML = '<option value="">All Sections</option>';
-            Array.from(sections).sort().forEach(section => {
-                sectionFilter.innerHTML += `<option value="${section}">${section}</option>`;
-            });
-            if (currentValue) sectionFilter.value = currentValue;
-        }
+        this.populate('section', Array.from(sections).sort()
+            .map(s => `<option value="${this.esc(s)}">${this.esc(s)}</option>`));
 
-        // Populate Status - Updated with new statuses
-        const statusFilter = document.getElementById('enrollment-status');
-        if (statusFilter) {
-            const currentValue = statusFilter.value;
-            statusFilter.innerHTML = '<option value="">All Statuses</option>';
-            
-            const statusMap = {
-                'Confirmed': 'Enrolled',
-                'Active': 'Enrolled',
-                'Pending': 'Pending',
-                'For_Review': 'For Review',
-                'Cancelled': 'Cancelled',
-                'Dropped': 'Dropped',
-                'Transferred_In': 'Transferred In',
-                'Transferred_Out': 'Transferred Out',
-                'Graduated': 'Graduated'
-            };
+        // Status options — all valid enrollment.Status ENUM values
+        const statusLabels = {
+            Confirmed:       'Enrolled (Confirmed)',
+            Pending:         'Pending',
+            For_Review:      'For Review',
+            Cancelled:       'Cancelled',
+            Dropped:         'Dropped',
+            Transferred_Out: 'Transferred Out',
+            Active:          'Active',
+            Graduated:       'Graduated',
+        };
+        this.populate('enrollment-status', Array.from(statuses).sort()
+            .map(s => `<option value="${this.esc(s)}">${this.esc(statusLabels[s] || s)}</option>`));
 
-            const displayStatuses = new Set();
-            statuses.forEach(status => {
-                displayStatuses.add(statusMap[status] || status);
-            });
+        this.populate('academic-year', Array.from(years).sort().reverse()
+            .map(y => `<option value="${this.esc(y)}">${this.esc(y)}</option>`));
+    }
 
-            Array.from(displayStatuses).sort().forEach(status => {
-                statusFilter.innerHTML += `<option value="${status}">${status}</option>`;
-            });
-            
-            if (currentValue) statusFilter.value = currentValue;
-        }
+    populate(id, options) {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const cur = sel.value;
+        sel.innerHTML = sel.options[0].outerHTML + options.join('');
+        if (cur) sel.value = cur;
+    }
 
-        // Populate Academic Year
-        const yearFilter = document.getElementById('academic-year');
-        if (yearFilter) {
-            const currentValue = yearFilter.value;
-            yearFilter.innerHTML = '<option value="">All Years</option>';
-            Array.from(academicYears).sort().reverse().forEach(year => {
-                yearFilter.innerHTML += `<option value="${year}">${year}</option>`;
-            });
-            if (currentValue) yearFilter.value = currentValue;
-        }
+    // ──────────────────────────────────────────────
+    // FILTERS & STATUS MAPPING
+    //
+    // FIX: removed Transferred_In from normalizeStatus
+    //      (not in enrollment.Status ENUM)
+    // ──────────────────────────────────────────────
+    normalizeStatus(status) {
+        const map = {
+            Confirmed:       'Enrolled',
+            Active:          'Enrolled',
+            Pending:         'Pending',
+            For_Review:      'For Review',
+            Cancelled:       'Cancelled',
+            Dropped:         'Dropped',
+            Transferred_Out: 'Transferred Out',
+            Graduated:       'Graduated',
+        };
+        return map[status] || status;
     }
 
     applyFilters() {
-        const searchTerm = document.getElementById('search')?.value.toLowerCase().trim() || '';
-        const gradeFilter = document.getElementById('grade-level')?.value;
-        const sectionFilter = document.getElementById('section')?.value;
-        const statusFilter = document.getElementById('enrollment-status')?.value;
-        const yearFilter = document.getElementById('academic-year')?.value;
-        const strandFilter = document.getElementById('strand')?.value;
-        
-        let results = [...this.students];
+        const search  = document.getElementById('search')?.value.toLowerCase().trim() || '';
+        const grade   = document.getElementById('grade-level')?.value   || '';
+        const section = document.getElementById('section')?.value        || '';
+        const status  = document.getElementById('enrollment-status')?.value || '';
+        const year    = document.getElementById('academic-year')?.value  || '';
+        const strand  = document.getElementById('strand')?.value         || '';
 
-        // Search filter
-        if (searchTerm) {
-            results = results.filter(student => {
-                const fullName = student.FullName?.toLowerCase() || '';
-                const lrn = student.LRN?.toLowerCase() || '';
-                const studentId = student.StudentID?.toString() || '';
-                
-                return fullName.includes(searchTerm) || 
-                       lrn.includes(searchTerm) || 
-                       studentId.includes(searchTerm);
-            });
-        }
+        this.filteredStudents = this.students.filter(s => {
+            if (search  && !s.FullName?.toLowerCase().includes(search)
+                        && !s.LRN?.toLowerCase().includes(search)
+                        && !String(s.StudentID).includes(search)) return false;
+            if (grade   && s.GradeLevel?.match(/\d+/)?.[0] !== grade) return false;
+            if (section && s.Section !== section)                        return false;
+            if (year    && s.AcademicYear !== year)                      return false;
+            if (strand  && s.StrandName !== strand)                      return false;
+            if (status) {
+                const rawStatus = s.EnrollmentConfirmStatus || s.EnrollmentStatus;
+                if (rawStatus !== status && this.normalizeStatus(rawStatus) !== status) return false;
+            }
+            return true;
+        });
 
-        // Grade Level filter
-        if (gradeFilter) {
-            results = results.filter(student => {
-                const gradeMatch = student.GradeLevel?.match(/\d+/);
-                return gradeMatch && gradeMatch[0] === gradeFilter;
-            });
-        }
-
-        // Section filter
-        if (sectionFilter) {
-            results = results.filter(student => student.Section === sectionFilter);
-        }
-
-        // Status filter
-        if (statusFilter) {
-            results = results.filter(student => {
-                const studentStatus = student.EnrollmentStatus || student.Status;
-                return this.normalizeStatus(studentStatus) === statusFilter;
-            });
-        }
-
-        // Academic Year filter
-        if (yearFilter) {
-            results = results.filter(student => student.AcademicYear === yearFilter);
-        }
-
-        // Strand filter
-        if (strandFilter) {
-            results = results.filter(student => student.StrandName === strandFilter);
-        }
-
-        this.filteredStudents = results;
         this.currentPage = 1;
         this.renderTable();
         this.updatePagination();
     }
 
-    normalizeStatus(status) {
-        const statusMap = {
-            'Confirmed': 'Enrolled',
-            'Active': 'Enrolled',
-            'Pending': 'Pending',
-            'For_Review': 'For Review',
-            'Cancelled': 'Cancelled',
-            'Dropped': 'Dropped',
-            'Transferred_In': 'Transferred In',
-            'Transferred_Out': 'Transferred Out',
-            'Graduated': 'Graduated'
-        };
-        return statusMap[status] || status;
-    }
-
     clearFilters() {
-        const inputs = ['search', 'grade-level', 'section', 'enrollment-status', 'academic-year', 'strand'];
-        inputs.forEach(id => {
-            const element = document.getElementById(id);
-            if (element) {
-                if (element.tagName === 'INPUT') {
-                    element.value = '';
-                } else {
-                    element.selectedIndex = 0;
-                }
-            }
-        });
-        
-        // Hide strand filter
-        const strandContainer = document.getElementById('strand')?.closest('.flex.flex-col');
-        if (strandContainer) strandContainer.classList.add('hidden');
-        
+        ['search','grade-level','section','enrollment-status','academic-year','strand']
+            .forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.tagName === 'INPUT' ? el.value = '' : el.selectedIndex = 0;
+            });
+        document.getElementById('strand')?.closest('.flex.flex-col')?.classList.add('hidden');
         this.filteredStudents = [...this.students];
         this.currentPage = 1;
         this.renderTable();
         this.updatePagination();
     }
 
+    // ──────────────────────────────────────────────
+    // TABLE RENDER
+    // ──────────────────────────────────────────────
     renderTable() {
         const tbody = document.querySelector('tbody');
         if (!tbody) return;
 
         const start = (this.currentPage - 1) * this.itemsPerPage;
-        const end = start + this.itemsPerPage;
-        const pageStudents = this.filteredStudents.slice(start, end);
+        const page  = this.filteredStudents.slice(start, start + this.itemsPerPage);
 
-        if (pageStudents.length === 0) {
+        if (!page.length) {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="9" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
@@ -382,909 +286,668 @@ class StudentManagementHandler {
                             <p class="text-sm">Try adjusting your search or filters</p>
                         </div>
                     </td>
-                </tr>
-            `;
+                </tr>`;
             return;
         }
 
-        tbody.innerHTML = pageStudents.map(student => `
+        tbody.innerHTML = page.map(s => `
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
-                    <input 
-                        class="form-checkbox h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary dark:border-gray-600 dark:bg-gray-700" 
-                        type="checkbox"
-                        data-student-id="${student.StudentID}"
-                        ${this.selectedStudents.has(student.StudentID) ? 'checked' : ''}
-                    />
+                    <input class="form-checkbox h-4 w-4 rounded border-gray-300 text-primary
+                                  focus:ring-primary dark:border-gray-600 dark:bg-gray-700"
+                           type="checkbox" data-student-id="${s.StudentID}"
+                           ${this.selectedStudents.has(s.StudentID) ? 'checked' : ''}/>
                 </td>
-                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
-                    ${student.LRN || 'N/A'}
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400 font-mono">
+                    ${this.esc(s.LRN || 'N/A')}
                 </td>
                 <td class="whitespace-nowrap px-3 py-4 text-sm font-medium text-gray-900 dark:text-white">
-                    ${this.formatName(student.FullName)}
+                    ${this.esc(this.formatName(s.FullName))}
                 </td>
                 <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
-                    ${this.extractGradeNumber(student.GradeLevel)}
+                    ${this.esc(this.extractGradeNumber(s.GradeLevel))}
                 </td>
                 <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
-                    ${student.StrandName || '-'}
+                    ${this.esc(s.StrandName || '—')}
                 </td>
                 <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
-                    ${student.Section || '-'}
+                    ${this.esc(s.Section || '—')}
                 </td>
                 <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
-                    ${student.AcademicYear || '-'}
+                    ${this.esc(s.AcademicYear || '—')}
                 </td>
                 <td class="whitespace-nowrap px-3 py-4 text-sm">
-                    ${this.getStatusBadge(student.EnrollmentStatus || student.Status)}
+                    ${this.getStatusBadge(s.EnrollmentConfirmStatus || s.EnrollmentStatus)}
                 </td>
                 <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                     <div class="flex items-center justify-end gap-2">
-                        <button 
-                            class="btn-view text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
-                            data-student-id="${student.StudentID}"
-                            title="View Details">
+                        <button class="btn-view text-gray-400 hover:text-primary transition-colors"
+                                data-student-id="${s.StudentID}" title="View Details">
                             <span class="material-symbols-outlined" style="font-size:20px;">visibility</span>
                         </button>
-                        <button 
-                            class="btn-edit text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
-                            data-student-id="${student.StudentID}"
-                            title="Edit">
+                        <button class="btn-edit text-gray-400 hover:text-primary transition-colors"
+                                data-student-id="${s.StudentID}" title="Edit">
                             <span class="material-symbols-outlined" style="font-size:20px;">edit</span>
                         </button>
-                        <button 
-                            class="btn-more text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-                            data-student-id="${student.StudentID}"
-                            title="More Options">
+                        <button class="btn-more text-gray-400 hover:text-red-500 transition-colors"
+                                data-student-id="${s.StudentID}" title="More Options">
                             <span class="material-symbols-outlined" style="font-size:20px;">more_vert</span>
                         </button>
                     </div>
                 </td>
-            </tr>
-        `).join('');
+            </tr>`).join('');
 
-        // Bind checkbox events
-        tbody.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-            checkbox.addEventListener('change', (e) => {
-                const studentId = parseInt(e.target.dataset.studentId);
-                if (e.target.checked) {
-                    this.selectedStudents.add(studentId);
-                } else {
-                    this.selectedStudents.delete(studentId);
-                }
+        // Checkboxes
+        tbody.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.addEventListener('change', e => {
+                const id = parseInt(e.target.dataset.studentId);
+                e.target.checked ? this.selectedStudents.add(id) : this.selectedStudents.delete(id);
                 this.updateSelectAllCheckbox();
             });
         });
 
-        // Bind action button events
-        tbody.querySelectorAll('.btn-view').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const studentId = parseInt(e.currentTarget.dataset.studentId);
-                this.viewStudent(studentId);
-            });
-        });
-
-        tbody.querySelectorAll('.btn-edit').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const studentId = parseInt(e.currentTarget.dataset.studentId);
-                this.editStudent(studentId);
-            });
-        });
-
-        tbody.querySelectorAll('.btn-more').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const studentId = parseInt(e.currentTarget.dataset.studentId);
-                this.showMoreOptions(studentId);
-            });
-        });
+        tbody.querySelectorAll('.btn-view')
+            .forEach(b => b.addEventListener('click', e =>
+                this.viewStudent(parseInt(e.currentTarget.dataset.studentId))));
+        tbody.querySelectorAll('.btn-edit')
+            .forEach(b => b.addEventListener('click', e =>
+                this.editStudent(parseInt(e.currentTarget.dataset.studentId))));
+        tbody.querySelectorAll('.btn-more')
+            .forEach(b => b.addEventListener('click', e =>
+                this.showMoreOptions(parseInt(e.currentTarget.dataset.studentId))));
 
         this.updateSelectAllCheckbox();
     }
 
     updateSelectAllCheckbox() {
-        const selectAllCheckbox = document.querySelector('thead input[type="checkbox"]');
-        if (!selectAllCheckbox) return;
-
+        const cb   = document.querySelector('thead input[type="checkbox"]');
+        if (!cb) return;
         const start = (this.currentPage - 1) * this.itemsPerPage;
-        const end = start + this.itemsPerPage;
-        const pageStudents = this.filteredStudents.slice(start, end);
-
-        const allSelected = pageStudents.length > 0 && 
-            pageStudents.every(s => this.selectedStudents.has(s.StudentID));
-        
-        const someSelected = pageStudents.some(s => this.selectedStudents.has(s.StudentID));
-
-        selectAllCheckbox.checked = allSelected;
-        selectAllCheckbox.indeterminate = someSelected && !allSelected;
-    }
-
-    formatName(fullName) {
-        if (!fullName) return 'N/A';
-        const parts = fullName.split(',').map(p => p.trim());
-        if (parts.length === 2) {
-            return `${parts[1]} ${parts[0]}`;
-        }
-        return fullName;
-    }
-
-    extractGradeNumber(gradeLevel) {
-        if (!gradeLevel) return 'N/A';
-        const match = gradeLevel.match(/\d+/);
-        return match ? `Grade ${match[0]}` : gradeLevel;
-    }
-
-    getStatusBadge(status) {
-        const normalizedStatus = this.normalizeStatus(status);
-        
-        const statusMap = {
-            'Enrolled': { 
-                class: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300', 
-                text: 'Enrolled' 
-            },
-            'Pending': { 
-                class: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300', 
-                text: 'Pending' 
-            },
-            'For Review': { 
-                class: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300', 
-                text: 'For Review' 
-            },
-            'Cancelled': { 
-                class: 'bg-gray-100 text-gray-800 dark:bg-gray-900/40 dark:text-gray-300', 
-                text: 'Cancelled' 
-            },
-            'Dropped': { 
-                class: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300', 
-                text: 'Dropout' 
-            },
-            'Transferred In': { 
-                class: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300', 
-                text: 'Transferred In' 
-            },
-            'Transferred Out': { 
-                class: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300', 
-                text: 'Transferred Out' 
-            },
-            'Graduated': { 
-                class: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300', 
-                text: 'Graduated' 
-            }
-        };
-
-        const config = statusMap[normalizedStatus] || statusMap['Pending'];
-        return `<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${config.class}">${config.text}</span>`;
-    }
-
-    updatePagination() {
-        const totalPages = Math.ceil(this.filteredStudents.length / this.itemsPerPage);
-        const start = (this.currentPage - 1) * this.itemsPerPage + 1;
-        const end = Math.min(start + this.itemsPerPage - 1, this.filteredStudents.length);
-
-        const paginationText = document.querySelector('nav[aria-label="Pagination"] p');
-        if (paginationText) {
-            paginationText.innerHTML = `
-                Showing
-                <span class="font-medium">${this.filteredStudents.length > 0 ? start : 0}</span>
-                to
-                <span class="font-medium">${end}</span>
-                of
-                <span class="font-medium">${this.filteredStudents.length}</span>
-                results
-            `;
-        }
-
-        const paginationLinks = document.querySelectorAll('nav[aria-label="Pagination"] a');
-        paginationLinks.forEach(link => {
-            const text = link.textContent.trim();
-            
-            if (text === 'Previous') {
-                link.onclick = (e) => {
-                    e.preventDefault();
-                    if (this.currentPage > 1) {
-                        this.currentPage--;
-                        this.renderTable();
-                        this.updatePagination();
-                    }
-                };
-                
-                if (this.currentPage === 1) {
-                    link.classList.add('opacity-50', 'cursor-not-allowed');
-                    link.style.pointerEvents = 'none';
-                } else {
-                    link.classList.remove('opacity-50', 'cursor-not-allowed');
-                    link.style.pointerEvents = 'auto';
-                }
-                
-            } else if (text === 'Next') {
-                link.onclick = (e) => {
-                    e.preventDefault();
-                    if (this.currentPage < totalPages) {
-                        this.currentPage++;
-                        this.renderTable();
-                        this.updatePagination();
-                    }
-                };
-                
-                if (this.currentPage === totalPages || totalPages === 0) {
-                    link.classList.add('opacity-50', 'cursor-not-allowed');
-                    link.style.pointerEvents = 'none';
-                } else {
-                    link.classList.remove('opacity-50', 'cursor-not-allowed');
-                    link.style.pointerEvents = 'auto';
-                }
-            }
-        });
+        const page  = this.filteredStudents.slice(start, start + this.itemsPerPage);
+        const all   = page.length > 0 && page.every(s => this.selectedStudents.has(s.StudentID));
+        const some  = page.some(s => this.selectedStudents.has(s.StudentID));
+        cb.checked       = all;
+        cb.indeterminate = some && !all;
     }
 
     handleSelectAll(checked) {
         const start = (this.currentPage - 1) * this.itemsPerPage;
-        const end = start + this.itemsPerPage;
-        const pageStudents = this.filteredStudents.slice(start, end);
-
-        pageStudents.forEach(student => {
-            if (checked) {
-                this.selectedStudents.add(student.StudentID);
-            } else {
-                this.selectedStudents.delete(student.StudentID);
-            }
-        });
-
+        this.filteredStudents.slice(start, start + this.itemsPerPage).forEach(s =>
+            checked ? this.selectedStudents.add(s.StudentID) : this.selectedStudents.delete(s.StudentID));
         this.renderTable();
     }
 
+    // ──────────────────────────────────────────────
+    // STATUS BADGE
+    //
+    // Maps both enrollment.Status ENUM values AND student.EnrollmentStatus ENUM values.
+    // enrollment.Status:  Pending|Confirmed|Cancelled|For_Review|Dropped|Transferred_Out
+    // student.EnrollmentStatus: Active|Cancelled|Transferred_Out|Graduated|Dropped
+    // ──────────────────────────────────────────────
+    getStatusBadge(status) {
+        const map = {
+            Confirmed:       { cls: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',     label: 'Enrolled'        },
+            Active:          { cls: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',     label: 'Active'          },
+            Pending:         { cls: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300', label: 'Pending'         },
+            For_Review:      { cls: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',         label: 'For Review'      },
+            Cancelled:       { cls: 'bg-gray-100 text-gray-700 dark:bg-gray-900/40 dark:text-gray-300',         label: 'Cancelled'       },
+            Dropped:         { cls: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',             label: 'Dropout'         },
+            Transferred_Out: { cls: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300', label: 'Transferred Out' },
+            Graduated:       { cls: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300', label: 'Graduated'   },
+        };
+        const cfg = map[status] || map['Pending'];
+        return `<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${cfg.cls}">${cfg.label}</span>`;
+    }
+
+    // ──────────────────────────────────────────────
+    // VIEW / EDIT STUDENT
+    // ──────────────────────────────────────────────
     async viewStudent(studentId) {
         try {
-            const response = await fetch(`../backend/api/students.php?action=details&id=${studentId}`);
-            const result = await response.json();
-
-            if (result.success) {
-                this.showStudentDetailsModal(result.data, false);
-            } else {
-                alert('Failed to load student details');
-            }
-        } catch (error) {
-            console.error('Error loading student details:', error);
+            const r = await fetch(`../backend/api/students.php?action=details&id=${studentId}`);
+            const d = await r.json();
+            if (d.success) this.showStudentDetailsModal(d.data, false);
+            else           alert('Failed to load student details: ' + d.message);
+        } catch (e) {
+            console.error(e);
             alert('Error loading student details');
         }
     }
 
     async editStudent(studentId) {
-        // Advisers submit edits for approval; Registrar/ICT approve changes, not edit directly
-        const userRole = this.currentUser.Role;
-        const canSubmitEdit = userRole === 'Adviser';
-        if (!canSubmitEdit) {
+        if (this.currentUser.Role !== 'Adviser') {
             alert('Only Advisers can submit student information edits. Registrars and ICT Coordinators approve these changes.');
             return;
         }
         try {
-            const response = await fetch(`../backend/api/students.php?action=details&id=${studentId}`);
-            const result = await response.json();
-
-            if (result.success) {
-                this.showStudentDetailsModal(result.data, true);
-            } else {
-                alert('Failed to load student details');
-            }
-        } catch (error) {
-            console.error('Error loading student details:', error);
+            const r = await fetch(`../backend/api/students.php?action=details&id=${studentId}`);
+            const d = await r.json();
+            if (d.success) this.showStudentDetailsModal(d.data, true);
+            else           alert('Failed to load student details: ' + d.message);
+        } catch (e) {
+            console.error(e);
             alert('Error loading student details');
         }
     }
 
+    // ──────────────────────────────────────────────
+    // STUDENT DETAILS MODAL
+    // ──────────────────────────────────────────────
     showStudentDetailsModal(student, editMode = false) {
         this.currentEditingStudent = student;
-        
-        // Remove existing modal if any
-        const existingModal = document.getElementById('studentDetailsModal');
-        if (existingModal) existingModal.remove();
+        document.getElementById('studentDetailsModal')?.remove();
 
-        const modal = document.createElement('div');
-        modal.id = 'studentDetailsModal';
-        modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
-        
-        const userRole = this.currentUser.Role;
-        const isAdviser = userRole === 'Adviser';
+        const isAdviser  = this.currentUser.Role === 'Adviser';
+        const modal      = document.createElement('div');
+        modal.id         = 'studentDetailsModal';
+        modal.className  = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
 
         modal.innerHTML = `
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-                <!-- Header -->
                 <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between z-10">
                     <div>
                         <h3 class="text-xl font-bold text-gray-900 dark:text-white">
                             ${editMode ? 'Edit Student Information' : 'Student Details'}
                         </h3>
-                        ${editMode ? `
-                            <p class="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
-                                ⚠️ Changes will be submitted for Registrar/ICT approval before taking effect
-                            </p>
-                        ` : ''}
+                        ${editMode ? `<p class="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                            ⚠ Changes will be submitted for Registrar/ICT approval before taking effect
+                        </p>` : ''}
                     </div>
-                    <button onclick="document.getElementById('studentDetailsModal').remove()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                    <button onclick="document.getElementById('studentDetailsModal').remove()"
+                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
                         <span class="material-icons-outlined">close</span>
                     </button>
                 </div>
 
-                <!-- Content -->
                 <div class="p-6">
                     ${this.renderStudentForm(student, editMode)}
                 </div>
 
-                <!-- Footer -->
                 <div class="sticky bottom-0 bg-gray-50 dark:bg-gray-900 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex gap-3 justify-end">
                     ${editMode ? `
-                        <button id="btn-cancel-edit" class="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
-                            Cancel
-                        </button>
+                        <button id="btn-cancel-edit" class="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 transition-colors">Cancel</button>
                         <button id="btn-save-student" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
-                            <span class="material-icons-outlined text-[18px]">send</span>
-                            Submit for Approval
+                            <span class="material-icons-outlined text-[18px]">send</span>Submit for Approval
                         </button>
                     ` : `
                         ${isAdviser ? `
-                            <button id="btn-edit-student" data-student-id="${student.StudentID}" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
-                                <span class="material-icons-outlined text-[18px]">edit</span>
-                                Edit Student
-                            </button>
-                        ` : ''}
-                        <button onclick="document.getElementById('studentDetailsModal').remove()" class="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
-                            Close
-                        </button>
+                        <button id="btn-edit-student" data-student-id="${student.StudentID}"
+                                class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
+                            <span class="material-icons-outlined text-[18px]">edit</span>Edit Student
+                        </button>` : ''}
+                        <button onclick="document.getElementById('studentDetailsModal').remove()"
+                                class="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 transition-colors">Close</button>
                     `}
                 </div>
-            </div>
-        `;
-        
+            </div>`;
+
         document.body.appendChild(modal);
 
-        // Bind modal button events
+        // Grade/Strand select handlers (edit mode)
         if (editMode) {
-            const cancelBtn = document.getElementById('btn-cancel-edit');
-            const saveBtn = document.getElementById('btn-save-student');
-            
-            if (cancelBtn) {
-                cancelBtn.addEventListener('click', () => this.cancelEdit());
-            }
-            if (saveBtn) {
-                saveBtn.addEventListener('click', () => this.saveStudent());
-            }
-
-            // Bind grade and strand change handlers
-            const gradeSelect = document.getElementById('edit-grade');
-            const strandSelect = document.getElementById('edit-strand');
-            
-            if (gradeSelect) {
-                gradeSelect.addEventListener('change', () => this.handleGradeChange());
-            }
-            if (strandSelect) {
-                strandSelect.addEventListener('change', () => this.handleStrandChange());
-            }
-
-            // Determine GradeLevelID from GradeLevelName
-            let gradeLevelId = null;
-            if (student.GradeLevelName) {
-                const gradeMatch = student.GradeLevelName.match(/\d+/);
-                if (gradeMatch) {
-                    const gradeNumber = parseInt(gradeMatch[0]);
-                    const gradeLevel = this.gradeLevels.find(g => g.GradeLevelNumber === gradeNumber);
-                    if (gradeLevel) {
-                        gradeLevelId = gradeLevel.GradeLevelID;
-                    }
-                }
-            }
-
-            // Load sections for current grade/strand, pre-selecting student's current section
-            if (gradeLevelId) {
-                this.loadSectionsForGrade(gradeLevelId, student.StrandID, student.SectionID);
-            }
+            document.getElementById('btn-cancel-edit')?.addEventListener('click', () => this.cancelEdit());
+            document.getElementById('btn-save-student')?.addEventListener('click', () => this.saveStudent());
+            document.getElementById('edit-grade')?.addEventListener('change',  () => this.handleGradeChange());
+            document.getElementById('edit-strand')?.addEventListener('change', () => this.handleStrandChange());
         } else {
-            const editBtn = document.getElementById('btn-edit-student');
-            if (editBtn) {
-                editBtn.addEventListener('click', (e) => {
-                    const studentId = parseInt(e.currentTarget.dataset.studentId);
-                    document.getElementById('studentDetailsModal').remove();
-                    this.editStudent(studentId);
-                });
-            }
+            document.getElementById('btn-edit-student')?.addEventListener('click', e => {
+                document.getElementById('studentDetailsModal').remove();
+                this.editStudent(parseInt(e.currentTarget.dataset.studentId));
+            });
+        }
 
-            // Pre-select section in view mode — same logic as edit mode
-            let gradeLevelId = null;
-            if (student.GradeLevelName) {
-                const gradeMatch = student.GradeLevelName.match(/\d+/);
-                if (gradeMatch) {
-                    const gradeNumber = parseInt(gradeMatch[0]);
-                    const gradeLevel = this.gradeLevels.find(g => g.GradeLevelNumber === gradeNumber);
-                    if (gradeLevel) gradeLevelId = gradeLevel.GradeLevelID;
-                }
-            }
-            if (gradeLevelId) {
-                this.loadSectionsForGrade(gradeLevelId, student.StrandID, student.SectionID);
-            }
+        // Load sections for current grade/strand
+        if (student.GradeLevelID) {
+            this.loadSectionsForGrade(student.GradeLevelID, student.StrandID, student.SectionID);
         }
     }
 
+    // ──────────────────────────────────────────────
+    // RENDER STUDENT FORM
+    //
+    // KEY FIXES:
+    //  - Removed Age input — derived via TIMESTAMPDIFF; shown read-only from data.Age
+    //  - Removed ZipCode — not in student table schema
+    //  - Father/Mother/Guardian: read from data.guardians{} (parentguardian table)
+    //    NOT from flat data.FatherLastName etc. (those columns don't exist)
+    //  - EnrollmentStatus dropdown: removed Transferred_In
+    //    (student.EnrollmentStatus ENUM: Active|Cancelled|Transferred_Out|Graduated|Dropped)
+    //  - Academic Year: read-only display (derived from enrollment.AcademicYearID FK)
+    //  - Additional Info (view only): removed IsTransferee, CreatedAt, UpdatedAt
+    // ──────────────────────────────────────────────
     renderStudentForm(student, editMode) {
-        const isEditable = editMode ? '' : 'disabled';
-        const inputClass = editMode 
-            ? 'form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white' 
-            : 'form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-100 dark:text-gray-400 cursor-not-allowed';
+        const dis = editMode ? '' : 'disabled';
+        const ic  = editMode
+            ? 'form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white'
+            : 'form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-100 dark:text-gray-500 cursor-not-allowed';
 
-        // Determine grade level ID from name
-        let selectedGradeId = '';
-        if (student.GradeLevelName) {
-            const gradeMatch = student.GradeLevelName.match(/\d+/);
-            if (gradeMatch) {
-                const gradeNumber = parseInt(gradeMatch[0]);
-                const gradeLevel = this.gradeLevels.find(g => g.GradeLevelNumber === gradeNumber);
-                if (gradeLevel) {
-                    selectedGradeId = gradeLevel.GradeLevelID;
-                }
-            }
-        }
+        const isSHS = student.GradeLevelID >= 5; // GradeLevelID 5 = Grade 11, 6 = Grade 12
 
-        // Check if grade level is 11 or 12 for strand visibility
-        const showStrand = selectedGradeId >= 5; // GradeLevelID 5 = Grade 11, 6 = Grade 12
+        // Extract guardians from data.guardians{} keyed map
+        const father   = student.guardians?.Father   || {};
+        const mother   = student.guardians?.Mother   || {};
+        const guardian = student.guardians?.Guardian || {};
+
+        const guardianBlock = (label, prefix, data) => `
+            <div>
+                <p class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">${label}</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name</label>
+                        <input type="text" id="edit-${prefix}-last" value="${this.esc(data.LastName||'')}" ${dis} class="${ic}"/>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First Name</label>
+                        <input type="text" id="edit-${prefix}-first" value="${this.esc(data.FirstName||'')}" ${dis} class="${ic}"/>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Middle Name</label>
+                        <input type="text" id="edit-${prefix}-middle" value="${this.esc(data.MiddleName||'')}" ${dis} class="${ic}"/>
+                    </div>
+                </div>
+            </div>`;
 
         return `
-            <div class="space-y-8">
-                <!-- Personal Information -->
-                <div>
-                    <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                        <span class="material-icons-outlined text-primary">person</span>
-                        Personal Information
-                    </h4>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">LRN</label>
-                            <input type="text" id="edit-lrn" value="${student.LRN || ''}" ${isEditable} class="${inputClass}" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name</label>
-                            <input type="text" id="edit-lastname" value="${student.LastName || ''}" ${isEditable} class="${inputClass}" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First Name</label>
-                            <input type="text" id="edit-firstname" value="${student.FirstName || ''}" ${isEditable} class="${inputClass}" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Middle Name</label>
-                            <input type="text" id="edit-middlename" value="${student.MiddleName || ''}" ${isEditable} class="${inputClass}" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Extension Name</label>
-                            <input type="text" id="edit-extension" value="${student.ExtensionName || ''}" ${isEditable} placeholder="Jr., Sr., III, etc." class="${inputClass}" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date of Birth</label>
-                            <input type="date" id="edit-dob" value="${student.DateOfBirth || ''}" ${isEditable} class="${inputClass}" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Age</label>
-                            <input type="number" id="edit-age" value="${student.Age || ''}" ${isEditable} class="${inputClass}" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Gender</label>
-                            <select id="edit-gender" ${isEditable} class="${inputClass}">
-                                <option value="Male" ${student.Gender === 'Male' ? 'selected' : ''}>Male</option>
-                                <option value="Female" ${student.Gender === 'Female' ? 'selected' : ''}>Female</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Religion</label>
-                            <input type="text" id="edit-religion" value="${student.Religion || ''}" ${isEditable} class="${inputClass}" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contact Number</label>
-                            <input type="tel" id="edit-contact" value="${student.ContactNumber || ''}" ${isEditable} class="${inputClass}" />
-                        </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                        <div class="flex items-center gap-3">
-                            <input type="checkbox" id="edit-ip" ${student.IsIPCommunity ? 'checked' : ''} ${isEditable} class="form-checkbox h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
-                            <label for="edit-ip" class="text-sm font-medium text-gray-700 dark:text-gray-300">Member of Indigenous Peoples Community</label>
-                        </div>
-                        <div>
-                            <input type="text" id="edit-ip-specify" value="${student.IPCommunitySpecify || ''}" ${isEditable} placeholder="Specify IP Community" class="${inputClass}" />
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <input type="checkbox" id="edit-pwd" ${student.IsPWD ? 'checked' : ''} ${isEditable} class="form-checkbox h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
-                            <label for="edit-pwd" class="text-sm font-medium text-gray-700 dark:text-gray-300">Person with Disability (PWD)</label>
-                        </div>
-                        <div>
-                            <input type="text" id="edit-pwd-specify" value="${student.PWDSpecify || ''}" ${isEditable} placeholder="Specify Disability" class="${inputClass}" />
-                        </div>
-                    </div>
-                </div>
+        <div class="space-y-8">
 
-                <!-- Address Information -->
-                <div>
-                    <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                        <span class="material-icons-outlined text-primary">home</span>
-                        Address Information
-                    </h4>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">House Number</label>
-                            <input type="text" id="edit-house" value="${student.HouseNumber || ''}" ${isEditable} class="${inputClass}" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sitio/Street</label>
-                            <input type="text" id="edit-street" value="${student.SitioStreet || ''}" ${isEditable} class="${inputClass}" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Barangay</label>
-                            <input type="text" id="edit-barangay" value="${student.Barangay || ''}" ${isEditable} class="${inputClass}" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Municipality</label>
-                            <input type="text" id="edit-municipality" value="${student.Municipality || ''}" ${isEditable} class="${inputClass}" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Province</label>
-                            <input type="text" id="edit-province" value="${student.Province || ''}" ${isEditable} class="${inputClass}" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Zip Code</label>
-                            <input type="text" id="edit-zipcode" value="${student.ZipCode || ''}" ${isEditable} class="${inputClass}" />
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Parent/Guardian Information -->
-                <div>
-                    <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                        <span class="material-icons-outlined text-primary">family_restroom</span>
-                        Parent/Guardian Information
-                    </h4>
-                    <div class="grid grid-cols-1 gap-6">
-                        <!-- Father -->
-                        <div>
-                            <p class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Father's Information</p>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name</label>
-                                    <input type="text" id="edit-father-last" value="${student.FatherLastName || ''}" ${isEditable} class="${inputClass}" />
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First Name</label>
-                                    <input type="text" id="edit-father-first" value="${student.FatherFirstName || ''}" ${isEditable} class="${inputClass}" />
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Middle Name</label>
-                                    <input type="text" id="edit-father-middle" value="${student.FatherMiddleName || ''}" ${isEditable} class="${inputClass}" />
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Mother -->
-                        <div>
-                            <p class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Mother's Information</p>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name</label>
-                                    <input type="text" id="edit-mother-last" value="${student.MotherLastName || ''}" ${isEditable} class="${inputClass}" />
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First Name</label>
-                                    <input type="text" id="edit-mother-first" value="${student.MotherFirstName || ''}" ${isEditable} class="${inputClass}" />
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Middle Name</label>
-                                    <input type="text" id="edit-mother-middle" value="${student.MotherMiddleName || ''}" ${isEditable} class="${inputClass}" />
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Guardian -->
-                        <div>
-                            <p class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Guardian's Information (if applicable)</p>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name</label>
-                                    <input type="text" id="edit-guardian-last" value="${student.GuardianLastName || ''}" ${isEditable} class="${inputClass}" />
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First Name</label>
-                                    <input type="text" id="edit-guardian-first" value="${student.GuardianFirstName || ''}" ${isEditable} class="${inputClass}" />
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Middle Name</label>
-                                    <input type="text" id="edit-guardian-middle" value="${student.GuardianMiddleName || ''}" ${isEditable} class="${inputClass}" />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Enrollment Information -->
-                <div>
-                    <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                        <span class="material-icons-outlined text-primary">school</span>
-                        Enrollment Information
-                    </h4>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Grade Level</label>
-                            <select id="edit-grade" ${isEditable} class="${inputClass}">
-                                <option value="">Select Grade Level</option>
-                                ${this.gradeLevels.map(gl => `
-                                    <option value="${gl.GradeLevelID}" ${selectedGradeId == gl.GradeLevelID ? 'selected' : ''}>
-                                        ${gl.GradeLevelName}
-                                    </option>
-                                `).join('')}
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Academic Year</label>
-                            <input type="text" id="edit-academic-year" value="${student.AcademicYear || ''}" ${isEditable} class="${inputClass}" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Enrollment Status</label>
-                            <select id="edit-status" ${isEditable} class="${inputClass}">
-                                <option value="Active" ${student.EnrollmentStatus === 'Active' ? 'selected' : ''}>Active</option>
-                                <option value="Cancelled" ${student.EnrollmentStatus === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
-                                <option value="Dropped" ${student.EnrollmentStatus === 'Dropped' ? 'selected' : ''}>Dropped</option>
-                                <option value="Transferred_In" ${student.EnrollmentStatus === 'Transferred_In' ? 'selected' : ''}>Transferred In</option>
-                                <option value="Transferred_Out" ${student.EnrollmentStatus === 'Transferred_Out' ? 'selected' : ''}>Transferred Out</option>
-                                <option value="Graduated" ${student.EnrollmentStatus === 'Graduated' ? 'selected' : ''}>Graduated</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Strand (SHS only) -->
-                    <div id="strand-container" class="mt-4 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 ${showStrand ? '' : 'hidden'}">
-                        <p class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-3">Senior High School Strand</p>
-                        <div class="max-w-sm">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Strand</label>
-                            <select id="edit-strand" ${isEditable} class="${inputClass}">
-                                <option value="">Select Strand</option>
-                                ${this.strands.map(s => `
-                                    <option value="${s.StrandID}" ${student.StrandID == s.StrandID ? 'selected' : ''}>
-                                        ${s.StrandCode} - ${s.StrandName}
-                                    </option>
-                                `).join('')}
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Section -->
-                    <div class="mt-4 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-                        <p class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-3">Class Section</p>
-                        <div class="max-w-sm">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Section</label>
-                            <select id="edit-section" ${isEditable} class="${inputClass}">
-                                <option value="">Select Section</option>
-                                <!-- Populated dynamically based on grade + strand selection -->
-                            </select>
-                            ${editMode ? `<p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Sections shown match the selected grade level${showStrand ? ' and strand' : ''}.</p>` : ''}
-                        </div>
-                    </div>
-                </div>
-
-                ${editMode ? '' : `
-                    <!-- Additional Information (View Only) -->
+            <!-- Personal Information -->
+            <div>
+                <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <span class="material-icons-outlined text-primary">person</span>
+                    Personal Information
+                </h4>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                        <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                            <span class="material-icons-outlined text-primary">info</span>
-                            Additional Information
-                        </h4>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Transfer Status</label>
-                                <p class="text-base text-gray-900 dark:text-white">
-                                    ${student.EnrollmentStatus === 'Transferred_In' ? 'Transferred In' : 
-                                      student.EnrollmentStatus === 'Transferred_Out' ? 'Transferred Out' : 
-                                      student.IsTransferee ? 'Yes (Legacy)' : 'No'}
-                                </p>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Created At</label>
-                                <p class="text-base text-gray-900 dark:text-white">${student.CreatedAt || 'N/A'}</p>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Updated</label>
-                                <p class="text-base text-gray-900 dark:text-white">${student.UpdatedAt || 'N/A'}</p>
-                            </div>
-                        </div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">LRN</label>
+                        <input type="text" id="edit-lrn" value="${this.esc(student.LRN||'')}" ${dis} class="${ic}" maxlength="12"/>
                     </div>
-                `}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name</label>
+                        <input type="text" id="edit-lastname" value="${this.esc(student.LastName||'')}" ${dis} class="${ic}"/>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First Name</label>
+                        <input type="text" id="edit-firstname" value="${this.esc(student.FirstName||'')}" ${dis} class="${ic}"/>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Middle Name</label>
+                        <input type="text" id="edit-middlename" value="${this.esc(student.MiddleName||'')}" ${dis} class="${ic}"/>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Extension Name</label>
+                        <input type="text" id="edit-extension" value="${this.esc(student.ExtensionName||'')}" ${dis}
+                               placeholder="Jr., Sr., III, etc." class="${ic}"/>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date of Birth</label>
+                        <input type="date" id="edit-dob" value="${this.esc(student.DateOfBirth||'')}" ${dis} class="${ic}"/>
+                    </div>
+                    <!-- Age: derived from DateOfBirth via TIMESTAMPDIFF — always read-only -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Age</label>
+                        <input type="text" id="edit-age" value="${student.Age != null ? student.Age + ' years old' : '—'}"
+                               disabled class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600
+                                              dark:bg-gray-100 dark:text-gray-500 cursor-not-allowed"/>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Gender</label>
+                        <select id="edit-gender" ${dis} class="${ic}">
+                            <option value="Male"   ${student.Gender==='Male'   ? 'selected' : ''}>Male</option>
+                            <option value="Female" ${student.Gender==='Female' ? 'selected' : ''}>Female</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Religion</label>
+                        <input type="text" id="edit-religion" value="${this.esc(student.Religion||'')}" ${dis} class="${ic}"/>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mother Tongue</label>
+                        <input type="text" id="edit-mother-tongue" value="${this.esc(student.MotherTongue||'Tagalog')}" ${dis} class="${ic}"/>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contact Number</label>
+                        <input type="tel" id="edit-contact" value="${this.esc(student.ContactNumber||'')}" ${dis} class="${ic}"/>
+                    </div>
+                </div>
+                <!-- Flags -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" id="edit-ip" ${student.IsIPCommunity ? 'checked' : ''} ${dis}
+                               class="form-checkbox h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"/>
+                        <label for="edit-ip" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Member of Indigenous Peoples Community
+                        </label>
+                    </div>
+                    <div>
+                        <input type="text" id="edit-ip-specify" value="${this.esc(student.IPCommunitySpecify||'')}" ${dis}
+                               placeholder="Specify IP Community" class="${ic}"/>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" id="edit-pwd" ${student.IsPWD ? 'checked' : ''} ${dis}
+                               class="form-checkbox h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"/>
+                        <label for="edit-pwd" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Person with Disability (PWD)
+                        </label>
+                    </div>
+                    <div>
+                        <input type="text" id="edit-pwd-specify" value="${this.esc(student.PWDSpecify||'')}" ${dis}
+                               placeholder="Specify Disability" class="${ic}"/>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" id="edit-4ps" ${student.Is4PsBeneficiary ? 'checked' : ''} ${dis}
+                               class="form-checkbox h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"/>
+                        <label for="edit-4ps" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            4Ps Beneficiary
+                        </label>
+                    </div>
+                </div>
             </div>
-        `;
+
+            <!-- Address Information -->
+            <div>
+                <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <span class="material-icons-outlined text-primary">home</span>
+                    Address Information
+                </h4>
+                <!-- Note: ZipCode is NOT in the student table schema — removed -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">House Number</label>
+                        <input type="text" id="edit-house" value="${this.esc(student.HouseNumber||'')}" ${dis} class="${ic}"/>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sitio / Street</label>
+                        <input type="text" id="edit-street" value="${this.esc(student.SitioStreet||'')}" ${dis} class="${ic}"/>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Barangay</label>
+                        <input type="text" id="edit-barangay" value="${this.esc(student.Barangay||'')}" ${dis} class="${ic}"/>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Municipality</label>
+                        <input type="text" id="edit-municipality" value="${this.esc(student.Municipality||'')}" ${dis} class="${ic}"/>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Province</label>
+                        <input type="text" id="edit-province" value="${this.esc(student.Province||'')}" ${dis} class="${ic}"/>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Parent / Guardian Information -->
+            <!-- Data from parentguardian table (RelationshipType: Father|Mother|Guardian) -->
+            <div>
+                <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <span class="material-icons-outlined text-primary">family_restroom</span>
+                    Parent / Guardian Information
+                </h4>
+                <div class="grid grid-cols-1 gap-6">
+                    ${guardianBlock("Father's Information",   'father',   father)}
+                    ${guardianBlock("Mother's Information",   'mother',   mother)}
+                    ${guardianBlock("Guardian's Information (if applicable)", 'guardian', guardian)}
+                </div>
+            </div>
+
+            <!-- Enrollment Information -->
+            <div>
+                <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <span class="material-icons-outlined text-primary">school</span>
+                    Enrollment Information
+                </h4>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Grade Level</label>
+                        <select id="edit-grade" ${dis} class="${ic}">
+                            <option value="">Select Grade Level</option>
+                            ${this.gradeLevels.map(gl => `
+                                <option value="${gl.GradeLevelID}" ${student.GradeLevelID == gl.GradeLevelID ? 'selected' : ''}>
+                                    ${this.esc(gl.GradeLevelName)}
+                                </option>`).join('')}
+                        </select>
+                    </div>
+                    <!-- Academic Year: read-only — derived from enrollment.AcademicYearID FK, not a stored string -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Academic Year</label>
+                        <input type="text" id="edit-academic-year" value="${this.esc(student.AcademicYear||'')}"
+                               disabled class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600
+                                              dark:bg-gray-100 dark:text-gray-500 cursor-not-allowed"/>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Enrollment Type</label>
+                        <input type="text" id="edit-enrollment-type" value="${this.esc((student.EnrollmentType||'').replace(/_/g,' '))}"
+                               disabled class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600
+                                              dark:bg-gray-100 dark:text-gray-500 cursor-not-allowed"/>
+                    </div>
+                    <div>
+                        <!-- student.EnrollmentStatus ENUM: Active|Cancelled|Transferred_Out|Graduated|Dropped
+                             NOTE: Transferred_In is NOT in this ENUM — removed -->
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Enrollment Status</label>
+                        <select id="edit-status" ${dis} class="${ic}">
+                            <option value="Active"          ${student.EnrollmentStatus==='Active'          ? 'selected' : ''}>Active</option>
+                            <option value="Cancelled"       ${student.EnrollmentStatus==='Cancelled'       ? 'selected' : ''}>Cancelled</option>
+                            <option value="Dropped"         ${student.EnrollmentStatus==='Dropped'         ? 'selected' : ''}>Dropped</option>
+                            <option value="Transferred_Out" ${student.EnrollmentStatus==='Transferred_Out' ? 'selected' : ''}>Transferred Out</option>
+                            <option value="Graduated"       ${student.EnrollmentStatus==='Graduated'       ? 'selected' : ''}>Graduated</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Strand (SHS only — GradeLevelID 5 or 6) -->
+                <div id="strand-container" class="mt-4 p-4 rounded-lg border border-gray-200 dark:border-gray-700
+                                                   bg-gray-50 dark:bg-gray-900/50 ${isSHS ? '' : 'hidden'}">
+                    <p class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-3">Senior High School Strand</p>
+                    <div class="max-w-sm">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Strand</label>
+                        <select id="edit-strand" ${dis} class="${ic}">
+                            <option value="">Select Strand</option>
+                            ${this.strands.map(s => `
+                                <option value="${s.StrandID}" ${student.StrandID == s.StrandID ? 'selected' : ''}>
+                                    ${this.esc(s.StrandCode)} – ${this.esc(s.StrandName)}
+                                </option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Section -->
+                <div class="mt-4 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                    <p class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-3">Class Section</p>
+                    <div class="max-w-sm">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Section</label>
+                        <select id="edit-section" ${dis} class="${ic}">
+                            <option value="">Select Section</option>
+                        </select>
+                        ${editMode ? `<p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                            Sections shown match the selected grade level${isSHS ? ' and strand' : ''}.
+                        </p>` : ''}
+                    </div>
+                </div>
+            </div>
+
+        </div>`;
     }
 
     handleGradeChange() {
-        const gradeSelect = document.getElementById('edit-grade');
-        const strandContainer = document.getElementById('strand-container');
-        const sectionSelect = document.getElementById('edit-section');
-        const strandSelect = document.getElementById('edit-strand');
-        
-        if (!gradeSelect) return;
-        
-        const selectedGrade = parseInt(gradeSelect.value);
-        
-        // Show/hide strand based on grade level (5 = Grade 11, 6 = Grade 12)
-        if (selectedGrade >= 5) {
-            strandContainer.classList.remove('hidden');
-        } else {
-            strandContainer.classList.add('hidden');
-            strandSelect.value = '';
-        }
-        
-        // Load sections for selected grade
-        this.loadSectionsForGrade(selectedGrade, strandSelect.value);
+        const grade  = document.getElementById('edit-grade');
+        const wrap   = document.getElementById('strand-container');
+        const strand = document.getElementById('edit-strand');
+        if (!grade) return;
+        const id = parseInt(grade.value);
+        const isSHS = id >= 5;
+        wrap?.classList.toggle('hidden', !isSHS);
+        if (!isSHS && strand) strand.value = '';
+        this.loadSectionsForGrade(id, isSHS ? strand?.value : null);
     }
 
     handleStrandChange() {
-        const gradeSelect = document.getElementById('edit-grade');
-        const strandSelect = document.getElementById('edit-strand');
-        
-        if (!gradeSelect) return;
-        
-        const selectedGrade = parseInt(gradeSelect.value);
-        const selectedStrand = strandSelect.value;
-        
-        this.loadSectionsForGrade(selectedGrade, selectedStrand);
+        const grade  = document.getElementById('edit-grade');
+        const strand = document.getElementById('edit-strand');
+        if (!grade) return;
+        this.loadSectionsForGrade(parseInt(grade.value), strand?.value || null);
     }
 
-    async loadSectionsForGrade(gradeLevel, strandId = null, overrideSection = null) {
-        const sectionSelect = document.getElementById('edit-section');
-        if (!sectionSelect) return;
-        
-        // Use explicit override first (modal open), then fall back to editing student's current value
-        const currentSection = overrideSection ?? this.currentEditingStudent?.SectionID;
-        
+    async loadSectionsForGrade(gradeLevelId, strandId = null, selectedSectionId = null) {
+        const sel = document.getElementById('edit-section');
+        if (!sel || !gradeLevelId) return;
+        const overrideSection = selectedSectionId ?? this.currentEditingStudent?.SectionID;
         try {
-            let url = `../backend/api/student-update.php?action=get_sections&grade_level=${gradeLevel}`;
-            if (strandId) {
-                url += `&strand_id=${strandId}`;
-            }
-            
-            const response = await fetch(url);
-            const result = await response.json();
-            
-            if (result.success) {
-                sectionSelect.innerHTML = '<option value="">Select Section</option>';
-                result.sections.forEach(section => {
-                    sectionSelect.innerHTML += `
-                        <option value="${section.SectionID}" ${currentSection == section.SectionID ? 'selected' : ''}>
-                            ${section.SectionName}
-                        </option>
-                    `;
+            let url = `../backend/api/student-update.php?action=get_sections&grade_level=${gradeLevelId}`;
+            if (strandId) url += `&strand_id=${strandId}`;
+            const r = await fetch(url);
+            const d = await r.json();
+            if (d.success) {
+                sel.innerHTML = '<option value="">Select Section</option>';
+                d.sections.forEach(s => {
+                    const enrolled = s.CurrentEnrollment ?? 0;
+                    sel.innerHTML += `
+                        <option value="${s.SectionID}" ${overrideSection == s.SectionID ? 'selected' : ''}>
+                            ${this.esc(s.SectionName)} (${enrolled}/${s.Capacity})
+                        </option>`;
                 });
             }
-        } catch (error) {
-            console.error('Error loading sections:', error);
-        }
+        } catch (e) { console.error('Error loading sections:', e); }
     }
 
-    /**
-     * Build a diff of changed fields between original student data and form values.
-     * Returns an array of { field, oldValue, newValue } for audit log and revision request.
-     */
+    // ──────────────────────────────────────────────
+    // BUILD FIELD DIFF (for revision request audit)
+    //
+    // FIXES:
+    //  - Removed Age (derived, not stored)
+    //  - Removed ZipCode (not in student table)
+    //  - Removed flat Father/Mother/Guardian fields (not in student table)
+    //  - Added guardian diff tracking via guardians{} structure
+    // ──────────────────────────────────────────────
     buildFieldDiff(formData) {
-        const original = this.currentEditingStudent;
-        const fieldMap = {
-            LRN:                 { old: original.LRN,                new: formData.LRN },
-            LastName:            { old: original.LastName,           new: formData.LastName },
-            FirstName:           { old: original.FirstName,          new: formData.FirstName },
-            MiddleName:          { old: original.MiddleName,         new: formData.MiddleName },
-            ExtensionName:       { old: original.ExtensionName,      new: formData.ExtensionName },
-            DateOfBirth:         { old: original.DateOfBirth,        new: formData.DateOfBirth },
-            Age:                 { old: String(original.Age || ''),  new: String(formData.Age || '') },
-            Gender:              { old: original.Gender,             new: formData.Gender },
-            Religion:            { old: original.Religion,           new: formData.Religion },
-            ContactNumber:       { old: original.ContactNumber,      new: formData.ContactNumber },
-            IsIPCommunity:       { old: String(original.IsIPCommunity || 0), new: String(formData.IsIPCommunity) },
-            IPCommunitySpecify:  { old: original.IPCommunitySpecify, new: formData.IPCommunitySpecify },
-            IsPWD:               { old: String(original.IsPWD || 0), new: String(formData.IsPWD) },
-            PWDSpecify:          { old: original.PWDSpecify,         new: formData.PWDSpecify },
-            HouseNumber:         { old: original.HouseNumber,        new: formData.HouseNumber },
-            SitioStreet:         { old: original.SitioStreet,        new: formData.SitioStreet },
-            Barangay:            { old: original.Barangay,           new: formData.Barangay },
-            Municipality:        { old: original.Municipality,       new: formData.Municipality },
-            Province:            { old: original.Province,           new: formData.Province },
-            ZipCode:             { old: original.ZipCode,            new: formData.ZipCode },
-            FatherLastName:      { old: original.FatherLastName,     new: formData.FatherLastName },
-            FatherFirstName:     { old: original.FatherFirstName,    new: formData.FatherFirstName },
-            FatherMiddleName:    { old: original.FatherMiddleName,   new: formData.FatherMiddleName },
-            MotherLastName:      { old: original.MotherLastName,     new: formData.MotherLastName },
-            MotherFirstName:     { old: original.MotherFirstName,    new: formData.MotherFirstName },
-            MotherMiddleName:    { old: original.MotherMiddleName,   new: formData.MotherMiddleName },
-            GuardianLastName:    { old: original.GuardianLastName,   new: formData.GuardianLastName },
-            GuardianFirstName:   { old: original.GuardianFirstName,  new: formData.GuardianFirstName },
-            GuardianMiddleName:  { old: original.GuardianMiddleName, new: formData.GuardianMiddleName },
-            GradeLevelID:        { old: String(original.GradeLevelID || ''), new: String(formData.GradeLevelID || '') },
-            StrandID:            { old: String(original.StrandID || ''),     new: String(formData.StrandID || '') },
-            SectionID:           { old: String(original.SectionID || ''),    new: String(formData.SectionID || '') },
-            AcademicYear:        { old: original.AcademicYear,       new: formData.AcademicYear },
-            EnrollmentStatus:    { old: original.EnrollmentStatus,   new: formData.EnrollmentStatus }
+        const orig = this.currentEditingStudent;
+
+        // Core student fields (schema columns only)
+        const studentFields = {
+            LRN:               { old: orig.LRN,                new: formData.LRN               },
+            LastName:          { old: orig.LastName,           new: formData.LastName           },
+            FirstName:         { old: orig.FirstName,          new: formData.FirstName          },
+            MiddleName:        { old: orig.MiddleName,         new: formData.MiddleName         },
+            ExtensionName:     { old: orig.ExtensionName,      new: formData.ExtensionName      },
+            DateOfBirth:       { old: orig.DateOfBirth,        new: formData.DateOfBirth        },
+            Gender:            { old: orig.Gender,             new: formData.Gender             },
+            Religion:          { old: orig.Religion,           new: formData.Religion           },
+            MotherTongue:      { old: orig.MotherTongue,       new: formData.MotherTongue       },
+            ContactNumber:     { old: orig.ContactNumber,      new: formData.ContactNumber      },
+            IsIPCommunity:     { old: String(orig.IsIPCommunity    ||0), new: String(formData.IsIPCommunity    ) },
+            IPCommunitySpecify:{ old: orig.IPCommunitySpecify, new: formData.IPCommunitySpecify },
+            IsPWD:             { old: String(orig.IsPWD            ||0), new: String(formData.IsPWD            ) },
+            PWDSpecify:        { old: orig.PWDSpecify,         new: formData.PWDSpecify         },
+            Is4PsBeneficiary:  { old: String(orig.Is4PsBeneficiary||0), new: String(formData.Is4PsBeneficiary ) },
+            HouseNumber:       { old: orig.HouseNumber,        new: formData.HouseNumber        },
+            SitioStreet:       { old: orig.SitioStreet,        new: formData.SitioStreet        },
+            Barangay:          { old: orig.Barangay,           new: formData.Barangay           },
+            Municipality:      { old: orig.Municipality,       new: formData.Municipality       },
+            Province:          { old: orig.Province,           new: formData.Province           },
+            GradeLevelID:      { old: String(orig.GradeLevelID||''), new: String(formData.GradeLevelID||'') },
+            StrandID:          { old: String(orig.StrandID    ||''), new: String(formData.StrandID    ||'') },
+            SectionID:         { old: String(orig.SectionID   ||''), new: String(formData.SectionID   ||'') },
+            EnrollmentStatus:  { old: orig.EnrollmentStatus,   new: formData.EnrollmentStatus   },
         };
 
         const changes = [];
-        for (const [field, values] of Object.entries(fieldMap)) {
-            const oldVal = (values.old ?? '').toString().trim();
-            const newVal = (values.new ?? '').toString().trim();
-            if (oldVal !== newVal) {
-                changes.push({ field, oldValue: oldVal, newValue: newVal });
+        for (const [field, {old: o, new: n}] of Object.entries(studentFields)) {
+            const ov = (o ?? '').toString().trim();
+            const nv = (n ?? '').toString().trim();
+            if (ov !== nv) changes.push({ field, oldValue: ov, newValue: nv });
+        }
+
+        // Guardian diffs — compare via guardians{} structure
+        const origGuardians = orig.guardians || {};
+        const newGuardians  = formData.guardians || {};
+
+        for (const type of ['Father', 'Mother', 'Guardian']) {
+            const og = origGuardians[type] || {};
+            const ng = newGuardians[type]  || {};
+            for (const col of ['LastName', 'FirstName', 'MiddleName']) {
+                const ov = (og[col] ?? '').toString().trim();
+                const nv = (ng[col] ?? '').toString().trim();
+                if (ov !== nv) changes.push({ field: `${type}_${col}`, oldValue: ov, newValue: nv });
+            }
+            if (type === 'Guardian') {
+                const ov = (og.GuardianRelationship ?? '').trim();
+                const nv = (ng.GuardianRelationship ?? '').trim();
+                if (ov !== nv) changes.push({ field: 'Guardian_Relationship', oldValue: ov, newValue: nv });
             }
         }
+
         return changes;
     }
 
+    // ──────────────────────────────────────────────
+    // SAVE STUDENT (submit revision request)
+    //
+    // FIXES:
+    //  - Removed Age, ZipCode from formData
+    //  - Guardian data sent as nested guardians{} object (not flat keys)
+    //  - AcademicYear is read-only — not included in editable formData
+    // ──────────────────────────────────────────────
     async saveStudent() {
         try {
-            // Gather form data
+            const v  = (id) => document.getElementById(id)?.value?.trim() ?? '';
+            const cb = (id) => document.getElementById(id)?.checked ? 1 : 0;
+
             const formData = {
-                StudentID: this.currentEditingStudent.StudentID,
-                LRN: document.getElementById('edit-lrn')?.value?.trim(),
-                LastName: document.getElementById('edit-lastname')?.value?.trim(),
-                FirstName: document.getElementById('edit-firstname')?.value?.trim(),
-                MiddleName: document.getElementById('edit-middlename')?.value?.trim(),
-                ExtensionName: document.getElementById('edit-extension')?.value?.trim(),
-                DateOfBirth: document.getElementById('edit-dob')?.value,
-                Age: document.getElementById('edit-age')?.value,
-                Gender: document.getElementById('edit-gender')?.value,
-                Religion: document.getElementById('edit-religion')?.value?.trim(),
-                ContactNumber: document.getElementById('edit-contact')?.value?.trim(),
-                IsIPCommunity: document.getElementById('edit-ip')?.checked ? 1 : 0,
-                IPCommunitySpecify: document.getElementById('edit-ip-specify')?.value?.trim(),
-                IsPWD: document.getElementById('edit-pwd')?.checked ? 1 : 0,
-                PWDSpecify: document.getElementById('edit-pwd-specify')?.value?.trim(),
-                HouseNumber: document.getElementById('edit-house')?.value?.trim(),
-                SitioStreet: document.getElementById('edit-street')?.value?.trim(),
-                Barangay: document.getElementById('edit-barangay')?.value?.trim(),
-                Municipality: document.getElementById('edit-municipality')?.value?.trim(),
-                Province: document.getElementById('edit-province')?.value?.trim(),
-                ZipCode: document.getElementById('edit-zipcode')?.value?.trim(),
-                FatherLastName: document.getElementById('edit-father-last')?.value?.trim(),
-                FatherFirstName: document.getElementById('edit-father-first')?.value?.trim(),
-                FatherMiddleName: document.getElementById('edit-father-middle')?.value?.trim(),
-                MotherLastName: document.getElementById('edit-mother-last')?.value?.trim(),
-                MotherFirstName: document.getElementById('edit-mother-first')?.value?.trim(),
-                MotherMiddleName: document.getElementById('edit-mother-middle')?.value?.trim(),
-                GuardianLastName: document.getElementById('edit-guardian-last')?.value?.trim(),
-                GuardianFirstName: document.getElementById('edit-guardian-first')?.value?.trim(),
-                GuardianMiddleName: document.getElementById('edit-guardian-middle')?.value?.trim(),
-                GradeLevelID: document.getElementById('edit-grade')?.value,
-                StrandID: document.getElementById('edit-strand')?.value || null,
-                SectionID: document.getElementById('edit-section')?.value || null,
-                AcademicYear: document.getElementById('edit-academic-year')?.value?.trim(),
-                EnrollmentStatus: document.getElementById('edit-status')?.value || null,
-                UpdatedBy: this.currentUser.UserID
+                StudentID:          this.currentEditingStudent.StudentID,
+                LRN:                v('edit-lrn'),
+                LastName:           v('edit-lastname'),
+                FirstName:          v('edit-firstname'),
+                MiddleName:         v('edit-middlename'),
+                ExtensionName:      v('edit-extension'),
+                DateOfBirth:        v('edit-dob'),
+                Gender:             v('edit-gender'),
+                Religion:           v('edit-religion'),
+                MotherTongue:       v('edit-mother-tongue'),
+                ContactNumber:      v('edit-contact'),
+                IsIPCommunity:      cb('edit-ip'),
+                IPCommunitySpecify: v('edit-ip-specify'),
+                IsPWD:              cb('edit-pwd'),
+                PWDSpecify:         v('edit-pwd-specify'),
+                Is4PsBeneficiary:   cb('edit-4ps'),
+                HouseNumber:        v('edit-house'),
+                SitioStreet:        v('edit-street'),
+                Barangay:           v('edit-barangay'),
+                Municipality:       v('edit-municipality'),
+                Province:           v('edit-province'),
+                GradeLevelID:       v('edit-grade'),
+                StrandID:           v('edit-strand') || null,
+                SectionID:          v('edit-section') || null,
+                EnrollmentStatus:   v('edit-status'),
+                // Guardian data as nested object — maps to parentguardian table
+                guardians: {
+                    Father:   { LastName: v('edit-father-last'),   FirstName: v('edit-father-first'),   MiddleName: v('edit-father-middle')   },
+                    Mother:   { LastName: v('edit-mother-last'),   FirstName: v('edit-mother-first'),   MiddleName: v('edit-mother-middle')   },
+                    Guardian: { LastName: v('edit-guardian-last'), FirstName: v('edit-guardian-first'), MiddleName: v('edit-guardian-middle') },
+                },
+                RequestedBy:  this.currentUser.UserID,
+                RequesterRole: this.currentUser.Role,
             };
 
-            // Validate required fields
             if (!formData.LRN || !formData.LastName || !formData.FirstName) {
-                alert('Please fill in all required fields (LRN, Last Name, First Name)');
+                alert('Please fill in all required fields (LRN, Last Name, First Name).');
                 return;
             }
 
-            // Build field-level diff for proper audit logging
             const changedFields = this.buildFieldDiff(formData);
-
-            if (changedFields.length === 0) {
+            if (!changedFields.length) {
                 alert('No changes detected.');
                 return;
             }
 
-            // Advisers always submit as a revision request (pending approval)
-            // The payload includes both the full formData for context AND the specific field diffs
-            // so the backend can log the REVISION_REQUEST action accurately in the audit log.
             const payload = {
                 ...formData,
-                ChangedFields: changedFields,        // field-level diff for audit log
-                StudentName: `${formData.LastName}, ${formData.FirstName}`,
-                RequestedBy: this.currentUser.UserID,
-                RequesterRole: this.currentUser.Role
+                ChangedFields: changedFields,
+                StudentName:   `${formData.LastName}, ${formData.FirstName}`,
             };
 
-            const response = await fetch('../backend/api/revision-requests.php?action=create_bulk_update', {
-                method: 'POST',
+            const r = await fetch('../backend/api/revision-requests.php?action=create_bulk_update', {
+                method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body:    JSON.stringify(payload),
             });
-
-            const result = await response.json();
+            const result = await r.json();
 
             if (result.success) {
                 alert(
@@ -1298,269 +961,102 @@ class StudentManagementHandler {
             } else {
                 alert('Failed to submit changes: ' + (result.message || 'Unknown error'));
             }
-        } catch (error) {
-            console.error('Error saving student:', error);
+        } catch (e) {
+            console.error('Error saving student:', e);
             alert('Error saving student information');
         }
     }
 
     cancelEdit() {
-        if (confirm('Are you sure you want to cancel? Any unsaved changes will be lost.')) {
+        if (confirm('Cancel? Any unsaved changes will be lost.'))
             document.getElementById('studentDetailsModal').remove();
-        }
     }
 
+    // ──────────────────────────────────────────────
+    // MORE OPTIONS MENU
+    // ──────────────────────────────────────────────
     showMoreOptions(studentId) {
         const student = this.students.find(s => s.StudentID === studentId);
-        const currentStatus = student?.EnrollmentStatus || student?.Status;
+        const status  = student?.EnrollmentConfirmStatus || student?.EnrollmentStatus;
+        const role    = this.currentUser.Role;
+        const isApprover = ['Registrar','ICT_Coordinator'].includes(role);
+        const isAdviser  = role === 'Adviser';
+        const canDocs    = isAdviser || isApprover;
 
-        const userRole = this.currentUser.Role;
-        const isRegistrar = userRole === 'Registrar';
-        const isAdviser = userRole === 'Adviser';
-        const isICTCoordinator = userRole === 'ICT_Coordinator';
-        const isApprover = isRegistrar || isICTCoordinator;
-        const canSubmitEdits = isAdviser;
-        const canManageDocuments = isAdviser || isRegistrar || isICTCoordinator;
-        
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
         modal.innerHTML = `
             <div class="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full">
                 <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                     <h2 class="text-xl font-bold text-gray-900 dark:text-white">Student Actions</h2>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Role: ${userRole}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Role: ${role?.replace(/_/g,' ')}</p>
                 </div>
                 <div class="p-6 space-y-2">
                     <button class="btn-modal-view w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-3">
                         <span class="material-symbols-outlined text-gray-600 dark:text-gray-400">visibility</span>
                         <span class="text-gray-900 dark:text-white">View Full Details</span>
                     </button>
-                    
-                    <!-- Advisers: Edit Information (submits for approval) -->
-                    ${canSubmitEdits ? `
-                        <button class="btn-modal-edit w-full text-left px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg flex items-center gap-3 text-blue-600 dark:text-blue-400">
-                            <span class="material-symbols-outlined">edit</span>
-                            <div class="flex-1">
-                                <span class="block">Edit Information</span>
-                                <span class="text-xs opacity-75">Submit changes for approval</span>
-                            </div>
-                        </button>
-                    ` : ''}
-                    
-                    <!-- Approvers: Review Pending Revisions -->
+                    ${isAdviser ? `
+                    <button class="btn-modal-edit w-full text-left px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg flex items-center gap-3 text-blue-600 dark:text-blue-400">
+                        <span class="material-symbols-outlined">edit</span>
+                        <div><span class="block">Edit Information</span><span class="text-xs opacity-75">Submit changes for approval</span></div>
+                    </button>` : ''}
                     ${isApprover ? `
-                        <button class="btn-modal-review-revisions w-full text-left px-4 py-3 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg flex items-center gap-3 text-orange-600 dark:text-orange-400">
-                            <span class="material-symbols-outlined">fact_check</span>
-                            <div class="flex-1">
-                                <span class="block">Review Pending Revisions</span>
-                                <span class="text-xs opacity-75">Approve or reject changes</span>
-                            </div>
-                        </button>
-                    ` : ''}
-
-                    <!-- Document Checklist (all roles) -->
-                    ${canManageDocuments ? `
-                        <button class="btn-modal-documents w-full text-left px-4 py-3 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg flex items-center gap-3 text-indigo-600 dark:text-indigo-400">
-                            <span class="material-symbols-outlined">description</span>
-                            <div class="flex-1">
-                                <span class="block">Document Checklist</span>
-                                <span class="text-xs opacity-75">Manage student documents</span>
-                            </div>
-                        </button>
-                    ` : ''}
-
-                    <!-- Add Remarks (all roles) -->
+                    <button class="btn-modal-review-revisions w-full text-left px-4 py-3 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg flex items-center gap-3 text-orange-600 dark:text-orange-400">
+                        <span class="material-symbols-outlined">fact_check</span>
+                        <div><span class="block">Review Pending Revisions</span><span class="text-xs opacity-75">Approve or reject changes</span></div>
+                    </button>` : ''}
+                    ${canDocs ? `
+                    <button class="btn-modal-documents w-full text-left px-4 py-3 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg flex items-center gap-3 text-indigo-600 dark:text-indigo-400">
+                        <span class="material-symbols-outlined">description</span>
+                        <div><span class="block">Document Checklist</span><span class="text-xs opacity-75">Manage student documents</span></div>
+                    </button>` : ''}
                     <button class="btn-modal-remarks w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-3">
                         <span class="material-symbols-outlined text-gray-600 dark:text-gray-400">comment</span>
                         <span class="text-gray-900 dark:text-white">Add Remarks</span>
                     </button>
-                    
-                    <!-- Status management (Registrar & ICT only) -->
                     ${isApprover ? `
-                        <div class="border-t border-gray-200 dark:border-gray-700 my-2"></div>
-                        
-                        ${currentStatus !== 'Cancelled' ? `
-                            <button class="btn-modal-cancel w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-900/20 rounded-lg flex items-center gap-3 text-gray-600 dark:text-gray-400">
-                                <span class="material-symbols-outlined">cancel</span>
-                                <span>Cancel Enrollment</span>
-                            </button>
-                        ` : ''}
-                        
-                        ${currentStatus !== 'Dropped' ? `
-                            <button class="btn-modal-dropout w-full text-left px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg flex items-center gap-3 text-red-600 dark:text-red-400">
-                                <span class="material-symbols-outlined">person_off</span>
-                                <span>Mark as Dropout</span>
-                            </button>
-                        ` : ''}
-                        
-                        ${currentStatus !== 'Transferred_Out' ? `
-                            <button class="btn-modal-transfer-out w-full text-left px-4 py-3 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg flex items-center gap-3 text-purple-600 dark:text-purple-400">
-                                <span class="material-symbols-outlined">logout</span>
-                                <span>Transfer Out</span>
-                            </button>
-                        ` : ''}
-                    ` : ''}
+                    <div class="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+                    ${status !== 'Cancelled' ? `
+                    <button class="btn-modal-cancel w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-900/20 rounded-lg flex items-center gap-3 text-gray-600 dark:text-gray-400">
+                        <span class="material-symbols-outlined">cancel</span><span>Cancel Enrollment</span>
+                    </button>` : ''}
+                    ${status !== 'Dropped' ? `
+                    <button class="btn-modal-dropout w-full text-left px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg flex items-center gap-3 text-red-600 dark:text-red-400">
+                        <span class="material-symbols-outlined">person_off</span><span>Mark as Dropout</span>
+                    </button>` : ''}
+                    ${status !== 'Transferred_Out' ? `
+                    <button class="btn-modal-transfer-out w-full text-left px-4 py-3 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg flex items-center gap-3 text-purple-600 dark:text-purple-400">
+                        <span class="material-symbols-outlined">logout</span><span>Transfer Out</span>
+                    </button>` : ''}` : ''}
                 </div>
                 <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-                    <button class="btn-modal-close w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
-                        Close
-                    </button>
+                    <button class="btn-modal-close w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">Close</button>
                 </div>
-            </div>
-        `;
+            </div>`;
+
         document.body.appendChild(modal);
 
-        // Bind modal buttons
-        modal.querySelector('.btn-modal-view')?.addEventListener('click', () => {
-            this.viewStudent(studentId);
-            modal.remove();
-        });
-        
-        modal.querySelector('.btn-modal-edit')?.addEventListener('click', () => {
-            this.editStudent(studentId);
-            modal.remove();
-        });
-        
-        modal.querySelector('.btn-modal-remarks')?.addEventListener('click', () => {
-            this.addRemarks(studentId);
-            modal.remove();
-        });
-        
-        modal.querySelector('.btn-modal-cancel')?.addEventListener('click', () => {
-            this.cancelEnrollment(studentId);
-            modal.remove();
-        });
-        
-        modal.querySelector('.btn-modal-dropout')?.addEventListener('click', () => {
-            this.markAsDropout(studentId);
-            modal.remove();
-        });
-        
-        modal.querySelector('.btn-modal-transfer-out')?.addEventListener('click', () => {
-            this.transferOut(studentId);
-            modal.remove();
-        });
-        
-        modal.querySelector('.btn-modal-close')?.addEventListener('click', () => {
-            modal.remove();
-        });
-
+        modal.querySelector('.btn-modal-view')?.addEventListener('click', () => { this.viewStudent(studentId); modal.remove(); });
+        modal.querySelector('.btn-modal-edit')?.addEventListener('click', () => { this.editStudent(studentId); modal.remove(); });
+        modal.querySelector('.btn-modal-remarks')?.addEventListener('click', () => { this.addRemarks(studentId); modal.remove(); });
+        modal.querySelector('.btn-modal-cancel')?.addEventListener('click', () => { this.cancelEnrollment(studentId); modal.remove(); });
+        modal.querySelector('.btn-modal-dropout')?.addEventListener('click', () => { this.markAsDropout(studentId); modal.remove(); });
+        modal.querySelector('.btn-modal-transfer-out')?.addEventListener('click', () => { this.transferOut(studentId); modal.remove(); });
+        modal.querySelector('.btn-modal-close')?.addEventListener('click', () => modal.remove());
         modal.querySelector('.btn-modal-documents')?.addEventListener('click', () => {
-            this.documentHandler.showDocumentChecklist(
-                studentId, 
-                student.FullName,
-                student.EnrollmentID
-            );
+            this.documentHandler.showDocumentChecklist(studentId, student.FullName, student.EnrollmentID);
             modal.remove();
         });
-
         modal.querySelector('.btn-modal-review-revisions')?.addEventListener('click', () => {
             this.showPendingRevisionsForStudent(studentId);
             modal.remove();
         });
     }
 
-    async showPendingRevisionsForStudent(studentId) {
-        try {
-            const response = await fetch(`../backend/api/revision-requests.php?action=get_by_student&student_id=${studentId}`);
-            const result = await response.json();
-            if (!result.success) {
-                alert('Error loading revision requests: ' + result.message);
-                return;
-            }
-            const requests = result.data || [];
-            if (requests.length === 0) {
-                alert('No pending revision requests found for this student.');
-                return;
-            }
-            this.showRevisionListModal(requests, studentId);
-        } catch (error) {
-            console.error('Error loading revisions:', error);
-            alert('Error loading revision requests');
-        }
-    }
-
-    showRevisionListModal(requests, studentId) {
-        const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
-        
-        modal.innerHTML = `
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between z-10">
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">Pending Revision Requests</h3>
-                    <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-                        <span class="material-icons-outlined">close</span>
-                    </button>
-                </div>
-                
-                <div class="p-6 space-y-4">
-                    ${requests.map(req => {
-                        const priorityColors = {
-                            'Urgent': 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
-                            'High': 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
-                            'Normal': 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
-                        };
-                        
-                        return `
-                            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors cursor-pointer" data-request-id="${req.RequestID}">
-                                <div class="flex items-start justify-between mb-3">
-                                    <div>
-                                        <div class="flex items-center gap-2 mb-1">
-                                            <h4 class="font-semibold text-gray-900 dark:text-white">Request #${req.RequestID}</h4>
-                                            <span class="px-2 py-0.5 rounded-full text-xs font-medium ${priorityColors[req.Priority] || priorityColors['Normal']}">
-                                                ${req.Priority}
-                                            </span>
-                                        </div>
-                                        <p class="text-sm text-gray-600 dark:text-gray-400">
-                                            ${req.RequestType.replace(/_/g, ' ')} • ${new Date(req.CreatedAt).toLocaleDateString()}
-                                        </p>
-                                    </div>
-                                    <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300">
-                                        Pending
-                                    </span>
-                                </div>
-                                <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">
-                                    <strong>Requested by:</strong> ${req.RequestedByName} (${req.RequesterRole})
-                                </p>
-                                <button class="btn-review-request text-sm text-primary hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 font-medium" data-request-id="${req.RequestID}">
-                                    Review Request →
-                                </button>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-                
-                <div class="sticky bottom-0 bg-gray-50 dark:bg-gray-900 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-                    <button onclick="this.closest('.fixed').remove()" class="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
-                        Close
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(modal);
-
-        // Bind review buttons - use RevisionRequestHandler for approval UI
-        const revisionHandler = new RevisionRequestHandler();
-        modal.querySelectorAll('.btn-review-request').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const requestId = e.currentTarget.dataset.requestId;
-                modal.remove();
-                revisionHandler.showApprovalInterface(requestId);
-            });
-        });
-        modal.querySelectorAll('[data-request-id]').forEach(card => {
-            if (!card.classList.contains('btn-review-request')) {
-                card.addEventListener('click', (e) => {
-                    const requestId = e.currentTarget.dataset.requestId;
-                    modal.remove();
-                    revisionHandler.showApprovalInterface(requestId);
-                });
-            }
-        });
-    }
-
+    // ──────────────────────────────────────────────
+    // REMARKS
+    // ──────────────────────────────────────────────
     addRemarks(studentId) {
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
@@ -1571,22 +1067,18 @@ class StudentManagementHandler {
                 </div>
                 <div class="p-6">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Remarks</label>
-                    <textarea id="remarks-input" rows="4" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary" placeholder="Enter remarks for this student..."></textarea>
+                    <textarea id="remarks-input" rows="4" class="w-full rounded-lg border-gray-300 dark:border-gray-600
+                              dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary"
+                              placeholder="Enter remarks for this student…"></textarea>
                 </div>
                 <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex gap-3 justify-end">
-                    <button class="btn-remarks-cancel px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
-                        Cancel
-                    </button>
-                    <button class="btn-remarks-save px-4 py-2 bg-primary text-white rounded-lg hover:bg-green-700">
-                        Save Remarks
-                    </button>
+                    <button class="btn-cancel px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">Cancel</button>
+                    <button class="btn-save px-4 py-2 bg-primary text-white rounded-lg hover:bg-green-700">Save Remarks</button>
                 </div>
-            </div>
-        `;
+            </div>`;
         document.body.appendChild(modal);
-
-        modal.querySelector('.btn-remarks-cancel').addEventListener('click', () => modal.remove());
-        modal.querySelector('.btn-remarks-save').addEventListener('click', () => {
+        modal.querySelector('.btn-cancel').addEventListener('click', () => modal.remove());
+        modal.querySelector('.btn-save').addEventListener('click', () => {
             const remarks = document.getElementById('remarks-input').value;
             this.saveRemarks(studentId, remarks);
             modal.remove();
@@ -1594,100 +1086,55 @@ class StudentManagementHandler {
     }
 
     async saveRemarks(studentId, remarks) {
-        if (!remarks.trim()) {
-            alert('Please enter remarks');
-            return;
-        }
-
+        if (!remarks.trim()) { alert('Please enter remarks'); return; }
         try {
-            const response = await fetch('../backend/api/student-update.php?action=add_remarks', {
-                method: 'POST',
+            const r = await fetch('../backend/api/student-update.php?action=add_remarks', {
+                method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    StudentID: studentId,
-                    Remarks: remarks,
-                    UserID: this.currentUser.UserID
-                })
+                body:    JSON.stringify({ StudentID: studentId, Remarks: remarks, UserID: this.currentUser.UserID }),
             });
-
-            const result = await response.json();
-
-            if (result.success) {
-                alert('Remarks saved successfully!');
-            } else {
-                alert('Failed to save remarks: ' + (result.message || 'Unknown error'));
-            }
-        } catch (error) {
-            console.error('Error saving remarks:', error);
-            alert('Error saving remarks');
-        }
+            const d = await r.json();
+            d.success ? alert('Remarks saved successfully!') : alert('Failed: ' + d.message);
+        } catch (e) { console.error(e); alert('Error saving remarks'); }
     }
 
+    // ──────────────────────────────────────────────
+    // STATUS CHANGE MODALS
+    // ──────────────────────────────────────────────
     cancelEnrollment(studentId) {
-        const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
-        modal.innerHTML = `
-            <div class="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full">
-                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                    <h2 class="text-xl font-bold text-gray-600 dark:text-gray-400">Cancel Enrollment</h2>
-                </div>
-                <div class="p-6">
-                    <p class="text-gray-700 dark:text-gray-300 mb-4">Cancel this enrollment? This is typically used for administrative cancellations (e.g., never attended, enrolled in error).</p>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Reason for Cancellation</label>
-                    <textarea id="cancel-reason" rows="3" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary" placeholder="Enter reason..."></textarea>
-                </div>
-                <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex gap-3 justify-end">
-                    <button class="btn-cancel-no px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
-                        No, Keep Enrollment
-                    </button>
-                    <button class="btn-cancel-yes px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-                        Yes, Cancel Enrollment
-                    </button>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-
-        modal.querySelector('.btn-cancel-no').addEventListener('click', () => modal.remove());
-        modal.querySelector('.btn-cancel-yes').addEventListener('click', () => {
-            const reason = document.getElementById('cancel-reason').value;
-            this.confirmStatusChange(studentId, 'Cancelled', reason);
-            modal.remove();
-        });
+        this.statusChangeModal(studentId, 'Cancelled', 'Cancel Enrollment',
+            'Cancel this enrollment? Typically used for administrative cancellations (e.g., enrolled in error).',
+            'gray', 'Reason for Cancellation');
     }
 
     markAsDropout(studentId) {
+        this.statusChangeModal(studentId, 'Dropped', 'Mark as Dropout',
+            'Mark this student as a dropout? This indicates the student left school after attending.',
+            'red', 'Reason for Dropout');
+    }
+
+    statusChangeModal(studentId, newStatus, title, desc, color, reasonLabel) {
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
-        
         modal.innerHTML = `
             <div class="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full">
                 <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                    <h2 class="text-xl font-bold text-red-600 dark:text-red-400">Mark as Dropout</h2>
+                    <h2 class="text-xl font-bold text-${color}-600 dark:text-${color}-400">${title}</h2>
                 </div>
                 <div class="p-6">
-                    <p class="text-gray-700 dark:text-gray-300 mb-4">Mark this student as a dropout? This indicates the student left school after attending.</p>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Reason for Dropout <span class="text-red-600">*</span>
-                    </label>
-                    <textarea id="dropout-reason" rows="3" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary" placeholder="Enter detailed reason..."></textarea>
+                    <p class="text-gray-700 dark:text-gray-300 mb-4">${desc}</p>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">${reasonLabel} <span class="text-red-600">*</span></label>
+                    <textarea id="reason-input" rows="3" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary" placeholder="Enter reason…"></textarea>
                 </div>
                 <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex gap-3 justify-end">
-                    <button class="btn-dropout-no px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
-                        Cancel
-                    </button>
-                    <button class="btn-dropout-yes px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-                        Confirm Dropout
-                    </button>
+                    <button class="btn-no px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300">Cancel</button>
+                    <button class="btn-yes px-4 py-2 bg-${color}-600 text-white rounded-lg hover:bg-${color}-700">Confirm</button>
                 </div>
-            </div>
-        `;
+            </div>`;
         document.body.appendChild(modal);
-
-        modal.querySelector('.btn-dropout-no').addEventListener('click', () => modal.remove());
-        modal.querySelector('.btn-dropout-yes').addEventListener('click', () => {
-            const reason = document.getElementById('dropout-reason').value;
-            this.confirmStatusChange(studentId, 'Dropped', reason);
+        modal.querySelector('.btn-no').addEventListener('click', () => modal.remove());
+        modal.querySelector('.btn-yes').addEventListener('click', () => {
+            this.confirmStatusChange(studentId, newStatus, document.getElementById('reason-input').value);
             modal.remove();
         });
     }
@@ -1695,116 +1142,195 @@ class StudentManagementHandler {
     transferOut(studentId) {
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
-        
         modal.innerHTML = `
             <div class="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full">
                 <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                     <h2 class="text-xl font-bold text-purple-600 dark:text-purple-400">Transfer Out Student</h2>
                 </div>
-                <div class="p-6">
-                    <p class="text-gray-700 dark:text-gray-300 mb-4">Transfer this student to another school?</p>
-                    <div class="space-y-3">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Transfer To (School Name) <span class="text-red-600">*</span>
-                            </label>
-                            <input type="text" id="transfer-school" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary" placeholder="Enter destination school..."/>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Reason for Transfer <span class="text-red-600">*</span>
-                            </label>
-                            <textarea id="transfer-reason" rows="3" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary" placeholder="Enter reason..."></textarea>
-                        </div>
+                <div class="p-6 space-y-3">
+                    <p class="text-gray-700 dark:text-gray-300">Transfer this student to another school?</p>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Transfer To (School Name) <span class="text-red-600">*</span></label>
+                        <input type="text" id="transfer-school" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary" placeholder="Destination school…"/>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Reason <span class="text-red-600">*</span></label>
+                        <textarea id="transfer-reason" rows="3" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary" placeholder="Enter reason…"></textarea>
                     </div>
                 </div>
                 <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex gap-3 justify-end">
-                    <button class="btn-transfer-no px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
-                        Cancel
-                    </button>
-                    <button class="btn-transfer-yes px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-                        Confirm Transfer
-                    </button>
+                    <button class="btn-no px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300">Cancel</button>
+                    <button class="btn-yes px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Confirm Transfer</button>
                 </div>
-            </div>
-        `;
+            </div>`;
         document.body.appendChild(modal);
-
-        modal.querySelector('.btn-transfer-no').addEventListener('click', () => modal.remove());
-        modal.querySelector('.btn-transfer-yes').addEventListener('click', () => {
-            const school = document.getElementById('transfer-school').value;
-            const reason = document.getElementById('transfer-reason').value;
-            
-            if (!school.trim()) {
-                alert('Please enter the destination school name');
-                return;
-            }
-            
+        modal.querySelector('.btn-no').addEventListener('click', () => modal.remove());
+        modal.querySelector('.btn-yes').addEventListener('click', () => {
+            const school = document.getElementById('transfer-school').value.trim();
+            const reason = document.getElementById('transfer-reason').value.trim();
+            if (!school) { alert('Please enter the destination school name'); return; }
             this.confirmStatusChange(studentId, 'Transferred_Out', reason, school);
             modal.remove();
         });
     }
 
     async confirmStatusChange(studentId, newStatus, reason, additionalInfo = null) {
-        if (!reason.trim()) {
-            alert('Please provide a reason');
-            return;
-        }
-
+        if (!reason?.trim()) { alert('Please provide a reason'); return; }
         try {
-            const response = await fetch('../backend/api/student-update.php?action=change_status', {
-                method: 'POST',
+            const r = await fetch('../backend/api/student-update.php?action=change_status', {
+                method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    StudentID: studentId,
-                    NewStatus: newStatus,
-                    Reason: reason,
-                    UserID: this.currentUser.UserID,
-                    AdditionalInfo: additionalInfo
-                })
+                body:    JSON.stringify({ StudentID: studentId, NewStatus: newStatus, Reason: reason,
+                                         UserID: this.currentUser.UserID, AdditionalInfo: additionalInfo }),
             });
-
-            const result = await response.json();
-
-            if (result.success) {
-                if (result.requiresApproval) {
-                    alert(`Status change request submitted for approval!\n\nRequest ID: ${result.requestId}\n\nA Registrar or ICT Coordinator will review your request.`);
-                } else {
-                    const statusLabels = {
-                        'Cancelled': 'cancelled',
-                        'Dropped': 'marked as dropout',
-                        'Transferred_Out': 'transferred out'
-                    };
-                    alert(`Student ${statusLabels[newStatus]} successfully!`);
-                }
+            const d = await r.json();
+            if (d.success) {
+                alert(d.requiresApproval
+                    ? `Status change request submitted!\n\nRequest ID: ${d.requestId}`
+                    : 'Status updated successfully!');
                 this.loadStudents();
             } else {
-                alert('Failed to update status: ' + (result.message || 'Unknown error'));
+                alert('Failed: ' + (d.message || 'Unknown error'));
             }
-        } catch (error) {
-            console.error('Error changing status:', error);
-            alert('Error changing student status');
-        }
+        } catch (e) { console.error(e); alert('Error changing student status'); }
     }
 
-    addNewStudent() {
-        window.location.href = 'enrollment-management.html';
+    // ──────────────────────────────────────────────
+    // REVISION REQUESTS
+    // ──────────────────────────────────────────────
+    async showPendingRevisionsForStudent(studentId) {
+        try {
+            const r = await fetch(`../backend/api/revision-requests.php?action=get_by_student&student_id=${studentId}`);
+            const d = await r.json();
+            if (!d.success) { alert('Error loading revision requests: ' + d.message); return; }
+            const reqs = d.data || [];
+            if (!reqs.length) { alert('No pending revision requests found for this student.'); return; }
+            this.showRevisionListModal(reqs, studentId);
+        } catch (e) { console.error(e); alert('Error loading revision requests'); }
     }
 
-    showLoading(show) {
-        console.log('Loading:', show);
+    showRevisionListModal(requests, studentId) {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+        const priorityColors = {
+            Urgent: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+            High:   'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+            Normal: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+        };
+        modal.innerHTML = `
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between z-10">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">Pending Revision Requests</h3>
+                    <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <span class="material-icons-outlined">close</span>
+                    </button>
+                </div>
+                <div class="p-6 space-y-4">
+                    ${requests.map(req => `
+                        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors cursor-pointer" data-request-id="${req.RequestID}">
+                            <div class="flex items-start justify-between mb-3">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <h4 class="font-semibold text-gray-900 dark:text-white">Request #${req.RequestID}</h4>
+                                        <span class="px-2 py-0.5 rounded-full text-xs font-medium ${priorityColors[req.Priority] || priorityColors.Normal}">${req.Priority}</span>
+                                    </div>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">
+                                        ${(req.RequestType||'').replace(/_/g,' ')} • ${new Date(req.CreatedAt).toLocaleDateString()}
+                                    </p>
+                                </div>
+                                <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300">Pending</span>
+                            </div>
+                            <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                                <strong>Requested by:</strong> ${this.esc(req.RequestedByName)} (${this.esc(req.RequesterRole)})
+                            </p>
+                            <button class="btn-review-request text-sm text-primary hover:text-green-700 dark:text-green-400 font-medium" data-request-id="${req.RequestID}">
+                                Review Request →
+                            </button>
+                        </div>`).join('')}
+                </div>
+                <div class="sticky bottom-0 bg-gray-50 dark:bg-gray-900 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+                    <button onclick="this.closest('.fixed').remove()" class="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300">Close</button>
+                </div>
+            </div>`;
+        document.body.appendChild(modal);
+
+        const rh = new RevisionRequestHandler();
+        modal.querySelectorAll('.btn-review-request').forEach(btn => {
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                modal.remove();
+                rh.showApprovalInterface(e.currentTarget.dataset.requestId);
+            });
+        });
+        modal.querySelectorAll('[data-request-id]').forEach(card => {
+            if (!card.classList.contains('btn-review-request')) {
+                card.addEventListener('click', e => {
+                    modal.remove();
+                    rh.showApprovalInterface(e.currentTarget.dataset.requestId);
+                });
+            }
+        });
     }
+
+    // ──────────────────────────────────────────────
+    // PAGINATION
+    // ──────────────────────────────────────────────
+    updatePagination() {
+        const total = Math.ceil(this.filteredStudents.length / this.itemsPerPage);
+        const start = (this.currentPage - 1) * this.itemsPerPage + 1;
+        const end   = Math.min(start + this.itemsPerPage - 1, this.filteredStudents.length);
+
+        const pText = document.querySelector('nav[aria-label="Pagination"] p');
+        if (pText) pText.innerHTML = `Showing <span class="font-medium">${this.filteredStudents.length > 0 ? start : 0}</span>
+            to <span class="font-medium">${end}</span> of <span class="font-medium">${this.filteredStudents.length}</span> results`;
+
+        document.querySelectorAll('nav[aria-label="Pagination"] a').forEach(a => {
+            const prev = a.textContent.trim() === 'Previous';
+            const next = a.textContent.trim() === 'Next';
+            if (prev) {
+                a.onclick = e => { e.preventDefault(); if (this.currentPage > 1) { this.currentPage--; this.renderTable(); this.updatePagination(); } };
+                a.classList.toggle('opacity-50', this.currentPage === 1);
+                a.style.pointerEvents = this.currentPage === 1 ? 'none' : 'auto';
+            }
+            if (next) {
+                a.onclick = e => { e.preventDefault(); if (this.currentPage < total) { this.currentPage++; this.renderTable(); this.updatePagination(); } };
+                a.classList.toggle('opacity-50', this.currentPage >= total || total === 0);
+                a.style.pointerEvents = (this.currentPage >= total || total === 0) ? 'none' : 'auto';
+            }
+        });
+    }
+
+    // ──────────────────────────────────────────────
+    // HELPERS
+    // ──────────────────────────────────────────────
+    addNewStudent() { window.location.href = 'enrollment-management.html'; }
+
+    formatName(fullName) {
+        if (!fullName) return 'N/A';
+        const parts = fullName.split(',').map(p => p.trim());
+        return parts.length === 2 ? `${parts[1]} ${parts[0]}` : fullName;
+    }
+
+    extractGradeNumber(gradeLevel) {
+        if (!gradeLevel) return 'N/A';
+        const m = gradeLevel.match(/\d+/);
+        return m ? `Grade ${m[0]}` : gradeLevel;
+    }
+
+    esc(text) {
+        const d = document.createElement('div');
+        d.textContent = text ?? '';
+        return d.innerHTML;
+    }
+
+    showLoading(show) { console.log('Loading:', show); }
 }
 
-// Initialize
+// ── Global init ────────────────────────────────────────────────────
 let studentManagement;
-
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        studentManagement = new StudentManagementHandler();
-    });
+    document.addEventListener('DOMContentLoaded', () => { studentManagement = new StudentManagementHandler(); });
 } else {
     studentManagement = new StudentManagementHandler();
 }
-
 window.studentManagement = studentManagement;

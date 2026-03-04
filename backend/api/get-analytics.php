@@ -1,5 +1,11 @@
 <?php
-// backend/api/get-analytics.php
+// =====================================================
+// Get Analytics API - REVISED FOR NORMALIZED DB
+// File: backend/api/get-analytics.php
+// Updated: 2026-03-04
+// Revised to work with normalized database schema
+// =====================================================
+
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -18,6 +24,7 @@ try {
         throw new Exception('Database connection failed');
     }
 
+    // Get filters - note: using YearLabel string (e.g., "2025-2026") not ID
     $schoolYear = isset($_GET['sy']) && $_GET['sy'] !== 'all' ? $_GET['sy'] : null;
     $gradeLevel = isset($_GET['grade']) && $_GET['grade'] !== 'all' ? intval($_GET['grade']) : null;
 
@@ -43,7 +50,7 @@ try {
         $params = [];
 
         if ($schoolYear) {
-            $conditions[] = "e.AcademicYear = :schoolYear";
+            $conditions[] = "ay.YearLabel = :schoolYear";
             $params[':schoolYear'] = $schoolYear;
         }
 
@@ -68,6 +75,7 @@ try {
     // ==========================================
     $query = "SELECT COUNT(DISTINCT e.StudentID) as total
               FROM enrollment e
+              INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
               WHERE $whereClause";
 
     $stmt = $conn->prepare($query);
@@ -82,7 +90,7 @@ try {
     // Previous year total for trend comparison
     if ($schoolYear) {
         $prevYear = getPreviousSchoolYear($schoolYear);
-        $prevConditions = ["e.Status IN ('Confirmed', 'Pending')", "e.AcademicYear = :prevYear"];
+        $prevConditions = ["e.Status IN ('Confirmed', 'Pending')", "ay.YearLabel = :prevYear"];
         $prevParams = [':prevYear' => $prevYear];
 
         if ($gradeLevel) {
@@ -92,6 +100,7 @@ try {
 
         $prevQuery = "SELECT COUNT(DISTINCT e.StudentID) as total
                       FROM enrollment e
+                      INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
                       WHERE " . implode(' AND ', $prevConditions);
 
         $prevStmt = $conn->prepare($prevQuery);
@@ -106,14 +115,11 @@ try {
     // ==========================================
     // 2. DROPOUT RATE
     // ==========================================
-    // FIX: Use enrollment.Status IN ('Dropped','Transferred_Out') as the source of truth
-    // for dropped students within a year. The student.EnrollmentStatus field is a
-    // historical/aggregate flag and should not be used for year-specific dropout calculations.
     $droppedConditions = ["e.Status IN ('Dropped', 'Transferred_Out')"];
     $droppedParams = [];
 
     if ($schoolYear) {
-        $droppedConditions[] = "e.AcademicYear = :schoolYear";
+        $droppedConditions[] = "ay.YearLabel = :schoolYear";
         $droppedParams[':schoolYear'] = $schoolYear;
     }
 
@@ -124,6 +130,7 @@ try {
 
     $droppedQuery = "SELECT COUNT(DISTINCT e.StudentID) as dropped
                      FROM enrollment e
+                     INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
                      WHERE " . implode(' AND ', $droppedConditions);
 
     $stmt = $conn->prepare($droppedQuery);
@@ -144,7 +151,7 @@ try {
         $prevYear = getPreviousSchoolYear($schoolYear);
         $prevDropConditions = [
             "e.Status IN ('Dropped', 'Transferred_Out')",
-            "e.AcademicYear = :prevYear"
+            "ay.YearLabel = :prevYear"
         ];
         $prevDropParams = [':prevYear' => $prevYear];
 
@@ -153,8 +160,7 @@ try {
             $prevDropParams[':gradeLevel'] = $gradeLevel;
         }
 
-        // Also get prev year total enrolled
-        $prevTotalConditions = ["e.Status IN ('Confirmed','Pending')", "e.AcademicYear = :prevYear"];
+        $prevTotalConditions = ["e.Status IN ('Confirmed','Pending')", "ay.YearLabel = :prevYear"];
         $prevTotalParams = [':prevYear' => $prevYear];
         if ($gradeLevel) {
             $prevTotalConditions[] = "e.GradeLevelID = :gradeLevel";
@@ -163,9 +169,11 @@ try {
 
         $prevDropQuery = "SELECT COUNT(DISTINCT e.StudentID) as dropped
                           FROM enrollment e
+                          INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
                           WHERE " . implode(' AND ', $prevDropConditions);
         $prevTotalQuery = "SELECT COUNT(DISTINCT e.StudentID) as total
                            FROM enrollment e
+                           INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
                            WHERE " . implode(' AND ', $prevTotalConditions);
 
         $prevDropStmt = $conn->prepare($prevDropQuery);
@@ -196,6 +204,7 @@ try {
     $pwdQuery = "SELECT COUNT(DISTINCT s.StudentID) as pwd_count
                  FROM student s
                  INNER JOIN enrollment e ON s.StudentID = e.StudentID
+                 INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
                  WHERE s.IsPWD = 1
                  AND $whereClause";
 
@@ -210,10 +219,11 @@ try {
     // ==========================================
     // 4. BALIK-ARAL COUNT
     // ==========================================
+    // Note: EnrollmentType enum has 'Balik_Aral' as one value
     $balikAralQuery = "SELECT COUNT(DISTINCT e.StudentID) as balik_aral_count
                        FROM enrollment e
-                       WHERE (e.LearnerType = 'Regular_Balik_Aral'
-                           OR e.LearnerType = 'Irregular_Balik_Aral')
+                       INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
+                       WHERE e.EnrollmentType = 'Balik_Aral'
                        AND $whereClause";
 
     $stmt = $conn->prepare($balikAralQuery);
@@ -230,6 +240,7 @@ try {
     $ipQuery = "SELECT COUNT(DISTINCT s.StudentID) as ip_count
                 FROM student s
                 INNER JOIN enrollment e ON s.StudentID = e.StudentID
+                INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
                 WHERE s.IsIPCommunity = 1
                 AND $whereClause";
 
@@ -249,6 +260,7 @@ try {
                         COUNT(DISTINCT s.StudentID) as count
                     FROM student s
                     INNER JOIN enrollment e ON s.StudentID = e.StudentID
+                    INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
                     WHERE $whereClause
                     GROUP BY s.Gender";
 
@@ -276,12 +288,13 @@ try {
     }
 
     $trendsQuery = "SELECT
-                        e.AcademicYear as year,
+                        ay.YearLabel as year,
                         COUNT(DISTINCT e.StudentID) as count
                     FROM enrollment e
+                    INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
                     WHERE " . implode(' AND ', $trendsConditions) . "
-                    GROUP BY e.AcademicYear
-                    ORDER BY e.AcademicYear DESC
+                    GROUP BY ay.YearLabel, ay.StartYear
+                    ORDER BY ay.StartYear DESC
                     LIMIT 5";
 
     $stmt = $conn->prepare($trendsQuery);
@@ -300,14 +313,15 @@ try {
     $response['data']['enrollmentTrends'] = array_reverse($trends);
 
     // ==========================================
-    // 8. LEARNER TYPE DISTRIBUTION
+    // 8. LEARNER TYPE DISTRIBUTION (EnrollmentType)
     // ==========================================
     $learnerTypeQuery = "SELECT
-                            e.LearnerType,
+                            e.EnrollmentType,
                             COUNT(DISTINCT e.StudentID) as count
                          FROM enrollment e
+                         INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
                          WHERE $whereClause
-                         GROUP BY e.LearnerType";
+                         GROUP BY e.EnrollmentType";
 
     $stmt = $conn->prepare($learnerTypeQuery);
     foreach ($params as $key => $value) {
@@ -317,7 +331,7 @@ try {
 
     $learnerTypes = [];
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $learnerTypes[$row['LearnerType']] = intval($row['count']);
+        $learnerTypes[$row['EnrollmentType']] = intval($row['count']);
     }
     $response['data']['learnerTypeDistribution'] = $learnerTypes;
 
@@ -328,7 +342,7 @@ try {
     $gradeLevelParams = [];
 
     if ($schoolYear) {
-        $gradeLevelConditions[] = "e.AcademicYear = :schoolYear";
+        $gradeLevelConditions[] = "ay.YearLabel = :schoolYear";
         $gradeLevelParams[':schoolYear'] = $schoolYear;
     }
 
@@ -341,6 +355,7 @@ try {
                             gl.GradeLevelNumber,
                             COUNT(DISTINCT e.StudentID) as count
                         FROM enrollment e
+                        INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
                         INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
                         WHERE " . implode(' AND ', $gradeLevelConditions) . "
                         GROUP BY gl.GradeLevelNumber
@@ -354,6 +369,7 @@ try {
 
     $gradeDist = [0, 0, 0, 0, 0, 0];
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        // GradeLevelNumber is 7-12, map to array index 0-5
         $index = intval($row['GradeLevelNumber']) - 7;
         if ($index >= 0 && $index < 6) {
             $gradeDist[$index] = intval($row['count']);
@@ -364,11 +380,12 @@ try {
     // ==========================================
     // 10. STRAND DISTRIBUTION (Grade 11 & 12)
     // ==========================================
-    $strandConditions = ["e.Status IN ('Confirmed', 'Pending')", "e.GradeLevelID IN (5, 6)"];
+    // Note: GradeLevelNumber 11 and 12 (not 5 and 6)
+    $strandConditions = ["e.Status IN ('Confirmed', 'Pending')", "gl.GradeLevelNumber IN (11, 12)"];
     $strandParams = [];
 
     if ($schoolYear) {
-        $strandConditions[] = "e.AcademicYear = :schoolYear";
+        $strandConditions[] = "ay.YearLabel = :schoolYear";
         $strandParams[':schoolYear'] = $schoolYear;
     }
 
@@ -377,6 +394,8 @@ try {
                         str.StrandName,
                         COUNT(DISTINCT e.StudentID) as count
                     FROM enrollment e
+                    INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
+                    INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
                     LEFT JOIN strand str ON e.StrandID = str.StrandID
                     WHERE " . implode(' AND ', $strandConditions) . "
                     GROUP BY str.StrandCode, str.StrandName
@@ -407,10 +426,11 @@ try {
                         SUM(CASE WHEN s.Gender = 'Male'   THEN 1 ELSE 0 END) as male,
                         SUM(CASE WHEN s.Gender = 'Female' THEN 1 ELSE 0 END) as female,
                         SUM(CASE WHEN s.IsPWD = 1         THEN 1 ELSE 0 END) as pwd,
-                        SUM(CASE WHEN e.LearnerType IN ('Regular_Balik_Aral','Irregular_Balik_Aral')
+                        SUM(CASE WHEN e.EnrollmentType = 'Balik_Aral' 
                                  THEN 1 ELSE 0 END) as balikAral
                       FROM enrollment e
-                      INNER JOIN student s  ON e.StudentID  = s.StudentID
+                      INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
+                      INNER JOIN student s ON e.StudentID = s.StudentID
                       INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
                       WHERE $whereClause
                       GROUP BY gl.GradeLevelNumber
@@ -449,6 +469,8 @@ try {
 }
 
 function getPreviousSchoolYear($currentSY) {
+    // Input: "2025-2026"
+    // Output: "2024-2025"
     $years = explode('-', $currentSY);
     if (count($years) == 2) {
         $year1 = intval($years[0]) - 1;

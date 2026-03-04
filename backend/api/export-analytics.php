@@ -1,5 +1,11 @@
 <?php
-// backend/api/export-analytics.php
+// =====================================================
+// Export Analytics API - REVISED FOR NORMALIZED DB
+// File: backend/api/export-analytics.php
+// Updated: 2026-03-04
+// Revised to work with normalized database schema
+// =====================================================
+
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -47,7 +53,7 @@ function getAnalyticsData($conn, $sy, $grade) {
     $params = [];
     
     if ($sy) {
-        $conditions[] = "e.AcademicYear = :schoolYear";
+        $conditions[] = "ay.YearLabel = :schoolYear";
         $params[':schoolYear'] = $sy;
     }
     
@@ -59,8 +65,10 @@ function getAnalyticsData($conn, $sy, $grade) {
     $whereClause = implode(' AND ', $conditions);
     
     // 1. Total Students
-    $query = "SELECT COUNT(DISTINCT s.StudentID) as total FROM Student s
-              INNER JOIN Enrollment e ON s.StudentID = e.StudentID
+    $query = "SELECT COUNT(DISTINCT s.StudentID) as total 
+              FROM student s
+              INNER JOIN enrollment e ON s.StudentID = e.StudentID
+              INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
               WHERE $whereClause";
     $stmt = $conn->prepare($query);
     foreach ($params as $key => $value) {
@@ -70,8 +78,10 @@ function getAnalyticsData($conn, $sy, $grade) {
     $data['totalStudents'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     
     // 2. Gender Distribution
-    $query = "SELECT s.Gender, COUNT(DISTINCT s.StudentID) as count FROM Student s
-              INNER JOIN Enrollment e ON s.StudentID = e.StudentID
+    $query = "SELECT s.Gender, COUNT(DISTINCT s.StudentID) as count 
+              FROM student s
+              INNER JOIN enrollment e ON s.StudentID = e.StudentID
+              INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
               WHERE $whereClause
               GROUP BY s.Gender";
     $stmt = $conn->prepare($query);
@@ -89,9 +99,11 @@ function getAnalyticsData($conn, $sy, $grade) {
     }
     
     // 3. Grade Level Distribution
-    $query = "SELECT gl.GradeLevelName, COUNT(DISTINCT s.StudentID) as count FROM Student s
-              INNER JOIN Enrollment e ON s.StudentID = e.StudentID
-              INNER JOIN GradeLevel gl ON e.GradeLevelID = gl.GradeLevelID
+    $query = "SELECT gl.GradeLevelName, COUNT(DISTINCT s.StudentID) as count 
+              FROM student s
+              INNER JOIN enrollment e ON s.StudentID = e.StudentID
+              INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
+              INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
               WHERE $whereClause
               GROUP BY gl.GradeLevelNumber, gl.GradeLevelName
               ORDER BY gl.GradeLevelNumber";
@@ -102,11 +114,13 @@ function getAnalyticsData($conn, $sy, $grade) {
     $stmt->execute();
     $data['gradeLevelDistribution'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // 4. Learner Type Distribution
-    $query = "SELECT e.LearnerType, COUNT(DISTINCT s.StudentID) as count FROM Student s
-              INNER JOIN Enrollment e ON s.StudentID = e.StudentID
+    // 4. Enrollment Type Distribution (was LearnerType)
+    $query = "SELECT e.EnrollmentType, COUNT(DISTINCT s.StudentID) as count 
+              FROM student s
+              INNER JOIN enrollment e ON s.StudentID = e.StudentID
+              INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
               WHERE $whereClause
-              GROUP BY e.LearnerType";
+              GROUP BY e.EnrollmentType";
     $stmt = $conn->prepare($query);
     foreach ($params as $key => $value) {
         $stmt->bindValue($key, $value);
@@ -115,8 +129,10 @@ function getAnalyticsData($conn, $sy, $grade) {
     $data['learnerTypeDistribution'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // 5. PWD Count
-    $query = "SELECT COUNT(DISTINCT s.StudentID) as count FROM Student s
-              INNER JOIN Enrollment e ON s.StudentID = e.StudentID
+    $query = "SELECT COUNT(DISTINCT s.StudentID) as count 
+              FROM student s
+              INNER JOIN enrollment e ON s.StudentID = e.StudentID
+              INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
               WHERE $whereClause AND s.IsPWD = 1";
     $stmt = $conn->prepare($query);
     foreach ($params as $key => $value) {
@@ -126,9 +142,11 @@ function getAnalyticsData($conn, $sy, $grade) {
     $data['pwdCount'] = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
     
     // 6. Balik-Aral Count
-    $query = "SELECT COUNT(DISTINCT s.StudentID) as count FROM Student s
-              INNER JOIN Enrollment e ON s.StudentID = e.StudentID
-              WHERE $whereClause AND (e.LearnerType LIKE '%Balik_Aral%')";
+    $query = "SELECT COUNT(DISTINCT s.StudentID) as count 
+              FROM student s
+              INNER JOIN enrollment e ON s.StudentID = e.StudentID
+              INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
+              WHERE $whereClause AND e.EnrollmentType = 'Balik_Aral'";
     $stmt = $conn->prepare($query);
     foreach ($params as $key => $value) {
         $stmt->bindValue($key, $value);
@@ -137,8 +155,10 @@ function getAnalyticsData($conn, $sy, $grade) {
     $data['balikAralCount'] = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
     
     // 7. IP Community Count
-    $query = "SELECT COUNT(DISTINCT s.StudentID) as count FROM Student s
-              INNER JOIN Enrollment e ON s.StudentID = e.StudentID
+    $query = "SELECT COUNT(DISTINCT s.StudentID) as count 
+              FROM student s
+              INNER JOIN enrollment e ON s.StudentID = e.StudentID
+              INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
               WHERE $whereClause AND s.IsIPCommunity = 1";
     $stmt = $conn->prepare($query);
     foreach ($params as $key => $value) {
@@ -147,17 +167,29 @@ function getAnalyticsData($conn, $sy, $grade) {
     $stmt->execute();
     $data['ipCount'] = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
     
-    // 8. Strand Distribution (for Grade 11 & 12)
+    // 8. Strand Distribution (Grade 11 & 12 only)
+    // Note: GradeLevelNumber 11 and 12 (not 5 and 6)
+    $strandConditions = ["e.Status IN ('Confirmed', 'Pending')", "gl.GradeLevelNumber IN (11, 12)"];
+    $strandParams = [];
+    
+    if ($sy) {
+        $strandConditions[] = "ay.YearLabel = :schoolYear";
+        $strandParams[':schoolYear'] = $sy;
+    }
+    
+    $strandWhereClause = implode(' AND ', $strandConditions);
+    
     $query = "SELECT st.StrandCode, st.StrandName, COUNT(DISTINCT s.StudentID) as count 
-              FROM Student s
-              INNER JOIN Enrollment e ON s.StudentID = e.StudentID
-              INNER JOIN Strand st ON e.StrandID = st.StrandID
-              INNER JOIN GradeLevel gl ON e.GradeLevelID = gl.GradeLevelID
-              WHERE $whereClause AND gl.GradeLevelNumber IN (5, 6)
+              FROM student s
+              INNER JOIN enrollment e ON s.StudentID = e.StudentID
+              INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
+              INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
+              INNER JOIN strand st ON e.StrandID = st.StrandID
+              WHERE $strandWhereClause
               GROUP BY st.StrandID, st.StrandCode, st.StrandName
               ORDER BY count DESC";
     $stmt = $conn->prepare($query);
-    foreach ($params as $key => $value) {
+    foreach ($strandParams as $key => $value) {
         $stmt->bindValue($key, $value);
     }
     $stmt->execute();
@@ -171,10 +203,11 @@ function getAnalyticsData($conn, $sy, $grade) {
                 SUM(CASE WHEN s.Gender = 'Male' THEN 1 ELSE 0 END) as Male,
                 SUM(CASE WHEN s.Gender = 'Female' THEN 1 ELSE 0 END) as Female,
                 SUM(CASE WHEN s.IsPWD = 1 THEN 1 ELSE 0 END) as PWD,
-                SUM(CASE WHEN e.LearnerType LIKE '%Balik_Aral%' THEN 1 ELSE 0 END) as BalikAral
-              FROM Student s
-              INNER JOIN Enrollment e ON s.StudentID = e.StudentID
-              INNER JOIN GradeLevel gl ON e.GradeLevelID = gl.GradeLevelID
+                SUM(CASE WHEN e.EnrollmentType = 'Balik_Aral' THEN 1 ELSE 0 END) as BalikAral
+              FROM student s
+              INNER JOIN enrollment e ON s.StudentID = e.StudentID
+              INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
+              INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
               WHERE $whereClause
               GROUP BY gl.GradeLevelNumber, gl.GradeLevelName
               ORDER BY gl.GradeLevelNumber";
@@ -186,15 +219,23 @@ function getAnalyticsData($conn, $sy, $grade) {
     $data['detailedStats'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // 10. Enrollment Trends (Year-over-year)
-    $query = "SELECT e.AcademicYear, COUNT(DISTINCT s.StudentID) as count
-              FROM Student s
-              INNER JOIN Enrollment e ON s.StudentID = e.StudentID
+    $query = "SELECT ay.YearLabel, COUNT(DISTINCT s.StudentID) as count
+              FROM student s
+              INNER JOIN enrollment e ON s.StudentID = e.StudentID
+              INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
               WHERE e.Status IN ('Confirmed', 'Pending')
-              GROUP BY e.AcademicYear
-              ORDER BY e.AcademicYear";
+              GROUP BY ay.YearLabel, ay.StartYear
+              ORDER BY ay.StartYear";
     $stmt = $conn->prepare($query);
     $stmt->execute();
-    $data['enrollmentTrends'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $trendsData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $data['enrollmentTrends'] = [];
+    foreach ($trendsData as $row) {
+        $data['enrollmentTrends'][] = [
+            'AcademicYear' => $row['YearLabel'],
+            'count' => $row['count']
+        ];
+    }
     
     return $data;
 }
@@ -300,10 +341,10 @@ function exportDistributionCSV($output, $data) {
     }
     fputcsv($output, []);
     
-    fputcsv($output, ['LEARNER TYPE DISTRIBUTION']);
-    fputcsv($output, ['Learner Type', 'Count']);
+    fputcsv($output, ['ENROLLMENT TYPE DISTRIBUTION']);
+    fputcsv($output, ['Enrollment Type', 'Count']);
     foreach ($data['learnerTypeDistribution'] as $row) {
-        fputcsv($output, [str_replace('_', ' ', $row['LearnerType']), $row['count']]);
+        fputcsv($output, [str_replace('_', ' ', $row['EnrollmentType']), $row['count']]);
     }
     fputcsv($output, []);
 }
@@ -451,11 +492,11 @@ function exportDistributionExcel($data) {
     }
     echo '</table><br>';
     
-    echo '<h3 class="section-title">LEARNER TYPE DISTRIBUTION</h3>';
+    echo '<h3 class="section-title">ENROLLMENT TYPE DISTRIBUTION</h3>';
     echo '<table border="1" class="data-table">';
-    echo '<tr><th>Learner Type</th><th>Count</th></tr>';
+    echo '<tr><th>Enrollment Type</th><th>Count</th></tr>';
     foreach ($data['learnerTypeDistribution'] as $row) {
-        echo '<tr><td>' . str_replace('_', ' ', $row['LearnerType']) . '</td><td>' . $row['count'] . '</td></tr>';
+        echo '<tr><td>' . str_replace('_', ' ', $row['EnrollmentType']) . '</td><td>' . $row['count'] . '</td></tr>';
     }
     echo '</table><br>';
 }

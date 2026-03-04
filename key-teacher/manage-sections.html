@@ -8,38 +8,30 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
-      <link rel="icon" type="image/png" href="../assets/favicons/favicon-96x96.png" sizes="96x96" />
-      <link rel="icon" type="image/svg+xml" href="../assets/favicons/favicon.svg" />
-      <link rel="shortcut icon" href="../assets/favicons/favicon.ico" />
-      <link rel="apple-touch-icon" sizes="180x180" href="../assets/favicons/apple-touch-icon.png" />
-      <meta name="apple-mobile-web-app-title" content="DJIHS" />
-      <link rel="manifest" href="../assets/favicons/site.webmanifest" />
+    <link rel="icon" type="image/png" href="../assets/favicons/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="../assets/favicons/favicon.svg" />
+    <link rel="shortcut icon" href="../assets/favicons/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="../assets/favicons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="DJIHS" />
+    <link rel="manifest" href="../assets/favicons/site.webmanifest" />
 
-    
     <!-- AUTHENTICATION PROTECTION -->
     <script src="../js/auth.js"></script>
     <script>
         (function() {
             const isLoggedIn = localStorage.getItem('isLoggedIn');
             const userDataString = localStorage.getItem('user');
-            
-            if (!isLoggedIn || !userDataString) {
-                window.location.href = '../login.html';
-                return;
-            }
-            
+            if (!isLoggedIn || !userDataString) { window.location.href = '../login.html'; return; }
             try {
                 const user = JSON.parse(userDataString);
                 if (user.Role !== 'Key_Teacher') {
                     alert('Access denied. Key Teacher access required.');
                     window.location.href = '../login.html';
                 }
-            } catch (e) {
-                window.location.href = '../login.html';
-            }
+            } catch (e) { window.location.href = '../login.html'; }
         })();
     </script>
-    
+
     <script>
         tailwind.config = {
             darkMode: "class",
@@ -50,9 +42,7 @@
                         "background-light": "#f6f7f8",
                         "background-dark": "#101922",
                     },
-                    fontFamily: {
-                        "display": ["Inter", "sans-serif"]
-                    },
+                    fontFamily: { "display": ["Inter", "sans-serif"] },
                 },
             },
         }
@@ -60,6 +50,30 @@
     <style>
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        /* Quick-pick theme chip */
+        .theme-chip {
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .theme-chip:hover {
+            transform: translateY(-1px);
+        }
+        .theme-chip.selected {
+            background-color: #085019;
+            color: white;
+            border-color: #085019;
+        }
+
+        /* Name preview pulse on change */
+        @keyframes previewPop {
+            0%   { transform: scale(1); }
+            50%  { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+        .preview-pop {
+            animation: previewPop 0.2s ease;
         }
     </style>
 </head>
@@ -132,7 +146,7 @@
                 <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
                     <div class="flex flex-wrap items-center gap-4">
                         <div class="flex-1 min-w-[200px]">
-                            <input id="searchInput" type="text" placeholder="Search section or adviser..." 
+                            <input id="searchInput" type="text" placeholder="Search section or adviser..."
                                    class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary"
                                    oninput="filterSections()">
                         </div>
@@ -161,7 +175,7 @@
                             <tr>
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Section Name</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Adviser</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Grade/Strand</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Grade / Strand</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Capacity</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Status</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Actions</th>
@@ -178,73 +192,185 @@
         </main>
     </div>
 
-    <!-- Create/Edit Modal -->
-    <div id="sectionModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
-            <div class="flex justify-between items-center mb-4">
+    <!-- ══════════════════════════════════════════════════════════
+         Create / Edit Section Modal
+         ══════════════════════════════════════════════════════════ -->
+    <div id="sectionModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg mx-auto max-h-[90vh] overflow-y-auto">
+
+            <!-- Modal header -->
+            <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between z-10 rounded-t-xl">
                 <h3 class="text-xl font-bold text-gray-900 dark:text-white" id="modalTitle">Create New Section</h3>
-                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
-            
-            <form id="sectionForm" onsubmit="saveSection(event)">
+
+            <form id="sectionForm" onsubmit="saveSection(event)" class="p-6 space-y-5">
                 <input type="hidden" id="sectionId">
-                
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Section Name *</label>
-                        <input type="text" id="sectionName" required 
-                               class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                               placeholder="e.g., Grade 10 - Rizal">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Academic Year *</label>
-                        <select id="academicYear" required class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
-                            <option value="">Select Year</option>
-                        </select>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Grade Level *</label>
-                        <select id="gradeLevel" required onchange="handleGradeChange()" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
-                            <option value="">Select Grade</option>
-                            <option value="1">Grade 7</option>
-                            <option value="2">Grade 8</option>
-                            <option value="3">Grade 9</option>
-                            <option value="4">Grade 10</option>
-                            <option value="5">Grade 11</option>
-                            <option value="6">Grade 12</option>
-                        </select>
-                    </div>
-                    
-                    <div id="strandDiv" style="display: none;">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Strand</label>
-                        <select id="strand" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
-                            <option value="">Select Strand</option>
-                        </select>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Capacity *</label>
-                        <input type="number" id="capacity" required min="1" max="100" value="40"
-                               class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Adviser *</label>
-                        <select id="adviser" required class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
-                            <option value="">Select Adviser</option>
-                        </select>
-                    </div>
+
+                <!-- ── Step 1: Academic Year ─────────────────────────── -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Academic Year <span class="text-red-500">*</span>
+                    </label>
+                    <select id="academicYear" required onchange="rebuildSectionName()"
+                            class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                        <option value="">Select Year</option>
+                    </select>
                 </div>
-                
-                <div class="flex gap-3 mt-6">
-                    <button type="button" onclick="closeModal()" class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+
+                <!-- ── Step 2: Grade Level ──────────────────────────── -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Grade Level <span class="text-red-500">*</span>
+                    </label>
+                    <!-- Values are GradeLevelID (1-6) matching the gradelevel table seed data -->
+                    <select id="gradeLevel" required onchange="handleGradeChange()"
+                            class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                        <option value="">Select Grade</option>
+                        <option value="1">Grade 7</option>
+                        <option value="2">Grade 8</option>
+                        <option value="3">Grade 9</option>
+                        <option value="4">Grade 10</option>
+                        <option value="5">Grade 11</option>
+                        <option value="6">Grade 12</option>
+                    </select>
+                </div>
+
+                <!-- ── Step 3: Strand (SHS only) ────────────────────── -->
+                <div id="strandDiv" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Strand <span class="text-red-500">*</span>
+                    </label>
+                    <select id="strand" onchange="rebuildSectionName()"
+                            class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                        <option value="">Select Strand</option>
+                    </select>
+                </div>
+
+                <!-- ── Step 4: Section Naming ───────────────────────── -->
+                <!--
+                    Naming format (auto-composed, consistent across the school):
+                      JHS:  Grade {N} - {Identifier}          e.g. "Grade 7 - Rizal"
+                      SHS:  Grade {N} - {StrandCode} - {Identifier}  e.g. "Grade 11 - STEM - A"
+
+                    The user only picks/types the Identifier.
+                    The full name is assembled live and stored in #sectionName (hidden).
+                -->
+                <div id="namingBlock" class="hidden">
+                    <div class="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-4">
+
+                        <!-- Live preview banner -->
+                        <div>
+                            <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                                Section Name Preview
+                            </p>
+                            <div id="namePreview"
+                                 class="flex items-center gap-2 px-4 py-3 bg-primary/5 border-2 border-primary/20 rounded-lg">
+                                <span class="material-icons-outlined text-primary text-[20px]">label</span>
+                                <span id="namePreviewText"
+                                      class="text-base font-bold text-primary tracking-wide">
+                                    — select grade level first —
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Identifier input -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Section Identifier <span class="text-red-500">*</span>
+                                <span class="text-xs font-normal text-gray-400 ml-1">
+                                    (the part after the grade/strand prefix)
+                                </span>
+                            </label>
+                            <input type="text" id="sectionIdentifier"
+                                   placeholder="e.g.  Rizal  or  A  or  1"
+                                   maxlength="30"
+                                   oninput="onIdentifierInput(this.value)"
+                                   class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary"/>
+                        </div>
+
+                        <!-- Quick-pick themes ──────────────────────── -->
+                        <div>
+                            <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+                                Quick picks
+                                <span class="font-normal text-gray-400">(tap to use, tap again to deselect)</span>
+                            </p>
+
+                            <!-- Letters A–E -->
+                            <div class="mb-2">
+                                <p class="text-[11px] text-gray-400 uppercase tracking-wider mb-1.5">Letters</p>
+                                <div class="flex flex-wrap gap-1.5" id="quickPickLetters">
+                                    <!-- injected by JS -->
+                                </div>
+                            </div>
+
+                            <!-- Heroes -->
+                            <div class="mb-2">
+                                <p class="text-[11px] text-gray-400 uppercase tracking-wider mb-1.5">National Heroes</p>
+                                <div class="flex flex-wrap gap-1.5" id="quickPickHeroes">
+                                    <!-- injected by JS -->
+                                </div>
+                            </div>
+
+                            <!-- Gemstones -->
+                            <div class="mb-2">
+                                <p class="text-[11px] text-gray-400 uppercase tracking-wider mb-1.5">Precious Stones</p>
+                                <div class="flex flex-wrap gap-1.5" id="quickPickGems">
+                                    <!-- injected by JS -->
+                                </div>
+                            </div>
+
+                            <!-- Values -->
+                            <div>
+                                <p class="text-[11px] text-gray-400 uppercase tracking-wider mb-1.5">Virtues</p>
+                                <div class="flex flex-wrap gap-1.5" id="quickPickVirtues">
+                                    <!-- injected by JS -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Format hint -->
+                        <p class="text-[11px] text-gray-400 dark:text-gray-500 flex items-start gap-1">
+                            <span class="material-icons-outlined text-[14px] mt-0.5 shrink-0">info</span>
+                            <span id="formatHint">Pick a grade level to see the naming format.</span>
+                        </p>
+                    </div>
+
+                    <!-- Hidden field — actual value sent to the API -->
+                    <input type="hidden" id="sectionName"/>
+                </div>
+
+                <!-- ── Capacity ─────────────────────────────────────── -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Capacity <span class="text-red-500">*</span>
+                    </label>
+                    <input type="number" id="capacity" required min="1" max="100" value="40"
+                           class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                </div>
+
+                <!-- ── Adviser ──────────────────────────────────────── -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Adviser <span class="text-red-500">*</span>
+                    </label>
+                    <!-- value = UserID (plain integer, no JSON) -->
+                    <select id="adviser" required
+                            class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                        <option value="">Select Adviser</option>
+                    </select>
+                </div>
+
+                <!-- ── Footer buttons ───────────────────────────────── -->
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="closeModal()"
+                            class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                         Cancel
                     </button>
-                    <button type="submit" class="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
+                    <button type="submit"
+                            class="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
                         Save Section
                     </button>
                 </div>
@@ -252,525 +378,586 @@
         </div>
     </div>
 
-    <!-- Subject Teachers Modal -->
+    <!-- Subject Teachers Modal (feature stub) -->
     <div id="subjectTeachersModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-lg mx-4">
             <div class="flex justify-between items-center mb-4">
                 <div>
                     <h3 class="text-xl font-bold text-gray-900 dark:text-white">Subject Teachers</h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-400" id="subjectModalSectionName">Section Name</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400" id="subjectModalSectionName"></p>
                 </div>
                 <button onclick="closeSubjectTeachersModal()" class="text-gray-400 hover:text-gray-600">
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
-
-            <!-- Add Subject Teacher Form -->
-            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg mb-4">
-                <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Assign New Subject Teacher</h4>
-                <form id="subjectTeacherForm" onsubmit="assignSubjectTeacher(event)" class="space-y-3">
-                    <input type="hidden" id="subjectSectionId">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Teacher *</label>
-                            <select id="subjectTeacher" required class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm">
-                                <option value="">Select Teacher</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Subject Code *</label>
-                            <input type="text" id="subjectCode" required placeholder="e.g., MATH101"
-                                   class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Subject Name *</label>
-                        <input type="text" id="subjectName" required placeholder="e.g., Mathematics"
-                               class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm">
-                    </div>
-                    <button type="submit" class="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm font-medium">
-                        <span class="flex items-center justify-center gap-2">
-                            <span class="material-symbols-outlined text-lg">add</span>
-                            Assign Teacher
-                        </span>
-                    </button>
-                </form>
-            </div>
-
-            <!-- Subject Teachers List -->
-            <div>
-                <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Current Subject Teachers</h4>
-                <div id="subjectTeachersList" class="space-y-2">
-                    <p class="text-sm text-gray-500 text-center py-4">Loading...</p>
-                </div>
+            <div class="flex flex-col items-center justify-center gap-3 py-10 text-center">
+                <span class="material-symbols-outlined text-[48px] text-slate-300">construction</span>
+                <p class="text-base font-semibold text-slate-700 dark:text-slate-300">Feature Coming Soon</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400 max-w-sm">
+                    Subject teacher assignments require a <code>teacherassignment</code> table
+                    that is not yet available in the current database version.
+                </p>
             </div>
         </div>
     </div>
 
     <script>
-        let sections = [];
-        let allSections = [];
-        let advisers = [];
-        let strands = [];
-        let currentUser = null;
-        let teachingEmployees = [];
-        let currentSectionForSubjects = null;
+    // ═══════════════════════════════════════════════════════
+    // Quick-pick theme definitions
+    // ═══════════════════════════════════════════════════════
+    const QUICK_PICKS = {
+        letters:  ['A', 'B', 'C', 'D', 'E', 'F'],
+        heroes:   ['Rizal', 'Bonifacio', 'Mabini', 'Luna', 'Del Pilar', 'Aguinaldo'],
+        gems:     ['Diamond', 'Emerald', 'Sapphire', 'Ruby', 'Topaz', 'Jade', 'Garnet'],
+        virtues:  ['Hope', 'Faith', 'Integrity', 'Honesty', 'Diligence', 'Humility'],
+    };
 
-        document.addEventListener('DOMContentLoaded', function() {
-            currentUser = JSON.parse(localStorage.getItem('user'));
-            displayUserInfo();
-            setupEventListeners();
-            loadSchoolYears();
-            loadStrands();
-            loadAdvisers();
-            loadTeachingEmployees();
-            loadSections();
-        });
+    // Grade label map (GradeLevelID → display label)
+    const GRADE_LABELS = {
+        '1': 'Grade 7',  '2': 'Grade 8',
+        '3': 'Grade 9',  '4': 'Grade 10',
+        '5': 'Grade 11', '6': 'Grade 12',
+    };
 
-        function displayUserInfo() {
-            if (currentUser) {
-                document.getElementById('userName').textContent = `${currentUser.FirstName} ${currentUser.LastName}`;
-                document.getElementById('userInitials').textContent = `${currentUser.FirstName[0]}${currentUser.LastName[0]}`;
-            }
+    // StrandCode cache (populated when strands load)
+    const strandCodeMap = {};   // StrandID → StrandCode
+
+    let allSections = [];
+    let sections    = [];
+    let currentUser = null;
+
+    // ═══════════════════════════════════════════════════════
+    // INIT
+    // ═══════════════════════════════════════════════════════
+    document.addEventListener('DOMContentLoaded', function () {
+        currentUser = JSON.parse(localStorage.getItem('user'));
+        displayUserInfo();
+        loadSchoolYears();
+        loadStrands();
+        loadAdvisers();
+        loadSections();
+        renderQuickPicks();
+    });
+
+    function displayUserInfo() {
+        if (currentUser) {
+            document.getElementById('userName').textContent =
+                `${currentUser.FirstName} ${currentUser.LastName}`;
+            document.getElementById('userInitials').textContent =
+                `${currentUser.FirstName[0]}${currentUser.LastName[0]}`;
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // QUICK-PICK CHIPS
+    // ═══════════════════════════════════════════════════════
+    function renderQuickPicks() {
+        const chipBase = 'theme-chip px-3 py-1 text-xs font-medium rounded-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 select-none';
+
+        const render = (containerId, items) => {
+            const el = document.getElementById(containerId);
+            if (!el) return;
+            el.innerHTML = items.map(name => `
+                <button type="button"
+                        class="${chipBase}"
+                        data-value="${name}"
+                        onclick="selectQuickPick(this, '${name}')">
+                    ${name}
+                </button>
+            `).join('');
+        };
+
+        render('quickPickLetters',  QUICK_PICKS.letters);
+        render('quickPickHeroes',   QUICK_PICKS.heroes);
+        render('quickPickGems',     QUICK_PICKS.gems);
+        render('quickPickVirtues',  QUICK_PICKS.virtues);
+    }
+
+    function selectQuickPick(btn, value) {
+        const identifierInput = document.getElementById('sectionIdentifier');
+        const allChips = document.querySelectorAll('.theme-chip');
+
+        // Toggle: if already selected → clear
+        if (btn.classList.contains('selected')) {
+            btn.classList.remove('selected');
+            identifierInput.value = '';
+            onIdentifierInput('');
+            return;
         }
 
-        function setupEventListeners() {
+        // Deselect all chips first
+        allChips.forEach(c => c.classList.remove('selected'));
+
+        // Select this one
+        btn.classList.add('selected');
+        identifierInput.value = value;
+        onIdentifierInput(value);
+    }
+
+    // Called on every keystroke in the identifier input
+    function onIdentifierInput(value) {
+        // If user typed manually, deselect all chips
+        const allChips = document.querySelectorAll('.theme-chip');
+        const matched  = [...allChips].find(
+            c => c.dataset.value.toLowerCase() === value.trim().toLowerCase()
+        );
+        allChips.forEach(c => c.classList.remove('selected'));
+        if (matched) matched.classList.add('selected');
+
+        rebuildSectionName();
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // SECTION NAME BUILDER
+    // ═══════════════════════════════════════════════════════
+
+    /**
+     * Computes the prefix from the currently selected grade + strand.
+     *   JHS: "Grade N"
+     *   SHS: "Grade N - STRAND_CODE"
+     *
+     * Returns empty string if grade not yet selected.
+     */
+    function getNamePrefix() {
+        const gradeId = document.getElementById('gradeLevel').value;
+        if (!gradeId) return '';
+
+        const gradeLabel = GRADE_LABELS[gradeId] || '';
+        const isSHS = gradeId === '5' || gradeId === '6';
+
+        if (isSHS) {
+            const strandId = document.getElementById('strand').value;
+            const strandCode = strandId ? (strandCodeMap[strandId] || '') : '';
+            return strandCode ? `${gradeLabel} - ${strandCode}` : gradeLabel;
         }
 
-        async function loadSchoolYears() {
-            try {
-                const response = await fetch('../backend/api/get-school-years.php');
-                const data = await response.json();
-                
-                if (data.success) {
-                    const yearFilter = document.getElementById('yearFilter');
-                    const academicYear = document.getElementById('academicYear');
-                    
-                    data.schoolYears.forEach(year => {
-                        const option1 = document.createElement('option');
-                        option1.value = year;
-                        option1.textContent = `S.Y. ${year}`;
-                        yearFilter.appendChild(option1);
-                        
-                        const option2 = document.createElement('option');
-                        option2.value = year;
-                        option2.textContent = year;
-                        academicYear.appendChild(option2);
-                    });
-                    
-                    if (data.schoolYears.length > 0) {
-                        academicYear.value = data.schoolYears[0];
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading school years:', error);
-            }
-        }
+        return gradeLabel;
+    }
 
-        async function loadStrands() {
-            try {
-                const response = await fetch('../backend/api/students.php?action=get_strands');
-                const data = await response.json();
-                
-                if (data.success) {
-                    strands = data.strands;
-                    const strandFilter = document.getElementById('strandFilter');
-                    const strandSelect = document.getElementById('strand');
-                    
-                    strands.forEach(strand => {
-                        const option1 = document.createElement('option');
-                        option1.value = strand.StrandID;
-                        option1.textContent = strand.StrandCode;
-                        strandFilter.appendChild(option1);
-                        
-                        const option2 = document.createElement('option');
-                        option2.value = strand.StrandID;
-                        option2.textContent = `${strand.StrandCode} - ${strand.StrandName}`;
-                        strandSelect.appendChild(option2);
-                    });
-                }
-            } catch (error) {
-                console.error('Error loading strands:', error);
-            }
-        }
+    /**
+     * Assembles full section name from prefix + identifier,
+     * updates preview and the hidden #sectionName field.
+     */
+    function rebuildSectionName() {
+        const prefix     = getNamePrefix();
+        const identifier = (document.getElementById('sectionIdentifier')?.value || '').trim();
+        const gradeId    = document.getElementById('gradeLevel').value;
+        const isSHS      = gradeId === '5' || gradeId === '6';
 
-        async function loadAdvisers() {
-            try {
-                const response = await fetch('../backend/api/manage-sections.php?action=advisers');
-                const data = await response.json();
-                
-                if (data.success) {
-                    advisers = data.advisers;
-                    const adviserSelect = document.getElementById('adviser');
-                    
-                    advisers.forEach(adviser => {
-                        const option = document.createElement('option');
-                        option.value = JSON.stringify({
-                            employeeId: adviser.EmployeeID,
-                            userId: adviser.UserID
-                        });
-                        option.textContent = adviser.FullName;
-                        adviserSelect.appendChild(option);
-                    });
-                }
-            } catch (error) {
-                console.error('Error loading advisers:', error);
-            }
-        }
-
-        async function loadTeachingEmployees() {
-            try {
-                const response = await fetch('../backend/api/manage-sections.php?action=teaching-employees');
-                const data = await response.json();
-                
-                if (data.success) {
-                    teachingEmployees = data.employees;
-                    const select = document.getElementById('subjectTeacher');
-                    
-                    data.employees.forEach(emp => {
-                        const option = document.createElement('option');
-                        option.value = emp.EmployeeID;
-                        option.textContent = `${emp.FullName} - ${emp.Position}`;
-                        select.appendChild(option);
-                    });
-                }
-            } catch (error) {
-                console.error('Error loading teaching employees:', error);
-            }
-        }
-
-        async function loadSections() {
-            try {
-                const response = await fetch('../backend/api/manage-sections.php?action=list');
-                const data = await response.json();
-                
-                if (data.success) {
-                    allSections = data.sections;
-                    sections = [...allSections];
-                    renderSections();
-                }
-            } catch (error) {
-                console.error('Error loading sections:', error);
-                alert('Failed to load sections');
-            }
-        }
-
-        function renderSections() {
-            const tbody = document.getElementById('sectionsTableBody');
-            
-            if (sections.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">No sections found</td></tr>';
-                return;
-            }
-            
-            tbody.innerHTML = sections.map(section => {
-                const statusColors = {
-                    'Full': 'bg-red-100 text-red-800',
-                    'Nearing Full': 'bg-yellow-100 text-yellow-800',
-                    'Open': 'bg-green-100 text-green-800'
-                };
-                
-                const gradeStrand = section.StrandCode ? 
-                    `${section.GradeLevelName} - ${section.StrandCode}` : 
-                    section.GradeLevelName;
-                
-                return `
-                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">${section.SectionName}</td>
-                        <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">${section.AdviserName || 'Not assigned'}</td>
-                        <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">${gradeStrand}</td>
-                        <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">${section.CurrentEnrollment}/${section.Capacity}</td>
-                        <td class="px-4 py-3">
-                            <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[section.Status]}">
-                                ${section.Status}
-                            </span>
-                        </td>
-                        <td class="px-4 py-3">
-                            <div class="flex gap-2">
-                                <button onclick="manageSubjectTeachers(${section.SectionID}, '${section.SectionName.replace(/'/g, "\\'")}', '${gradeStrand.replace(/'/g, "\\'")}')" class="p-1.5 text-green-600 hover:bg-green-50 rounded" title="Manage Subject Teachers">
-                                    <span class="material-symbols-outlined text-xl">school</span>
-                                </button>
-                                <button onclick="editSection(${section.SectionID})" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Edit">
-                                    <span class="material-symbols-outlined text-xl">edit</span>
-                                </button>
-                                <button onclick="deleteSection(${section.SectionID}, '${section.SectionName.replace(/'/g, "\\'")}')" class="p-1.5 text-red-600 hover:bg-red-50 rounded" title="Delete">
-                                    <span class="material-symbols-outlined text-xl">delete</span>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        function filterSections() {
-            const search = document.getElementById('searchInput').value.toLowerCase();
-            const year = document.getElementById('yearFilter').value;
-            const grade = document.getElementById('gradeFilter').value;
-            const strand = document.getElementById('strandFilter').value;
-            
-            sections = allSections.filter(section => {
-                const matchSearch = !search || 
-                    section.SectionName.toLowerCase().includes(search) ||
-                    (section.AdviserName && section.AdviserName.toLowerCase().includes(search));
-                const matchYear = !year || section.AcademicYear === year;
-                const matchGrade = !grade || section.GradeLevelNumber.toString() === grade;
-                const matchStrand = !strand || (section.StrandID && section.StrandID.toString() === strand);
-                
-                return matchSearch && matchYear && matchGrade && matchStrand;
-            });
-            
-            renderSections();
-        }
-
-        function handleGradeChange() {
-            const grade = document.getElementById('gradeLevel').value;
-            const strandDiv = document.getElementById('strandDiv');
-            
-            // Show strand selection for Grade 11 and 12 (SHS)
-            if (grade === '5' || grade === '6') {
-                strandDiv.style.display = 'block';
+        // Update format hint
+        const hintEl = document.getElementById('formatHint');
+        if (hintEl) {
+            if (!gradeId) {
+                hintEl.textContent = 'Pick a grade level to see the naming format.';
+            } else if (isSHS) {
+                const strandCode = strandCodeMap[document.getElementById('strand').value] || 'STRAND';
+                hintEl.textContent = `Format: Grade ${GRADE_LABELS[gradeId]?.replace('Grade ', '')} – ${strandCode} – Identifier  e.g. "Grade 11 - STEM - A"`;
             } else {
-                strandDiv.style.display = 'none';
-                document.getElementById('strand').value = '';
+                hintEl.textContent = `Format: ${GRADE_LABELS[gradeId]} – Identifier  e.g. "Grade 7 - Rizal"`;
             }
         }
 
-        function openCreateModal() {
-            document.getElementById('modalTitle').textContent = 'Create New Section';
-            document.getElementById('sectionForm').reset();
-            document.getElementById('sectionId').value = '';
-            document.getElementById('strandDiv').style.display = 'none';
-            document.getElementById('sectionModal').classList.remove('hidden');
-            document.getElementById('sectionModal').classList.add('flex');
+        // Compose final name
+        let fullName = '';
+        if (prefix && identifier) {
+            fullName = `${prefix} - ${identifier}`;
+        } else if (prefix) {
+            fullName = prefix;
         }
 
-        async function editSection(sectionId) {
-            try {
-                const response = await fetch(`../backend/api/manage-sections.php?action=details&id=${sectionId}`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    const section = data.section;
-                    
-                    document.getElementById('modalTitle').textContent = 'Edit Section';
-                    document.getElementById('sectionId').value = section.SectionID;
-                    document.getElementById('sectionName').value = section.SectionName;
-                    document.getElementById('academicYear').value = section.AcademicYear;
-                    document.getElementById('gradeLevel').value = section.GradeLevelID;
-                    document.getElementById('capacity').value = section.Capacity;
-                    
-                    handleGradeChange();
-                    
-                    if (section.StrandID) {
-                        document.getElementById('strand').value = section.StrandID;
-                    }
-                    
-                    if (section.AdviserEmployeeID && section.AdviserID) {
-                        const adviserData = JSON.stringify({
-                            employeeId: section.AdviserEmployeeID,
-                            userId: section.AdviserID
-                        });
-                        document.getElementById('adviser').value = adviserData;
-                    }
-                    
-                    document.getElementById('sectionModal').classList.remove('hidden');
-                    document.getElementById('sectionModal').classList.add('flex');
-                }
-            } catch (error) {
-                console.error('Error loading section details:', error);
-                alert('Failed to load section details');
+        // Update hidden field
+        const hiddenName = document.getElementById('sectionName');
+        if (hiddenName) hiddenName.value = fullName;
+
+        // Update preview
+        const previewText = document.getElementById('namePreviewText');
+        const previewBox  = document.getElementById('namePreview');
+        if (previewText) {
+            previewText.textContent = fullName || '— select grade level first —';
+
+            // Pop animation on change
+            if (previewBox) {
+                previewBox.classList.remove('preview-pop');
+                void previewBox.offsetWidth; // reflow
+                previewBox.classList.add('preview-pop');
             }
         }
+    }
 
-        async function saveSection(event) {
-            event.preventDefault();
-            
-            const sectionId = document.getElementById('sectionId').value;
-            const adviserValue = document.getElementById('adviser').value;
-            
-            if (!adviserValue) {
-                alert('Please select an adviser');
-                return;
-            }
-            
-            let adviserData = { employeeId: null, userId: null };
-            
-            try {
-                adviserData = JSON.parse(adviserValue);
-            } catch (e) {
-                alert('Invalid adviser selection');
-                return;
-            }
-            
-            const payload = {
-                sectionId: sectionId || undefined,
-                sectionName: document.getElementById('sectionName').value,
-                gradeLevelId: document.getElementById('gradeLevel').value,
-                strandId: document.getElementById('strand').value || null,
-                adviserEmployeeId: adviserData.employeeId,
-                adviserUserId: adviserData.userId,
-                capacity: document.getElementById('capacity').value,
-                academicYear: document.getElementById('academicYear').value
-            };
-            
-            const action = sectionId ? 'update' : 'create';
-            
-            try {
-                const response = await fetch(`../backend/api/manage-sections.php?action=${action}`, {
-                    method: sectionId ? 'PUT' : 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+    // ═══════════════════════════════════════════════════════
+    // SCHOOL YEARS
+    // ═══════════════════════════════════════════════════════
+    async function loadSchoolYears() {
+        try {
+            const res  = await fetch('../backend/api/get-school-years.php');
+            const data = await res.json();
+
+            if (data.success && data.schoolYears.length > 0) {
+                const yearFilter   = document.getElementById('yearFilter');
+                const academicYear = document.getElementById('academicYear');
+
+                data.schoolYears.forEach(year => {
+                    yearFilter.appendChild(new Option(`S.Y. ${year}`, year));
+                    academicYear.appendChild(new Option(year, year));
                 });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    alert(data.message);
-                    closeModal();
-                    loadSections();
-                } else {
-                    alert('Error: ' + data.message);
-                }
-            } catch (error) {
-                console.error('Error saving section:', error);
-                alert('Failed to save section');
-            }
-        }
 
-        async function deleteSection(sectionId, sectionName) {
-            if (!confirm(`Are you sure you want to delete "${sectionName}"?`)) {
-                return;
+                academicYear.value = data.schoolYears[0];
             }
-            
-            try {
-                const response = await fetch(`../backend/api/manage-sections.php?action=delete&id=${sectionId}`, {
-                    method: 'DELETE'
+        } catch (err) {
+            console.error('Error loading school years:', err);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // STRANDS
+    // ═══════════════════════════════════════════════════════
+    async function loadStrands() {
+        try {
+            const res  = await fetch('../backend/api/students.php?action=get_strands');
+            const data = await res.json();
+
+            if (data.success) {
+                const strandFilter = document.getElementById('strandFilter');
+                const strandSelect = document.getElementById('strand');
+
+                data.strands.forEach(s => {
+                    // Cache code for prefix builder
+                    strandCodeMap[String(s.StrandID)] = s.StrandCode;
+
+                    strandFilter.appendChild(new Option(s.StrandCode, s.StrandID));
+                    strandSelect.appendChild(
+                        new Option(`${s.StrandCode} – ${s.StrandName}`, s.StrandID)
+                    );
                 });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    alert(data.message);
-                    loadSections();
-                } else {
-                    alert('Error: ' + data.message);
-                }
-            } catch (error) {
-                console.error('Error deleting section:', error);
-                alert('Failed to delete section');
             }
+        } catch (err) {
+            console.error('Error loading strands:', err);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // ADVISERS
+    // ═══════════════════════════════════════════════════════
+    async function loadAdvisers() {
+        try {
+            const res  = await fetch('../backend/api/manage-sections.php?action=advisers');
+            const data = await res.json();
+
+            if (data.success) {
+                const adviserSelect = document.getElementById('adviser');
+                data.advisers.forEach(a => {
+                    adviserSelect.appendChild(new Option(a.FullName, a.UserID));
+                });
+            }
+        } catch (err) {
+            console.error('Error loading advisers:', err);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // SECTIONS LIST
+    // ═══════════════════════════════════════════════════════
+    async function loadSections() {
+        try {
+            const res  = await fetch('../backend/api/manage-sections.php?action=list');
+            const data = await res.json();
+
+            if (data.success) {
+                allSections = data.sections;
+                sections    = [...allSections];
+                renderSections();
+            }
+        } catch (err) {
+            console.error('Error loading sections:', err);
+            alert('Failed to load sections');
+        }
+    }
+
+    function renderSections() {
+        const tbody = document.getElementById('sectionsTableBody');
+
+        if (sections.length === 0) {
+            tbody.innerHTML =
+                '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">No sections found</td></tr>';
+            return;
         }
 
-        function closeModal() {
-            document.getElementById('sectionModal').classList.add('hidden');
-            document.getElementById('sectionModal').classList.remove('flex');
-        }
+        const statusColors = {
+            'Full':         'bg-red-100 text-red-800',
+            'Nearing Full': 'bg-yellow-100 text-yellow-800',
+            'Open':         'bg-green-100 text-green-800',
+        };
 
-        // Subject Teachers Management
-        async function manageSubjectTeachers(sectionId, sectionName, gradeStrand) {
-            currentSectionForSubjects = sectionId;
-            document.getElementById('subjectModalSectionName').textContent = `${sectionName} - ${gradeStrand}`;
-            document.getElementById('subjectSectionId').value = sectionId;
-            document.getElementById('subjectTeacherForm').reset();
-            document.getElementById('subjectSectionId').value = sectionId;
-            
-            document.getElementById('subjectTeachersModal').classList.remove('hidden');
-            document.getElementById('subjectTeachersModal').classList.add('flex');
-            
-            await loadSubjectTeachers(sectionId);
-        }
+        tbody.innerHTML = sections.map(s => {
+            const gradeStrand = s.StrandCode
+                ? `${s.GradeLevelName} – ${s.StrandCode}`
+                : s.GradeLevelName;
+            const esc = v => (v || '').replace(/'/g, "\\'");
 
-        async function loadSubjectTeachers(sectionId) {
-            try {
-                const response = await fetch(`../backend/api/manage-sections.php?action=subject-teachers&sectionId=${sectionId}`);
-                const data = await response.json();
-                
-                const container = document.getElementById('subjectTeachersList');
-                
-                if (data.success && data.teachers.length > 0) {
-                    container.innerHTML = data.teachers.map(teacher => `
-                        <div class="flex items-center justify-between p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-                            <div class="flex-1">
-                                <p class="text-sm font-medium text-gray-900 dark:text-white">${teacher.TeacherName}</p>
-                                <p class="text-xs text-gray-600 dark:text-gray-400">${teacher.SubjectCode} - ${teacher.SubjectName}</p>
-                            </div>
-                            <button onclick="removeSubjectTeacher(${teacher.AssignmentID})" class="p-1.5 text-red-600 hover:bg-red-50 rounded" title="Remove">
-                                <span class="material-symbols-outlined text-lg">delete</span>
+            return `
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">${s.SectionName}</td>
+                    <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">${s.AdviserName || 'Not assigned'}</td>
+                    <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">${gradeStrand}</td>
+                    <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                        ${s.CurrentEnrollment} / ${s.Capacity}
+                    </td>
+                    <td class="px-4 py-3">
+                        <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[s.Status] || ''}">
+                            ${s.Status}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="flex gap-2">
+                            <button onclick="manageSubjectTeachers(${s.SectionID}, '${esc(s.SectionName)}', '${esc(gradeStrand)}')"
+                                    class="p-1.5 text-green-600 hover:bg-green-50 rounded" title="Subject Teachers">
+                                <span class="material-symbols-outlined text-xl">school</span>
+                            </button>
+                            <button onclick="editSection(${s.SectionID})"
+                                    class="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Edit">
+                                <span class="material-symbols-outlined text-xl">edit</span>
+                            </button>
+                            <button onclick="deleteSection(${s.SectionID}, '${esc(s.SectionName)}')"
+                                    class="p-1.5 text-red-600 hover:bg-red-50 rounded" title="Delete">
+                                <span class="material-symbols-outlined text-xl">delete</span>
                             </button>
                         </div>
-                    `).join('');
-                } else {
-                    container.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">No subject teachers assigned yet</p>';
-                }
-            } catch (error) {
-                console.error('Error loading subject teachers:', error);
-                document.getElementById('subjectTeachersList').innerHTML = '<p class="text-sm text-red-500 text-center py-4">Error loading subject teachers</p>';
-            }
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // FILTERS
+    // ═══════════════════════════════════════════════════════
+    function filterSections() {
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        const year   = document.getElementById('yearFilter').value;
+        const grade  = document.getElementById('gradeFilter').value;
+        const strand = document.getElementById('strandFilter').value;
+
+        sections = allSections.filter(s => {
+            const matchSearch = !search ||
+                s.SectionName.toLowerCase().includes(search) ||
+                (s.AdviserName && s.AdviserName.toLowerCase().includes(search));
+            const matchYear   = !year   || s.AcademicYear === year;
+            const matchGrade  = !grade  || String(s.GradeLevelNumber) === grade;
+            const matchStrand = !strand || (s.StrandID && String(s.StrandID) === strand);
+            return matchSearch && matchYear && matchGrade && matchStrand;
+        });
+
+        renderSections();
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // GRADE → STRAND VISIBILITY  +  naming refresh
+    // ═══════════════════════════════════════════════════════
+    function handleGradeChange() {
+        const grade    = document.getElementById('gradeLevel').value;
+        const strandDiv = document.getElementById('strandDiv');
+        const namingBlock = document.getElementById('namingBlock');
+        const strandSel = document.getElementById('strand');
+
+        const isSHS = grade === '5' || grade === '6';
+
+        // Strand field visibility
+        if (isSHS) {
+            strandDiv.classList.remove('hidden');
+        } else {
+            strandDiv.classList.add('hidden');
+            strandSel.value = '';
         }
 
-        async function assignSubjectTeacher(event) {
-            event.preventDefault();
-            
-            const payload = {
-                sectionId: document.getElementById('subjectSectionId').value,
-                employeeId: document.getElementById('subjectTeacher').value,
-                subjectCode: document.getElementById('subjectCode').value.trim().toUpperCase(),
-                subjectName: document.getElementById('subjectName').value.trim()
-            };
-            
-            try {
-                const response = await fetch('../backend/api/manage-sections.php?action=assign-subject-teacher', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    alert(data.message);
-                    document.getElementById('subjectTeacherForm').reset();
-                    document.getElementById('subjectSectionId').value = currentSectionForSubjects;
-                    await loadSubjectTeachers(currentSectionForSubjects);
-                } else {
-                    alert('Error: ' + data.message);
-                }
-            } catch (error) {
-                console.error('Error assigning subject teacher:', error);
-                alert('Failed to assign subject teacher');
-            }
+        // Show naming block as soon as a grade is selected
+        if (grade) {
+            namingBlock.classList.remove('hidden');
+        } else {
+            namingBlock.classList.add('hidden');
         }
 
-        async function removeSubjectTeacher(assignmentId) {
-            if (!confirm('Are you sure you want to remove this subject teacher?')) {
-                return;
+        // Clear identifier and chips when grade changes
+        const identifierInput = document.getElementById('sectionIdentifier');
+        if (identifierInput) identifierInput.value = '';
+        document.querySelectorAll('.theme-chip').forEach(c => c.classList.remove('selected'));
+
+        rebuildSectionName();
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // MODAL OPEN / CLOSE
+    // ═══════════════════════════════════════════════════════
+    function openCreateModal() {
+        document.getElementById('modalTitle').textContent = 'Create New Section';
+        document.getElementById('sectionForm').reset();
+        document.getElementById('sectionId').value   = '';
+        document.getElementById('sectionName').value = '';
+
+        // Reset naming UI
+        document.getElementById('strandDiv').classList.add('hidden');
+        document.getElementById('namingBlock').classList.add('hidden');
+        document.getElementById('namePreviewText').textContent = '— select grade level first —';
+        document.getElementById('sectionIdentifier').value = '';
+        document.querySelectorAll('.theme-chip').forEach(c => c.classList.remove('selected'));
+        document.getElementById('formatHint').textContent = 'Pick a grade level to see the naming format.';
+
+        document.getElementById('sectionModal').classList.replace('hidden', 'flex');
+    }
+
+    function closeModal() {
+        document.getElementById('sectionModal').classList.replace('flex', 'hidden');
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // EDIT SECTION
+    //
+    // When editing, reverse-parse the stored section name back
+    // into prefix + identifier so the naming UI is correct.
+    // ═══════════════════════════════════════════════════════
+    async function editSection(sectionId) {
+        try {
+            const res  = await fetch(`../backend/api/manage-sections.php?action=details&id=${sectionId}`);
+            const data = await res.json();
+            if (!data.success) { alert('Error: ' + data.message); return; }
+
+            const s = data.section;
+
+            document.getElementById('modalTitle').textContent = 'Edit Section';
+            document.getElementById('sectionId').value        = s.SectionID;
+            document.getElementById('academicYear').value     = s.AcademicYear;
+            document.getElementById('gradeLevel').value       = s.GradeLevelID;
+            document.getElementById('capacity').value         = s.Capacity;
+
+            // Show/hide strand + naming block
+            handleGradeChange();
+
+            if (s.StrandID) {
+                document.getElementById('strand').value = s.StrandID;
+                rebuildSectionName(); // refresh prefix after strand set
             }
-            
-            try {
-                const response = await fetch(`../backend/api/manage-sections.php?action=remove-subject-teacher&id=${assignmentId}`, {
-                    method: 'DELETE'
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    alert(data.message);
-                    await loadSubjectTeachers(currentSectionForSubjects);
-                } else {
-                    alert('Error: ' + data.message);
-                }
-            } catch (error) {
-                console.error('Error removing subject teacher:', error);
-                alert('Failed to remove subject teacher');
+
+            // Adviser
+            if (s.AdviserID) document.getElementById('adviser').value = s.AdviserID;
+
+            // Reverse-parse identifier from stored section name
+            // e.g. "Grade 11 - STEM - Rizal" → identifier = "Rizal"
+            //      "Grade 7 - Diamond"        → identifier = "Diamond"
+            const prefix     = getNamePrefix();
+            let   identifier = s.SectionName;
+            if (prefix && s.SectionName.startsWith(prefix + ' - ')) {
+                identifier = s.SectionName.slice(prefix.length + 3);
             }
+
+            const identifierInput = document.getElementById('sectionIdentifier');
+            if (identifierInput) {
+                identifierInput.value = identifier;
+                onIdentifierInput(identifier); // also sets chip + rebuilds name
+            }
+
+            document.getElementById('sectionModal').classList.replace('hidden', 'flex');
+        } catch (err) {
+            console.error('Error loading section details:', err);
+            alert('Failed to load section details');
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // SAVE (create or update)
+    // ═══════════════════════════════════════════════════════
+    async function saveSection(event) {
+        event.preventDefault();
+
+        const adviserUserId = document.getElementById('adviser').value;
+        if (!adviserUserId) { alert('Please select an adviser'); return; }
+
+        // Validate the composed name
+        const sectionName = document.getElementById('sectionName').value.trim();
+        const identifier  = document.getElementById('sectionIdentifier').value.trim();
+        if (!identifier) {
+            alert('Please enter a Section Identifier (e.g. Rizal, A, 1).');
+            document.getElementById('sectionIdentifier').focus();
+            return;
+        }
+        if (!sectionName) {
+            alert('Section name could not be composed. Please select Grade Level and enter an identifier.');
+            return;
         }
 
-        function closeSubjectTeachersModal() {
-            document.getElementById('subjectTeachersModal').classList.add('hidden');
-            document.getElementById('subjectTeachersModal').classList.remove('flex');
-            currentSectionForSubjects = null;
+        const isSHS = ['5','6'].includes(document.getElementById('gradeLevel').value);
+        if (isSHS && !document.getElementById('strand').value) {
+            alert('Please select a Strand for Senior High School sections.');
+            return;
         }
+
+        const sectionId = document.getElementById('sectionId').value;
+
+        const payload = {
+            sectionName,                                               // composed name
+            gradeLevelId:  document.getElementById('gradeLevel').value,
+            strandId:      document.getElementById('strand').value || null,
+            adviserUserId,
+            capacity:      document.getElementById('capacity').value,
+            academicYear:  document.getElementById('academicYear').value,
+        };
+
+        if (sectionId) payload.sectionId = sectionId;
+
+        const action = sectionId ? 'update' : 'create';
+        const method = sectionId ? 'PUT'    : 'POST';
+
+        try {
+            const res  = await fetch(`../backend/api/manage-sections.php?action=${action}`, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                alert(data.message);
+                closeModal();
+                loadSections();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        } catch (err) {
+            console.error('Error saving section:', err);
+            alert('Failed to save section');
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // DELETE
+    // ═══════════════════════════════════════════════════════
+    async function deleteSection(sectionId, sectionName) {
+        if (!confirm(`Are you sure you want to delete "${sectionName}"?`)) return;
+
+        try {
+            const res  = await fetch(`../backend/api/manage-sections.php?action=delete&id=${sectionId}`, {
+                method: 'DELETE',
+            });
+            const data = await res.json();
+
+            if (data.success) { alert(data.message); loadSections(); }
+            else alert('Error: ' + data.message);
+        } catch (err) {
+            console.error('Error deleting section:', err);
+            alert('Failed to delete section');
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // SUBJECT TEACHERS MODAL (stub)
+    // ═══════════════════════════════════════════════════════
+    function manageSubjectTeachers(sectionId, sectionName, gradeStrand) {
+        document.getElementById('subjectModalSectionName').textContent =
+            `${sectionName} – ${gradeStrand}`;
+        document.getElementById('subjectTeachersModal').classList.replace('hidden', 'flex');
+    }
+
+    function closeSubjectTeachersModal() {
+        document.getElementById('subjectTeachersModal').classList.replace('flex', 'hidden');
+    }
     </script>
 </body>
 </html>

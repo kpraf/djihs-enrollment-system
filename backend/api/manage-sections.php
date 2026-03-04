@@ -1,7 +1,13 @@
 <?php
 // ============================================
 // FILE: backend/api/manage-sections.php
-// Purpose: CRUD operations for sections + Subject Teacher Assignments
+// Purpose: CRUD for sections
+// Updated: 2026-03-04 — Revised for normalized DB
+//   - section.AcademicYear (string) → section.AcademicYearID (FK int)
+//   - section.CurrentEnrollment removed (computed via sectionassignment)
+//   - section.AdviserEmployeeID removed (not in schema)
+//   - employee table removed (not in schema); advisers come from user table
+//   - teacherassignment table removed (not in schema); stubs return gracefully
 // ============================================
 
 error_reporting(E_ALL);
@@ -15,466 +21,356 @@ header('Access-Control-Allow-Headers: Content-Type');
 require_once '../config/database.php';
 
 $database = new Database();
-$conn = $database->getConnection();
+$conn     = $database->getConnection();
 
 $method = $_SERVER['REQUEST_METHOD'];
-$action = isset($_GET['action']) ? $_GET['action'] : '';
+$action = $_GET['action'] ?? '';
 
 try {
     switch ($method) {
         case 'GET':
-            if ($action === 'list') {
-                getSections($conn);
-            } elseif ($action === 'advisers') {
-                getAvailableAdvisers($conn);
-            } elseif ($action === 'details') {
-                getSectionDetails($conn);
-            } elseif ($action === 'subject-teachers') {
-                getSubjectTeachers($conn);
-            } elseif ($action === 'teaching-employees') {
-                getTeachingEmployees($conn);
+            switch ($action) {
+                case 'list':               getSections($conn);           break;
+                case 'advisers':           getAvailableAdvisers($conn);  break;
+                case 'details':            getSectionDetails($conn);     break;
+                case 'subject-teachers':   getSubjectTeachers($conn);    break;
+                case 'teaching-employees': getTeachingEmployees($conn);  break;
+                default: throw new Exception("Unknown GET action: $action");
             }
             break;
-            
+
         case 'POST':
-            if ($action === 'create') {
-                createSection($conn);
-            } elseif ($action === 'assign-subject-teacher') {
-                assignSubjectTeacher($conn);
+            switch ($action) {
+                case 'create':                  createSection($conn);         break;
+                case 'assign-subject-teacher':  assignSubjectTeacher($conn);  break;
+                default: throw new Exception("Unknown POST action: $action");
             }
             break;
-            
+
         case 'PUT':
-            if ($action === 'update') {
-                updateSection($conn);
-            }
+            if ($action === 'update') updateSection($conn);
+            else throw new Exception("Unknown PUT action: $action");
             break;
-            
+
         case 'DELETE':
-            if ($action === 'delete') {
-                deleteSection($conn);
-            } elseif ($action === 'remove-subject-teacher') {
-                removeSubjectTeacher($conn);
+            switch ($action) {
+                case 'delete':                 deleteSection($conn);          break;
+                case 'remove-subject-teacher': removeSubjectTeacher($conn);   break;
+                default: throw new Exception("Unknown DELETE action: $action");
             }
             break;
     }
 } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'message' => $e->getMessage()
-    ]);
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
 
-function getSections($conn) {
-    $academicYear = isset($_GET['year']) ? $_GET['year'] : null;
-    $gradeLevel = isset($_GET['grade']) ? $_GET['grade'] : null;
-    $strand = isset($_GET['strand']) ? $_GET['strand'] : null;
-    
-    $query = "SELECT 
+// ─── Shared helper ─────────────────────────────────────────────────────────
+function resolveAcademicYearID(PDO $conn, string $yearLabel): int
+{
+    $stmt = $conn->prepare(
+        "SELECT AcademicYearID FROM academicyear WHERE YearLabel = :yl LIMIT 1"
+    );
+    $stmt->bindValue(':yl', $yearLabel);
+    $stmt->execute();
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) throw new Exception("Academic year '$yearLabel' not found.");
+    return (int)$row['AcademicYearID'];
+}
+
+// ─── Computed enrollment subquery (reused across all queries) ───────────────
+// Returns the COUNT of active sectionassignment rows per section.
+function enrollmentSubquery(): string
+{
+    return "(SELECT COUNT(*) FROM sectionassignment sa
+             WHERE sa.SectionID = s.SectionID AND sa.IsActive = 1)";
+}
+
+// ============================================================
+// GET: sections list
+// ============================================================
+function getSections(PDO $conn): void
+{
+    $yearParam   = $_GET['year']   ?? null;
+    $gradeParam  = $_GET['grade']  ?? null;
+    $strandParam = $_GET['strand'] ?? null;
+
+    $enrSub = enrollmentSubquery();
+
+    $sql = "SELECT
                 s.SectionID,
                 s.SectionName,
                 s.Capacity,
-                s.CurrentEnrollment,
-                s.AcademicYear,
+                s.AcademicYearID,
                 s.IsActive,
+                s.StrandID,
+                ay.YearLabel                        AS AcademicYear,
                 gl.GradeLevelName,
                 gl.GradeLevelNumber,
                 st.StrandCode,
                 st.StrandName,
-                s.StrandID,
-                COALESCE(CONCAT(e.LastName, ', ', e.FirstName), CONCAT(u.LastName, ', ', u.FirstName)) as AdviserName,
-                s.AdviserEmployeeID,
+                CONCAT(u.LastName, ', ', u.FirstName) AS AdviserName,
                 s.AdviserID,
-                (s.Capacity - s.CurrentEnrollment) as AvailableSlots,
-                CASE 
-                    WHEN s.CurrentEnrollment >= s.Capacity THEN 'Full'
-                    WHEN s.CurrentEnrollment >= (s.Capacity * 0.9) THEN 'Nearing Full'
+                $enrSub                              AS CurrentEnrollment,
+                (s.Capacity - $enrSub)               AS AvailableSlots,
+                CASE
+                    WHEN $enrSub >= s.Capacity           THEN 'Full'
+                    WHEN $enrSub >= (s.Capacity * 0.9)  THEN 'Nearing Full'
                     ELSE 'Open'
-                END as Status
-              FROM section s
-              INNER JOIN gradelevel gl ON s.GradeLevelID = gl.GradeLevelID
-              LEFT JOIN strand st ON s.StrandID = st.StrandID
-              LEFT JOIN employee e ON s.AdviserEmployeeID = e.EmployeeID
-              LEFT JOIN user u ON s.AdviserID = u.UserID
-              WHERE s.IsActive = 1";
-    
+                END                                  AS Status
+            FROM section s
+            INNER JOIN academicyear ay ON ay.AcademicYearID = s.AcademicYearID
+            INNER JOIN gradelevel   gl ON gl.GradeLevelID   = s.GradeLevelID
+            LEFT JOIN  strand       st ON st.StrandID       = s.StrandID
+            LEFT JOIN  user         u  ON u.UserID          = s.AdviserID
+            WHERE s.IsActive = 1";
+
     $params = [];
-    
-    if ($academicYear) {
-        $query .= " AND s.AcademicYear = :year";
-        $params[':year'] = $academicYear;
+
+    if ($yearParam) {
+        $sql .= " AND ay.YearLabel = :year";
+        $params[':year'] = $yearParam;
     }
-    
-    if ($gradeLevel) {
-        $query .= " AND gl.GradeLevelNumber = :grade";
-        $params[':grade'] = $gradeLevel;
+    if ($gradeParam) {
+        $sql .= " AND gl.GradeLevelNumber = :grade";
+        $params[':grade'] = (int)$gradeParam;
     }
-    
-    if ($strand) {
-        $query .= " AND s.StrandID = :strand";
-        $params[':strand'] = $strand;
+    if ($strandParam) {
+        $sql .= " AND s.StrandID = :strand";
+        $params[':strand'] = (int)$strandParam;
     }
-    
-    $query .= " ORDER BY gl.GradeLevelNumber, s.SectionName";
-    
-    $stmt = $conn->prepare($query);
-    foreach ($params as $key => $value) {
-        $stmt->bindValue($key, $value);
-    }
+
+    $sql .= " ORDER BY gl.GradeLevelNumber, s.SectionName";
+
+    $stmt = $conn->prepare($sql);
+    foreach ($params as $k => $v) $stmt->bindValue($k, $v);
     $stmt->execute();
-    
-    $sections = [];
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $sections[] = $row;
-    }
-    
+
     echo json_encode([
-        'success' => true,
-        'sections' => $sections
+        'success'  => true,
+        'sections' => $stmt->fetchAll(PDO::FETCH_ASSOC),
     ]);
 }
 
-function getAvailableAdvisers($conn) {
-    $query = "SELECT 
-                e.EmployeeID,
-                CONCAT(e.LastName, ', ', e.FirstName) as FullName,
-                e.Department,
-                u.UserID
-              FROM employee e
-              LEFT JOIN user u ON e.EmployeeID = u.EmployeeID
-              WHERE e.EmploymentType = 'Teaching'
-              AND e.EmploymentStatus = 'Active'
-              AND e.IsActive = 1
-              ORDER BY e.LastName, e.FirstName";
-    
-    $stmt = $conn->prepare($query);
+// ============================================================
+// GET: available advisers (from user table only)
+// ============================================================
+function getAvailableAdvisers(PDO $conn): void
+{
+    // Advisers are any active users who can be assigned as section advisers.
+    // Roles that may serve as adviser: Adviser, Key_Teacher, Subject_Teacher.
+    $stmt = $conn->prepare(
+        "SELECT UserID,
+                CONCAT(LastName, ', ', FirstName) AS FullName,
+                Role
+         FROM user
+         WHERE IsActive = 1
+           AND Role IN ('Adviser','Key_Teacher','Subject_Teacher')
+         ORDER BY LastName, FirstName"
+    );
     $stmt->execute();
-    
-    $advisers = [];
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $advisers[] = $row;
-    }
-    
+
     echo json_encode([
-        'success' => true,
-        'advisers' => $advisers
+        'success'  => true,
+        'advisers' => $stmt->fetchAll(PDO::FETCH_ASSOC),
     ]);
 }
 
-function getTeachingEmployees($conn) {
-    $query = "SELECT 
-                e.EmployeeID,
-                CONCAT(e.LastName, ', ', e.FirstName, ' ', IFNULL(CONCAT(LEFT(e.MiddleName, 1), '.'), '')) as FullName,
-                e.Position,
-                e.Department
-              FROM employee e
-              WHERE e.EmploymentType = 'Teaching'
-              AND e.EmploymentStatus = 'Active'
-              AND e.IsActive = 1
-              ORDER BY e.LastName, e.FirstName";
-    
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    
-    $employees = [];
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $employees[] = $row;
-    }
-    
+// ============================================================
+// GET: teaching employees — employee table not in current schema.
+//      Return empty list with a notice so the UI degrades gracefully.
+// ============================================================
+function getTeachingEmployees(PDO $conn): void
+{
     echo json_encode([
-        'success' => true,
-        'employees' => $employees
+        'success'   => true,
+        'employees' => [],
+        'notice'    => 'Employee records are not yet available in the system.',
     ]);
 }
 
-function getSubjectTeachers($conn) {
-    $sectionId = isset($_GET['sectionId']) ? $_GET['sectionId'] : null;
-    
-    if (!$sectionId) {
-        throw new Exception('Section ID is required');
-    }
-    
-    $query = "SELECT 
-                ta.AssignmentID,
-                ta.SubjectCode,
-                ta.SubjectName,
-                CONCAT(e.LastName, ', ', e.FirstName, ' ', IFNULL(CONCAT(LEFT(e.MiddleName, 1), '.'), '')) as TeacherName,
-                e.EmployeeID,
-                ta.AssignedDate
-              FROM teacherassignment ta
-              INNER JOIN employee e ON ta.EmployeeID = e.EmployeeID
-              WHERE ta.SectionID = :sectionId
-              AND ta.AssignmentType = 'Subject_Teacher'
-              AND ta.IsActive = 1
-              ORDER BY ta.SubjectCode";
-    
-    $stmt = $conn->prepare($query);
-    $stmt->bindValue(':sectionId', $sectionId);
-    $stmt->execute();
-    
-    $teachers = [];
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $teachers[] = $row;
-    }
-    
+// ============================================================
+// GET: subject teachers — teacherassignment table not in schema.
+//      Return empty list gracefully.
+// ============================================================
+function getSubjectTeachers(PDO $conn): void
+{
+    $sectionId = $_GET['sectionId'] ?? null;
+    if (!$sectionId) throw new Exception('Section ID is required');
+
     echo json_encode([
-        'success' => true,
-        'teachers' => $teachers
+        'success'  => true,
+        'teachers' => [],
+        'notice'   => 'Subject teacher assignments are not yet available in the system.',
     ]);
 }
 
-function assignSubjectTeacher($conn) {
-    session_start();
-    $data = json_decode(file_get_contents('php://input'), true);
-    
-    // Validate required fields
-    if (empty($data['sectionId']) || empty($data['employeeId']) || 
-        empty($data['subjectCode']) || empty($data['subjectName'])) {
-        throw new Exception('All fields are required');
-    }
-    
-    // Get section details to extract grade level and academic year
-    $sectionQuery = "SELECT GradeLevelID, AcademicYear FROM section WHERE SectionID = :sectionId";
-    $stmt = $conn->prepare($sectionQuery);
-    $stmt->bindValue(':sectionId', $data['sectionId']);
+// ============================================================
+// POST: assign subject teacher — stub (table not in schema)
+// ============================================================
+function assignSubjectTeacher(PDO $conn): void
+{
+    echo json_encode([
+        'success' => false,
+        'message' => 'Subject teacher assignments are not yet supported in the current database version.',
+    ]);
+}
+
+// ============================================================
+// DELETE: remove subject teacher — stub (table not in schema)
+// ============================================================
+function removeSubjectTeacher(PDO $conn): void
+{
+    echo json_encode([
+        'success' => false,
+        'message' => 'Subject teacher assignments are not yet supported in the current database version.',
+    ]);
+}
+
+// ============================================================
+// GET: single section details
+// ============================================================
+function getSectionDetails(PDO $conn): void
+{
+    $sectionId = $_GET['id'] ?? null;
+    if (!$sectionId) throw new Exception('Section ID is required');
+
+    $enrSub = enrollmentSubquery();
+
+    $stmt = $conn->prepare(
+        "SELECT
+             s.SectionID,
+             s.SectionName,
+             s.Capacity,
+             s.AcademicYearID,
+             s.GradeLevelID,
+             s.StrandID,
+             s.AdviserID,
+             s.IsActive,
+             ay.YearLabel                          AS AcademicYear,
+             gl.GradeLevelName,
+             gl.GradeLevelNumber,
+             st.StrandCode,
+             st.StrandName,
+             CONCAT(u.LastName, ', ', u.FirstName)  AS AdviserName,
+             $enrSub                                AS CurrentEnrollment,
+             (s.Capacity - $enrSub)                 AS AvailableSlots
+         FROM section s
+         INNER JOIN academicyear ay ON ay.AcademicYearID = s.AcademicYearID
+         INNER JOIN gradelevel   gl ON gl.GradeLevelID   = s.GradeLevelID
+         LEFT JOIN  strand       st ON st.StrandID       = s.StrandID
+         LEFT JOIN  user         u  ON u.UserID          = s.AdviserID
+         WHERE s.SectionID = :id"
+    );
+    $stmt->bindValue(':id', (int)$sectionId, PDO::PARAM_INT);
     $stmt->execute();
+
     $section = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if (!$section) {
-        throw new Exception('Section not found');
-    }
-    
-    // Check for duplicate assignment
-    $checkQuery = "SELECT AssignmentID FROM teacherassignment 
-                   WHERE EmployeeID = :employeeId 
-                   AND SectionID = :sectionId 
-                   AND SubjectCode = :subjectCode
-                   AND AssignmentType = 'Subject_Teacher'
-                   AND IsActive = 1";
-    
-    $stmt = $conn->prepare($checkQuery);
-    $stmt->bindValue(':employeeId', $data['employeeId']);
-    $stmt->bindValue(':sectionId', $data['sectionId']);
-    $stmt->bindValue(':subjectCode', $data['subjectCode']);
-    $stmt->execute();
-    
-    if ($stmt->fetch()) {
-        throw new Exception('This teacher is already assigned to this subject in this section');
-    }
-    
-    // Insert assignment
-    $query = "INSERT INTO teacherassignment 
-              (EmployeeID, AcademicYear, AssignmentType, GradeLevelID, SectionID, 
-               SubjectCode, SubjectName, IsActive, AssignedBy, AssignedDate)
-              VALUES 
-              (:employeeId, :academicYear, 'Subject_Teacher', :gradeLevelId, :sectionId,
-               :subjectCode, :subjectName, 1, :assignedBy, NOW())";
-    
-    $stmt = $conn->prepare($query);
-    $stmt->bindValue(':employeeId', $data['employeeId']);
-    $stmt->bindValue(':academicYear', $section['AcademicYear']);
-    $stmt->bindValue(':gradeLevelId', $section['GradeLevelID']);
-    $stmt->bindValue(':sectionId', $data['sectionId']);
-    $stmt->bindValue(':subjectCode', $data['subjectCode']);
-    $stmt->bindValue(':subjectName', $data['subjectName']);
-    $stmt->bindValue(':assignedBy', $_SESSION['user']['UserID'] ?? null);
-    $stmt->execute();
-    
-    $assignmentId = $conn->lastInsertId();
-    
-    echo json_encode([
-        'success' => true,
-        'message' => 'Subject teacher assigned successfully',
-        'assignmentId' => $assignmentId
-    ]);
+    if (!$section) throw new Exception('Section not found');
+
+    echo json_encode(['success' => true, 'section' => $section]);
 }
 
-function removeSubjectTeacher($conn) {
-    $assignmentId = isset($_GET['id']) ? $_GET['id'] : null;
-    
-    if (!$assignmentId) {
-        throw new Exception('Assignment ID is required');
-    }
-    
-    // Soft delete the assignment
-    $query = "UPDATE teacherassignment 
-              SET IsActive = 0 
-              WHERE AssignmentID = :id 
-              AND AssignmentType = 'Subject_Teacher'";
-    
-    $stmt = $conn->prepare($query);
-    $stmt->bindValue(':id', $assignmentId);
-    $stmt->execute();
-    
-    if ($stmt->rowCount() === 0) {
-        throw new Exception('Assignment not found or already removed');
-    }
-    
-    echo json_encode([
-        'success' => true,
-        'message' => 'Subject teacher removed successfully'
-    ]);
-}
-
-function getSectionDetails($conn) {
-    $sectionId = isset($_GET['id']) ? $_GET['id'] : null;
-    
-    if (!$sectionId) {
-        throw new Exception('Section ID is required');
-    }
-    
-    $query = "SELECT 
-                s.*,
-                gl.GradeLevelName,
-                gl.GradeLevelNumber,
-                st.StrandCode,
-                st.StrandName
-              FROM section s
-              INNER JOIN gradelevel gl ON s.GradeLevelID = gl.GradeLevelID
-              LEFT JOIN strand st ON s.StrandID = st.StrandID
-              WHERE s.SectionID = :id";
-    
-    $stmt = $conn->prepare($query);
-    $stmt->bindValue(':id', $sectionId);
-    $stmt->execute();
-    
-    $section = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if (!$section) {
-        throw new Exception('Section not found');
-    }
-    
-    echo json_encode([
-        'success' => true,
-        'section' => $section
-    ]);
-}
-
-function createSection($conn) {
+// ============================================================
+// POST: create section
+// ============================================================
+function createSection(PDO $conn): void
+{
     $data = json_decode(file_get_contents('php://input'), true);
-    
-    // Validate required fields
-    $required = ['sectionName', 'gradeLevelId', 'academicYear', 'capacity'];
-    foreach ($required as $field) {
-        if (!isset($data[$field]) || empty($data[$field])) {
-            throw new Exception("Field $field is required");
-        }
+
+    foreach (['sectionName', 'gradeLevelId', 'academicYear', 'capacity', 'adviserUserId'] as $f) {
+        if (empty($data[$f])) throw new Exception("Field '$f' is required");
     }
-    
-    // Validate adviser - at least one must be provided
-    if (empty($data['adviserUserId'])) {
-        throw new Exception('Adviser is required. Please select an adviser from the dropdown.');
-    }
-    
-    // Check if section name already exists for this academic year
-    $checkQuery = "SELECT SectionID FROM section 
-                   WHERE SectionName = :name 
-                   AND AcademicYear = :year 
-                   AND IsActive = 1";
-    $stmt = $conn->prepare($checkQuery);
-    $stmt->bindValue(':name', $data['sectionName']);
-    $stmt->bindValue(':year', $data['academicYear']);
+
+    $ayID = resolveAcademicYearID($conn, $data['academicYear']);
+
+    // Unique constraint: uq_section_year (SectionName, AcademicYearID)
+    $chk = $conn->prepare(
+        "SELECT SectionID FROM section
+         WHERE SectionName = :name AND AcademicYearID = :ayID AND IsActive = 1"
+    );
+    $chk->bindValue(':name', $data['sectionName']);
+    $chk->bindValue(':ayID', $ayID, PDO::PARAM_INT);
+    $chk->execute();
+    if ($chk->fetch()) throw new Exception('Section name already exists for this academic year');
+
+    $stmt = $conn->prepare(
+        "INSERT INTO section
+             (SectionName, GradeLevelID, StrandID, AdviserID, Capacity, AcademicYearID, IsActive)
+         VALUES
+             (:name, :gradeLevel, :strand, :adviserID, :capacity, :ayID, 1)"
+    );
+    $stmt->bindValue(':name',      $data['sectionName']);
+    $stmt->bindValue(':gradeLevel',(int)$data['gradeLevelId'],  PDO::PARAM_INT);
+    $stmt->bindValue(':strand',    $data['strandId'] ? (int)$data['strandId'] : null);
+    $stmt->bindValue(':adviserID', (int)$data['adviserUserId'], PDO::PARAM_INT);
+    $stmt->bindValue(':capacity',  (int)$data['capacity'],      PDO::PARAM_INT);
+    $stmt->bindValue(':ayID',      $ayID,                       PDO::PARAM_INT);
     $stmt->execute();
-    
-    if ($stmt->fetch()) {
-        throw new Exception('Section name already exists for this academic year');
-    }
-    
-    // Insert section
-    $query = "INSERT INTO section 
-              (SectionName, GradeLevelID, StrandID, AdviserEmployeeID, AdviserID, 
-               Capacity, CurrentEnrollment, AcademicYear, IsActive) 
-              VALUES 
-              (:name, :gradeLevel, :strand, :adviserEmp, :adviserUser, 
-               :capacity, 0, :year, 1)";
-    
-    $stmt = $conn->prepare($query);
-    $stmt->bindValue(':name', $data['sectionName']);
-    $stmt->bindValue(':gradeLevel', $data['gradeLevelId']);
-    $stmt->bindValue(':strand', $data['strandId'] ?? null);
-    $stmt->bindValue(':adviserEmp', $data['adviserEmployeeId'] ?? null);
-    $stmt->bindValue(':adviserUser', $data['adviserUserId']);
-    $stmt->bindValue(':capacity', $data['capacity']);
-    $stmt->bindValue(':year', $data['academicYear']);
-    $stmt->execute();
-    
-    $sectionId = $conn->lastInsertId();
-    
+
     echo json_encode([
-        'success' => true,
-        'message' => 'Section created successfully',
-        'sectionId' => $sectionId
+        'success'   => true,
+        'message'   => 'Section created successfully',
+        'sectionId' => (int)$conn->lastInsertId(),
     ]);
 }
 
-function updateSection($conn) {
+// ============================================================
+// PUT: update section
+// ============================================================
+function updateSection(PDO $conn): void
+{
     $data = json_decode(file_get_contents('php://input'), true);
-    
-    if (!isset($data['sectionId'])) {
-        throw new Exception('Section ID is required');
-    }
-    
-    // Validate adviser - at least one must be provided
-    if (empty($data['adviserUserId'])) {
-        throw new Exception('Adviser is required. Please select an adviser from the dropdown.');
-    }
-    
-    $query = "UPDATE section SET 
-              SectionName = :name,
-              GradeLevelID = :gradeLevel,
-              StrandID = :strand,
-              AdviserEmployeeID = :adviserEmp,
-              AdviserID = :adviserUser,
-              Capacity = :capacity,
-              AcademicYear = :year
-              WHERE SectionID = :id";
-    
-    $stmt = $conn->prepare($query);
-    $stmt->bindValue(':name', $data['sectionName']);
-    $stmt->bindValue(':gradeLevel', $data['gradeLevelId']);
-    $stmt->bindValue(':strand', $data['strandId'] ?? null);
-    $stmt->bindValue(':adviserEmp', $data['adviserEmployeeId'] ?? null);
-    $stmt->bindValue(':adviserUser', $data['adviserUserId']);
-    $stmt->bindValue(':capacity', $data['capacity']);
-    $stmt->bindValue(':year', $data['academicYear']);
-    $stmt->bindValue(':id', $data['sectionId']);
+
+    if (empty($data['sectionId']))    throw new Exception('Section ID is required');
+    if (empty($data['adviserUserId'])) throw new Exception('Adviser is required');
+
+    $ayID = resolveAcademicYearID($conn, $data['academicYear']);
+
+    $stmt = $conn->prepare(
+        "UPDATE section SET
+             SectionName  = :name,
+             GradeLevelID = :gradeLevel,
+             StrandID     = :strand,
+             AdviserID    = :adviserID,
+             Capacity     = :capacity,
+             AcademicYearID = :ayID
+         WHERE SectionID = :id"
+    );
+    $stmt->bindValue(':name',      $data['sectionName']);
+    $stmt->bindValue(':gradeLevel',(int)$data['gradeLevelId'],  PDO::PARAM_INT);
+    $stmt->bindValue(':strand',    $data['strandId'] ? (int)$data['strandId'] : null);
+    $stmt->bindValue(':adviserID', (int)$data['adviserUserId'], PDO::PARAM_INT);
+    $stmt->bindValue(':capacity',  (int)$data['capacity'],      PDO::PARAM_INT);
+    $stmt->bindValue(':ayID',      $ayID,                       PDO::PARAM_INT);
+    $stmt->bindValue(':id',        (int)$data['sectionId'],     PDO::PARAM_INT);
     $stmt->execute();
-    
-    echo json_encode([
-        'success' => true,
-        'message' => 'Section updated successfully'
-    ]);
+
+    echo json_encode(['success' => true, 'message' => 'Section updated successfully']);
 }
 
-function deleteSection($conn) {
-    $sectionId = isset($_GET['id']) ? $_GET['id'] : null;
-    
-    if (!$sectionId) {
-        throw new Exception('Section ID is required');
+// ============================================================
+// DELETE: soft-delete section
+// ============================================================
+function deleteSection(PDO $conn): void
+{
+    $sectionId = $_GET['id'] ?? null;
+    if (!$sectionId) throw new Exception('Section ID is required');
+
+    // Block deletion if students are assigned
+    $chk = $conn->prepare(
+        "SELECT COUNT(*) FROM sectionassignment WHERE SectionID = :id AND IsActive = 1"
+    );
+    $chk->bindValue(':id', (int)$sectionId, PDO::PARAM_INT);
+    $chk->execute();
+    if ((int)$chk->fetchColumn() > 0) {
+        throw new Exception('Cannot delete a section that has assigned students');
     }
-    
-    // Check if section has students
-    $checkQuery = "SELECT COUNT(*) as count FROM sectionassignment 
-                   WHERE SectionID = :id AND IsActive = 1";
-    $stmt = $conn->prepare($checkQuery);
-    $stmt->bindValue(':id', $sectionId);
+
+    $stmt = $conn->prepare("UPDATE section SET IsActive = 0 WHERE SectionID = :id");
+    $stmt->bindValue(':id', (int)$sectionId, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if ($result['count'] > 0) {
-        throw new Exception('Cannot delete section with assigned students');
-    }
-    
-    // Soft delete
-    $query = "UPDATE section SET IsActive = 0 WHERE SectionID = :id";
-    $stmt = $conn->prepare($query);
-    $stmt->bindValue(':id', $sectionId);
-    $stmt->execute();
-    
-    echo json_encode([
-        'success' => true,
-        'message' => 'Section deleted successfully'
-    ]);
+
+    echo json_encode(['success' => true, 'message' => 'Section deleted successfully']);
 }
 ?>

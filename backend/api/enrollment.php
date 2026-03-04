@@ -1,7 +1,17 @@
 <?php
 // =====================================================
-// Enhanced Enrollment API with Duplicate Prevention
+// Enrollment API — djihs_enrollment_v2 schema
 // File: backend/api/enrollment.php
+//
+// CHANGES vs old version:
+//  - Added getStats() — returns pendingCount, confirmedToday, totalConfirmed
+//  - getEnrollmentDetails(): removed e.* wildcard; explicit column list only
+//    (no Age, Weight, Height, ZipCode, Country, LearnerType)
+//    Age derived at runtime via TIMESTAMPDIFF
+//  - getPendingEnrollments(): uses EnrollmentType (not LearnerType)
+//  - rejectEnrollment(): uses Remarks column ✓ (exists in schema)
+//  - All parent/guardian data comes from parentguardian table (guardians[] key)
+//  - submitEnrollment(): unchanged from previous session (already aligned)
 // =====================================================
 
 header('Content-Type: application/json');
@@ -9,696 +19,635 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
-// Handle preflight
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit; }
 
 require_once '../config/database.php';
 
 class EnrollmentAPI {
     private $conn;
-    
+
     public function __construct($db) {
         $this->conn = $db;
     }
-    
-    /**
-     * Submit enrollment form - creates Student and Enrollment records
-     */
+
+    // ──────────────────────────────────────────────
+    // STATS — for the three stat cards on review page
+    // ──────────────────────────────────────────────
+    public function getStats() {
+        try {
+            // Pending count
+            $p = $this->conn->query(
+                "SELECT COUNT(*) FROM enrollment WHERE Status = 'Pending'"
+            )->fetchColumn();
+
+            // Confirmed today
+            $ct = $this->conn->query(
+                "SELECT COUNT(*) FROM enrollment
+                 WHERE Status = 'Confirmed'
+                   AND DATE(EnrollmentDate) = CURDATE()"
+            )->fetchColumn();
+
+            // Total confirmed (all time)
+            $total = $this->conn->query(
+                "SELECT COUNT(*) FROM enrollment WHERE Status = 'Confirmed'"
+            )->fetchColumn();
+
+            return [
+                'success' => true,
+                'data'    => [
+                    'pendingCount'    => (int)$p,
+                    'confirmedToday'  => (int)$ct,
+                    'totalConfirmed'  => (int)$total,
+                ],
+            ];
+        } catch (PDOException $e) {
+            return ['success' => false, 'message' => 'Error fetching stats: ' . $e->getMessage()];
+        }
+    }
+
+    // ──────────────────────────────────────────────
+    // GET PENDING ENROLLMENTS
+    // Uses EnrollmentType (not LearnerType — removed from schema)
+    // ──────────────────────────────────────────────
+    public function getPendingEnrollments() {
+        try {
+            $stmt = $this->conn->prepare("
+                SELECT
+                    e.EnrollmentID,
+                    e.StudentID,
+                    e.EnrollmentType,
+                    e.Status,
+                    e.EnrollmentDate,
+                    s.LRN,
+                    CONCAT(s.LastName, ', ', s.FirstName,
+                        IFNULL(CONCAT(' ', s.MiddleName), '')) AS StudentName,
+                    gl.GradeLevelName,
+                    st.StrandName,
+                    ay.YearLabel AS AcademicYear
+                FROM   enrollment    e
+                JOIN   student       s  ON e.StudentID      = s.StudentID
+                JOIN   gradelevel    gl ON e.GradeLevelID   = gl.GradeLevelID
+                JOIN   academicyear  ay ON e.AcademicYearID = ay.AcademicYearID
+                LEFT   JOIN strand   st ON e.StrandID       = st.StrandID
+                WHERE  e.Status = 'Pending'
+                ORDER  BY e.EnrollmentDate DESC
+            ");
+            $stmt->execute();
+            return ['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
+        } catch (PDOException $e) {
+            return ['success' => false, 'message' => 'Error fetching enrollments: ' . $e->getMessage()];
+        }
+    }
+
+    // ──────────────────────────────────────────────
+    // GET ENROLLMENT DETAILS (single record)
+    //
+    // KEY CHANGES:
+    //  - No e.* wildcard — explicit column list only
+    //  - Age derived via TIMESTAMPDIFF (not stored)
+    //  - No Weight, Height, ZipCode, Country, LearnerType
+    //  - guardians[] fetched from parentguardian table
+    //  - documents[] fetched from documentsubmission table
+    // ──────────────────────────────────────────────
+    public function getEnrollmentDetails($enrollmentID) {
+        try {
+            $stmt = $this->conn->prepare("
+                SELECT
+                    -- Enrollment fields (exact schema columns only)
+                    e.EnrollmentID,
+                    e.StudentID,
+                    e.GradeLevelID,
+                    e.StrandID,
+                    e.AcademicYearID,
+                    e.EnrollmentDate,
+                    e.EnrollmentType,
+                    e.Status,
+                    e.Remarks,
+
+                    -- Student fields (exact schema columns only)
+                    s.LRN,
+                    s.LastName,
+                    s.FirstName,
+                    s.MiddleName,
+                    s.ExtensionName,
+                    s.DateOfBirth,
+                    TIMESTAMPDIFF(YEAR, s.DateOfBirth, CURDATE()) AS Age,
+                    s.Gender,
+                    s.Religion,
+                    s.MotherTongue,
+                    s.IsIPCommunity,
+                    s.IPCommunitySpecify,
+                    s.IsPWD,
+                    s.PWDSpecify,
+                    s.HouseNumber,
+                    s.SitioStreet,
+                    s.Barangay,
+                    s.Municipality,
+                    s.Province,
+                    s.ContactNumber,
+                    s.Is4PsBeneficiary,
+                    s.EnrollmentStatus,
+
+                    -- Derived / joined
+                    CONCAT(s.LastName, ', ', s.FirstName,
+                        IFNULL(CONCAT(' ', s.MiddleName), '')) AS FullName,
+                    CONCAT_WS(', ',
+                        NULLIF(TRIM(CONCAT_WS(' ', s.HouseNumber, s.SitioStreet)), ''),
+                        s.Barangay, s.Municipality, s.Province
+                    ) AS CompleteAddress,
+                    gl.GradeLevelName,
+                    gl.Department,
+                    st.StrandCode,
+                    st.StrandName,
+                    ay.YearLabel AS AcademicYear
+
+                FROM   enrollment    e
+                JOIN   student       s  ON e.StudentID      = s.StudentID
+                JOIN   gradelevel    gl ON e.GradeLevelID   = gl.GradeLevelID
+                JOIN   academicyear  ay ON e.AcademicYearID = ay.AcademicYearID
+                LEFT   JOIN strand   st ON e.StrandID       = st.StrandID
+                WHERE  e.EnrollmentID = :eid
+            ");
+            $stmt->execute([':eid' => (int)$enrollmentID]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$result) {
+                return ['success' => false, 'message' => 'Enrollment not found'];
+            }
+
+            // Parent/guardian rows (from separate parentguardian table)
+            // Returns keyed map: { Father: {...}, Mother: {...}, Guardian: {...} }
+            $pgStmt = $this->conn->prepare("
+                SELECT RelationshipType, LastName, FirstName, MiddleName,
+                       GuardianRelationship, ContactNumber
+                FROM   parentguardian
+                WHERE  StudentID = :sid
+                ORDER  BY FIELD(RelationshipType, 'Father', 'Mother', 'Guardian')
+            ");
+            $pgStmt->execute([':sid' => $result['StudentID']]);
+            $guardianRows = $pgStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Key by RelationshipType for easy JS access
+            $guardianMap = [];
+            foreach ($guardianRows as $g) {
+                $guardianMap[$g['RelationshipType']] = $g;
+            }
+            $result['guardians']   = $guardianMap;
+            $result['guardianList'] = $guardianRows; // flat list also available
+
+            // Document submissions
+            $docStmt = $this->conn->prepare("
+                SELECT DocumentType, IsSubmitted, IsVerified, Notes
+                FROM   documentsubmission
+                WHERE  EnrollmentID = :eid
+                ORDER  BY DocumentType
+            ");
+            $docStmt->execute([':eid' => (int)$enrollmentID]);
+            $result['documents'] = $docStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return ['success' => true, 'data' => $result];
+
+        } catch (PDOException $e) {
+            return ['success' => false, 'message' => 'Error fetching details: ' . $e->getMessage()];
+        }
+    }
+
+    // ──────────────────────────────────────────────
+    // APPROVE ENROLLMENT
+    // ──────────────────────────────────────────────
+    public function approveEnrollment($enrollmentID, $reviewerID) {
+        try {
+            $this->conn->beginTransaction();
+
+            $upd = $this->conn->prepare("
+                UPDATE enrollment
+                SET    Status = 'Confirmed'
+                WHERE  EnrollmentID = :eid AND Status = 'Pending'
+            ");
+            $upd->execute([':eid' => (int)$enrollmentID]);
+
+            if ($upd->rowCount() === 0) {
+                $this->conn->rollBack();
+                return ['success' => false, 'message' => 'Enrollment not found or already processed'];
+            }
+
+            // Auto-create DocumentSubmission rows (INSERT IGNORE = safe to re-run)
+            $docTypes = [
+                'PSA_Birth_Cert', 'Local_Birth_Cert', 'Report_Card',
+                'Form_137', 'Good_Moral', 'Transfer_Cert'
+            ];
+            $docIns = $this->conn->prepare("
+                INSERT IGNORE INTO documentsubmission
+                    (EnrollmentID, DocumentType, IsSubmitted, IsVerified)
+                VALUES
+                    (:eid, :dtype, 0, 0)
+            ");
+            foreach ($docTypes as $dtype) {
+                $docIns->execute([':eid' => (int)$enrollmentID, ':dtype' => $dtype]);
+            }
+
+            $this->writeAuditLog(
+                'enrollment', $enrollmentID, 'STATUS_CHANGE',
+                'Pending', 'Confirmed', $reviewerID, 'Enrollment approved'
+            );
+
+            $this->conn->commit();
+            return ['success' => true, 'message' => 'Enrollment approved successfully'];
+
+        } catch (PDOException $e) {
+            if ($this->conn->inTransaction()) $this->conn->rollBack();
+            return ['success' => false, 'message' => 'Error approving enrollment: ' . $e->getMessage()];
+        }
+    }
+
+    // ──────────────────────────────────────────────
+    // REJECT ENROLLMENT
+    // Remarks column exists in schema ✓
+    // ──────────────────────────────────────────────
+    public function rejectEnrollment($enrollmentID, $reviewerID, $reason) {
+        try {
+            $upd = $this->conn->prepare("
+                UPDATE enrollment
+                SET    Status = 'Cancelled', Remarks = :reason
+                WHERE  EnrollmentID = :eid
+            ");
+            $upd->execute([':reason' => $reason, ':eid' => (int)$enrollmentID]);
+
+            $this->writeAuditLog(
+                'enrollment', $enrollmentID, 'STATUS_CHANGE',
+                null, 'Cancelled', $reviewerID, "Enrollment cancelled: $reason"
+            );
+
+            return ['success' => true, 'message' => 'Enrollment rejected'];
+
+        } catch (PDOException $e) {
+            return ['success' => false, 'message' => 'Error rejecting enrollment: ' . $e->getMessage()];
+        }
+    }
+
+    // ──────────────────────────────────────────────
+    // SUBMIT ENROLLMENT
+    // (Unchanged from previous session — already schema-aligned)
+    // ──────────────────────────────────────────────
     public function submitEnrollment($data) {
         try {
-            // Validate required fields
+            // 1. Basic required-field validation
             $required = [
-                'schoolYear', 'gradeLevel', 'learnerType',
-                'lastName', 'firstName', 'birthdate', 'age', 'sex',
+                'academicYearID', 'gradeLevelID', 'enrollmentType',
+                'lastName', 'firstName', 'dateOfBirth', 'gender',
                 'barangay', 'municipality', 'province', 'contactNumber',
                 'createdBy'
             ];
-            
             foreach ($required as $field) {
-                if (empty($data[$field])) {
-                    return [
-                        'success' => false,
-                        'message' => "Missing required field: $field"
-                    ];
-                }
+                if (empty($data[$field]))
+                    return ['success' => false, 'message' => "Missing required field: $field"];
             }
-            
-            // Validate user permissions
+
+            // 2. Validate acting user
             $userCheck = $this->conn->prepare(
-                "SELECT Role FROM User WHERE UserID = ? AND IsActive = 1"
+                "SELECT Role FROM user WHERE UserID = ? AND IsActive = 1"
             );
             $userCheck->execute([$data['createdBy']]);
             $user = $userCheck->fetch(PDO::FETCH_ASSOC);
-            
-            if (!$user) {
-                return [
-                    'success' => false,
-                    'message' => 'Invalid user or user is not active'
-                ];
-            }
-            
-            if (!in_array($user['Role'], ['ICT_Coordinator', 'Registrar', 'Adviser'])) {
-                return [
-                    'success' => false,
-                    'message' => 'User does not have permission to enter enrollment forms'
-                ];
-            }
-            
-            // Validate strand for Grade 11 & 12
-            if (in_array($data['gradeLevel'], [5, 6]) && empty($data['strandID'])) {
-                return [
-                    'success' => false,
-                    'message' => 'Strand/Track is required for Grade 11 & 12'
-                ];
-            }
-            
-            // Check for duplicate LRN enrollment in same academic year
-            if (!empty($data['lrn'])) {
-                $duplicateCheck = $this->conn->prepare("
-                    SELECT 
-                        e.EnrollmentID,
-                        e.AcademicYear,
-                        e.Status,
-                        gl.GradeLevelName,
-                        st.StrandName,
-                        CONCAT(s.FirstName, ' ', s.LastName) as StudentName
-                    FROM enrollment e
-                    JOIN student s ON e.StudentID = s.StudentID
-                    JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
-                    LEFT JOIN strand st ON e.StrandID = st.StrandID
-                    WHERE s.LRN = :lrn 
-                    AND e.AcademicYear = :academicYear
-                    LIMIT 1
+            if (!$user)
+                return ['success' => false, 'message' => 'Invalid user or user is not active'];
+
+            $allowedRoles = ['ICT_Coordinator', 'Registrar', 'Adviser'];
+            if (!in_array($user['Role'], $allowedRoles))
+                return ['success' => false, 'message' => 'User does not have permission to submit enrollment forms'];
+
+            // 3. Validate AcademicYear
+            $ayCheck = $this->conn->prepare(
+                "SELECT AcademicYearID, YearLabel, IsArchived FROM academicyear WHERE AcademicYearID = ?"
+            );
+            $ayCheck->execute([$data['academicYearID']]);
+            $ay = $ayCheck->fetch(PDO::FETCH_ASSOC);
+            if (!$ay) return ['success' => false, 'message' => 'Invalid AcademicYearID'];
+            if ($ay['IsArchived']) return ['success' => false, 'message' => "Academic year {$ay['YearLabel']} is archived"];
+
+            // 4. Validate GradeLevel
+            $glCheck = $this->conn->prepare(
+                "SELECT GradeLevelID, GradeLevelNumber, Department FROM gradelevel WHERE GradeLevelID = ? AND IsActive = 1"
+            );
+            $glCheck->execute([$data['gradeLevelID']]);
+            $gl = $glCheck->fetch(PDO::FETCH_ASSOC);
+            if (!$gl) return ['success' => false, 'message' => 'Invalid or inactive GradeLevelID'];
+
+            // 5. Strand requirement for SHS
+            $isSHS    = ($gl['Department'] === 'Senior_High');
+            $strandID = !empty($data['strandID']) ? (int)$data['strandID'] : null;
+            if ($isSHS && !$strandID)
+                return ['success' => false, 'message' => 'Strand is required for Senior High School (Grade 11 & 12)'];
+            if (!$isSHS) $strandID = null;
+
+            // 6. Validate EnrollmentType enum
+            $validTypes = ['Regular_Old_Student','Regular_New_Student','Late','Transferee','Balik_Aral','Repeater','ALS'];
+            if (!in_array($data['enrollmentType'], $validTypes))
+                return ['success' => false, 'message' => 'Invalid enrollmentType value'];
+
+            // 7. Duplicate-enrollment check
+            $lrn = !empty($data['lrn']) ? trim($data['lrn']) : null;
+            $existingStudentID = null;
+
+            if ($lrn) {
+                $dupCheck = $this->conn->prepare("
+                    SELECT e.EnrollmentID, e.Status, gl.GradeLevelName,
+                           st.StrandName,
+                           CONCAT(s.FirstName,' ',s.LastName) AS StudentName
+                    FROM   enrollment e
+                    JOIN   student    s  ON e.StudentID     = s.StudentID
+                    JOIN   gradelevel gl ON e.GradeLevelID  = gl.GradeLevelID
+                    LEFT   JOIN strand st ON e.StrandID     = st.StrandID
+                    WHERE  s.LRN = :lrn AND e.AcademicYearID = :ayID
+                    LIMIT  1
                 ");
-                
-                $duplicateCheck->execute([
-                    ':lrn' => $data['lrn'],
-                    ':academicYear' => $data['schoolYear']
-                ]);
-                
-                $duplicate = $duplicateCheck->fetch(PDO::FETCH_ASSOC);
-                
-                if ($duplicate) {
-                    $strandInfo = $duplicate['StrandName'] ? " - {$duplicate['StrandName']}" : '';
-                    return [
-                        'success' => false,
-                        'message' => "Duplicate enrollment detected: Student with LRN {$data['lrn']} is already enrolled for {$duplicate['AcademicYear']} ({$duplicate['GradeLevelName']}{$strandInfo}). Status: {$duplicate['Status']}",
-                        'duplicate' => $duplicate
-                    ];
+                $dupCheck->execute([':lrn' => $lrn, ':ayID' => $data['academicYearID']]);
+                $dup = $dupCheck->fetch(PDO::FETCH_ASSOC);
+                if ($dup) {
+                    $si = $dup['StrandName'] ? " – {$dup['StrandName']}" : '';
+                    return ['success' => false,
+                        'message'   => "Duplicate enrollment: LRN {$lrn} already enrolled for {$ay['YearLabel']} ({$dup['GradeLevelName']}{$si}). Status: {$dup['Status']}",
+                        'duplicate' => $dup];
                 }
-            }
-            
-            // Validate strand consistency for Grade 11 to Grade 12 progression
-            if (!empty($data['lrn']) && in_array($data['gradeLevel'], [5, 6])) {
-                $previousEnrollment = $this->conn->prepare("
-                    SELECT 
-                        e.GradeLevelID,
-                        e.StrandID,
-                        st.StrandName,
-                        e.AcademicYear
-                    FROM enrollment e
-                    JOIN student s ON e.StudentID = s.StudentID
-                    LEFT JOIN strand st ON e.StrandID = st.StrandID
-                    WHERE s.LRN = :lrn
-                    AND e.Status IN ('Confirmed', 'Pending')
-                    ORDER BY e.AcademicYear DESC, e.CreatedAt DESC
-                    LIMIT 1
-                ");
-                
-                $previousEnrollment->execute([':lrn' => $data['lrn']]);
-                $previous = $previousEnrollment->fetch(PDO::FETCH_ASSOC);
-                
-                // If student was Grade 11 and now enrolling in Grade 12
-                if ($previous && $previous['GradeLevelID'] == 5 && $data['gradeLevel'] == 6) {
-                    if ($previous['StrandID'] && $data['strandID'] && $previous['StrandID'] != $data['strandID']) {
-                        $strandNames = [
-                            1 => 'ABM', 2 => 'HUMSS', 3 => 'STEM',
-                            4 => 'HE-COOKERY', 5 => 'ICT-CSS', 6 => 'IA-EIM'
-                        ];
-                        
-                        return [
-                            'success' => false,
-                            'message' => "Strand mismatch: Student was enrolled in {$previous['StrandName']} for Grade 11 ({$previous['AcademicYear']}). Cannot change to {$strandNames[$data['strandID']]} for Grade 12."
-                        ];
-                    }
+
+                // Strand consistency G11 → G12
+                if ($isSHS && $gl['GradeLevelNumber'] == 12 && $strandID) {
+                    $prevCheck = $this->conn->prepare("
+                        SELECT e.StrandID, st.StrandName
+                        FROM   enrollment e
+                        JOIN   student    s  ON e.StudentID    = s.StudentID
+                        JOIN   gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
+                        LEFT   JOIN strand st ON e.StrandID    = st.StrandID
+                        WHERE  s.LRN = :lrn AND gl.GradeLevelNumber = 11
+                          AND  e.Status IN ('Confirmed','Pending')
+                        ORDER  BY e.EnrollmentID DESC
+                        LIMIT  1
+                    ");
+                    $prevCheck->execute([':lrn' => $lrn]);
+                    $prev = $prevCheck->fetch(PDO::FETCH_ASSOC);
+                    if ($prev && $prev['StrandID'] && $prev['StrandID'] != $strandID)
+                        return ['success' => false,
+                            'message' => "Strand mismatch: student was in {$prev['StrandName']} for Grade 11. Cannot change strand for Grade 12."];
                 }
+
+                // Does student already exist?
+                $stCheck = $this->conn->prepare("SELECT StudentID FROM student WHERE LRN = :lrn LIMIT 1");
+                $stCheck->execute([':lrn' => $lrn]);
+                $ex = $stCheck->fetch(PDO::FETCH_ASSOC);
+                if ($ex) $existingStudentID = (int)$ex['StudentID'];
             }
-            
-            // Set default values for new fields
-            $weight = !empty($data['weight']) ? floatval($data['weight']) : null;
-            $height = !empty($data['height']) ? floatval($data['height']) : null;
-            $is4PsBeneficiary = isset($data['is4PsBeneficiary']) ? (int)$data['is4PsBeneficiary'] : 0;
-            $zipCode = !empty($data['zipCode']) ? trim($data['zipCode']) : null;
-            $country = !empty($data['country']) ? trim($data['country']) : 'Philippines';
-            
-            // Set enrollment type - auto-determine based on learner type if not provided
-            if (empty($data['enrollmentType'])) {
-                $data['enrollmentType'] = $this->determineEnrollmentType($data['learnerType']);
-            }
-            
-            // Validate enrollment type
-            $validEnrollmentTypes = ['Regular', 'Late', 'Transferee'];
-            if (!in_array($data['enrollmentType'], $validEnrollmentTypes)) {
-                return [
-                    'success' => false,
-                    'message' => 'Invalid enrollment type. Must be Regular, Late, or Transferee'
-                ];
-            }
-            
-            // Check if student exists by LRN
-            $existingStudent = null;
-            if (!empty($data['lrn'])) {
-                $studentCheck = $this->conn->prepare("SELECT StudentID FROM student WHERE LRN = :lrn LIMIT 1");
-                $studentCheck->execute([':lrn' => $data['lrn']]);
-                $existingStudent = $studentCheck->fetch(PDO::FETCH_ASSOC);
-            }
-            
-            // Begin transaction
+
+            // 8. Sanitise flags
+            $isIP  = isset($data['isIPCommunity'])   ? (int)(bool)$data['isIPCommunity']   : 0;
+            $isPWD = isset($data['isPWD'])            ? (int)(bool)$data['isPWD']            : 0;
+            $is4Ps = isset($data['is4PsBeneficiary']) ? (int)(bool)$data['is4PsBeneficiary'] : 0;
+            $mt    = !empty($data['motherTongue'])    ? trim($data['motherTongue'])          : 'Tagalog';
+
             $this->conn->beginTransaction();
-            
-            $studentID = null;
-            
-            if ($existingStudent) {
-                // Student exists - use existing StudentID
-                $studentID = $existingStudent['StudentID'];
-                
-                // Optionally update student information
-                $updateQuery = "UPDATE student SET
-                    LastName = :lastName,
-                    FirstName = :firstName,
-                    MiddleName = :middleName,
-                    ExtensionName = :extensionName,
-                    DateOfBirth = :birthdate,
-                    Age = :age,
-                    Gender = :sex,
-                    Religion = :religion,
-                    IsIPCommunity = :isIPCommunity,
-                    IPCommunitySpecify = :ipCommunitySpecify,
-                    IsPWD = :isPWD,
-                    PWDSpecify = :pwdSpecify,
-                    HouseNumber = :houseNumber,
-                    SitioStreet = :sitioStreet,
-                    Barangay = :barangay,
-                    Municipality = :municipality,
-                    Province = :province,
-                    ZipCode = :zipCode,
-                    Country = :country,
-                    Weight = :weight,
-                    Height = :height,
-                    Is4PsBeneficiary = :is4PsBeneficiary,
-                    FatherLastName = :fatherLastName,
-                    FatherFirstName = :fatherFirstName,
-                    FatherMiddleName = :fatherMiddleName,
-                    MotherLastName = :motherLastName,
-                    MotherFirstName = :motherFirstName,
-                    MotherMiddleName = :motherMiddleName,
-                    GuardianLastName = :guardianLastName,
-                    GuardianFirstName = :guardianFirstName,
-                    GuardianMiddleName = :guardianMiddleName,
-                    ContactNumber = :contactNumber,
-                    EncodedDate = NOW(),
-                    EncodedBy = :encodedBy
-                WHERE StudentID = :studentID";
-                
-                $updateStmt = $this->conn->prepare($updateQuery);
-                
-                $isIPCommunity = $data['isIPCommunity'] ? 1 : 0;
-                $isPWD = $data['isPWD'] ? 1 : 0;
-                
-                $updateStmt->bindParam(':lastName', $data['lastName']);
-                $updateStmt->bindParam(':firstName', $data['firstName']);
-                $updateStmt->bindParam(':middleName', $data['middleName']);
-                $updateStmt->bindParam(':extensionName', $data['extensionName']);
-                $updateStmt->bindParam(':birthdate', $data['birthdate']);
-                $updateStmt->bindParam(':age', $data['age'], PDO::PARAM_INT);
-                $updateStmt->bindParam(':sex', $data['sex']);
-                $updateStmt->bindParam(':religion', $data['religion']);
-                $updateStmt->bindParam(':isIPCommunity', $isIPCommunity, PDO::PARAM_INT);
-                $updateStmt->bindParam(':ipCommunitySpecify', $data['ipCommunitySpecify']);
-                $updateStmt->bindParam(':isPWD', $isPWD, PDO::PARAM_INT);
-                $updateStmt->bindParam(':pwdSpecify', $data['pwdSpecify']);
-                $updateStmt->bindParam(':houseNumber', $data['houseNumber']);
-                $updateStmt->bindParam(':sitioStreet', $data['sitioStreet']);
-                $updateStmt->bindParam(':barangay', $data['barangay']);
-                $updateStmt->bindParam(':municipality', $data['municipality']);
-                $updateStmt->bindParam(':province', $data['province']);
-                $updateStmt->bindParam(':zipCode', $zipCode);
-                $updateStmt->bindParam(':country', $country);
-                $updateStmt->bindParam(':weight', $weight);
-                $updateStmt->bindParam(':height', $height);
-                $updateStmt->bindParam(':is4PsBeneficiary', $is4PsBeneficiary, PDO::PARAM_INT);
-                $updateStmt->bindParam(':fatherLastName', $data['fatherLastName']);
-                $updateStmt->bindParam(':fatherFirstName', $data['fatherFirstName']);
-                $updateStmt->bindParam(':fatherMiddleName', $data['fatherMiddleName']);
-                $updateStmt->bindParam(':motherLastName', $data['motherLastName']);
-                $updateStmt->bindParam(':motherFirstName', $data['motherFirstName']);
-                $updateStmt->bindParam(':motherMiddleName', $data['motherMiddleName']);
-                $updateStmt->bindParam(':guardianLastName', $data['guardianLastName']);
-                $updateStmt->bindParam(':guardianFirstName', $data['guardianFirstName']);
-                $updateStmt->bindParam(':guardianMiddleName', $data['guardianMiddleName']);
-                $updateStmt->bindParam(':contactNumber', $data['contactNumber']);
-                $updateStmt->bindParam(':encodedBy', $data['createdBy'], PDO::PARAM_INT);
-                $updateStmt->bindParam(':studentID', $studentID, PDO::PARAM_INT);
-                
-                $updateStmt->execute();
-                
+
+            // 9a. Student upsert
+            $studentParams = [
+                ':lastName'    => trim($data['lastName']),
+                ':firstName'   => trim($data['firstName']),
+                ':middleName'  => !empty($data['middleName'])        ? trim($data['middleName'])        : null,
+                ':extensionName' => !empty($data['extensionName'])   ? trim($data['extensionName'])     : null,
+                ':dateOfBirth' => $data['dateOfBirth'],
+                ':gender'      => $data['gender'],
+                ':religion'    => !empty($data['religion'])          ? trim($data['religion'])          : null,
+                ':mt'          => $mt,
+                ':isIP'        => $isIP,
+                ':ipSpec'      => !empty($data['ipCommunitySpecify'])? trim($data['ipCommunitySpecify']): null,
+                ':isPWD'       => $isPWD,
+                ':pwdSpec'     => !empty($data['pwdSpecify'])        ? trim($data['pwdSpecify'])        : null,
+                ':houseNumber' => !empty($data['houseNumber'])       ? trim($data['houseNumber'])       : null,
+                ':sitioStreet' => !empty($data['sitioStreet'])       ? trim($data['sitioStreet'])       : null,
+                ':barangay'    => trim($data['barangay']),
+                ':municipality'=> trim($data['municipality']),
+                ':province'    => trim($data['province']),
+                ':contactNumber' => trim($data['contactNumber']),
+                ':is4Ps'       => $is4Ps,
+            ];
+
+            if ($existingStudentID) {
+                $studentID = $existingStudentID;
+                $upd = $this->conn->prepare("
+                    UPDATE student SET
+                        LastName = :lastName, FirstName = :firstName, MiddleName = :middleName,
+                        ExtensionName = :extensionName, DateOfBirth = :dateOfBirth,
+                        Gender = :gender, Religion = :religion, MotherTongue = :mt,
+                        IsIPCommunity = :isIP, IPCommunitySpecify = :ipSpec,
+                        IsPWD = :isPWD, PWDSpecify = :pwdSpec,
+                        HouseNumber = :houseNumber, SitioStreet = :sitioStreet,
+                        Barangay = :barangay, Municipality = :municipality, Province = :province,
+                        ContactNumber = :contactNumber, Is4PsBeneficiary = :is4Ps,
+                        EnrollmentStatus = 'Active'
+                    WHERE StudentID = :studentID
+                ");
+                $studentParams[':studentID'] = $studentID;
+                $upd->execute($studentParams);
             } else {
-                // New student - insert record
-                $studentQuery = "INSERT INTO Student (
-                    LRN, LastName, FirstName, MiddleName, ExtensionName,
-                    DateOfBirth, Age, Gender, Religion,
-                    IsIPCommunity, IPCommunitySpecify, IsPWD, PWDSpecify,
-                    HouseNumber, SitioStreet, Barangay, Municipality, Province,
-                    ZipCode, Country,
-                    Weight, Height, Is4PsBeneficiary,
-                    FatherLastName, FatherFirstName, FatherMiddleName,
-                    MotherLastName, MotherFirstName, MotherMiddleName,
-                    GuardianLastName, GuardianFirstName, GuardianMiddleName,
-                    ContactNumber, EnrollmentStatus, IsTransferee,
-                    EncodedDate, EncodedBy,
-                    CreatedBy, CreatedAt
-                ) VALUES (
-                    :lrn, :lastName, :firstName, :middleName, :extensionName,
-                    :birthdate, :age, :sex, :religion,
-                    :isIPCommunity, :ipCommunitySpecify, :isPWD, :pwdSpecify,
-                    :houseNumber, :sitioStreet, :barangay, :municipality, :province,
-                    :zipCode, :country,
-                    :weight, :height, :is4PsBeneficiary,
-                    :fatherLastName, :fatherFirstName, :fatherMiddleName,
-                    :motherLastName, :motherFirstName, :motherMiddleName,
-                    :guardianLastName, :guardianFirstName, :guardianMiddleName,
-                    :contactNumber, 'Active', :isTransferee,
-                    NOW(), :encodedBy,
-                    :createdBy, NOW()
-                )";
-                
-                $stmt = $this->conn->prepare($studentQuery);
-                
-                $isTransferee = in_array($data['learnerType'], [
-                    'Irregular_Transferee'
-                ]) ? 1 : 0;
-                
-                $isIPCommunity = $data['isIPCommunity'] ? 1 : 0;
-                $isPWD = $data['isPWD'] ? 1 : 0;
-                
-                $stmt->bindParam(':lrn', $data['lrn']);
-                $stmt->bindParam(':lastName', $data['lastName']);
-                $stmt->bindParam(':firstName', $data['firstName']);
-                $stmt->bindParam(':middleName', $data['middleName']);
-                $stmt->bindParam(':extensionName', $data['extensionName']);
-                $stmt->bindParam(':birthdate', $data['birthdate']);
-                $stmt->bindParam(':age', $data['age'], PDO::PARAM_INT);
-                $stmt->bindParam(':sex', $data['sex']);
-                $stmt->bindParam(':religion', $data['religion']);
-                $stmt->bindParam(':isIPCommunity', $isIPCommunity, PDO::PARAM_INT);
-                $stmt->bindParam(':ipCommunitySpecify', $data['ipCommunitySpecify']);
-                $stmt->bindParam(':isPWD', $isPWD, PDO::PARAM_INT);
-                $stmt->bindParam(':pwdSpecify', $data['pwdSpecify']);
-                $stmt->bindParam(':houseNumber', $data['houseNumber']);
-                $stmt->bindParam(':sitioStreet', $data['sitioStreet']);
-                $stmt->bindParam(':barangay', $data['barangay']);
-                $stmt->bindParam(':municipality', $data['municipality']);
-                $stmt->bindParam(':province', $data['province']);
-                $stmt->bindParam(':zipCode', $zipCode);
-                $stmt->bindParam(':country', $country);
-                $stmt->bindParam(':weight', $weight);
-                $stmt->bindParam(':height', $height);
-                $stmt->bindParam(':is4PsBeneficiary', $is4PsBeneficiary, PDO::PARAM_INT);
-                $stmt->bindParam(':fatherLastName', $data['fatherLastName']);
-                $stmt->bindParam(':fatherFirstName', $data['fatherFirstName']);
-                $stmt->bindParam(':fatherMiddleName', $data['fatherMiddleName']);
-                $stmt->bindParam(':motherLastName', $data['motherLastName']);
-                $stmt->bindParam(':motherFirstName', $data['motherFirstName']);
-                $stmt->bindParam(':motherMiddleName', $data['motherMiddleName']);
-                $stmt->bindParam(':guardianLastName', $data['guardianLastName']);
-                $stmt->bindParam(':guardianFirstName', $data['guardianFirstName']);
-                $stmt->bindParam(':guardianMiddleName', $data['guardianMiddleName']);
-                $stmt->bindParam(':contactNumber', $data['contactNumber']);
-                $stmt->bindParam(':isTransferee', $isTransferee, PDO::PARAM_INT);
-                $stmt->bindParam(':encodedBy', $data['createdBy'], PDO::PARAM_INT);
-                $stmt->bindParam(':createdBy', $data['createdBy'], PDO::PARAM_INT);
-                
-                $stmt->execute();
-                $studentID = $this->conn->lastInsertId();
+                $ins = $this->conn->prepare("
+                    INSERT INTO student (
+                        LRN, LastName, FirstName, MiddleName, ExtensionName,
+                        DateOfBirth, Gender, Religion, MotherTongue,
+                        IsIPCommunity, IPCommunitySpecify, IsPWD, PWDSpecify,
+                        HouseNumber, SitioStreet, Barangay, Municipality, Province,
+                        ContactNumber, Is4PsBeneficiary, EnrollmentStatus
+                    ) VALUES (
+                        :lrn, :lastName, :firstName, :middleName, :extensionName,
+                        :dateOfBirth, :gender, :religion, :mt,
+                        :isIP, :ipSpec, :isPWD, :pwdSpec,
+                        :houseNumber, :sitioStreet, :barangay, :municipality, :province,
+                        :contactNumber, :is4Ps, 'Active'
+                    )
+                ");
+                $studentParams[':lrn'] = $lrn;
+                $ins->execute($studentParams);
+                $studentID = (int)$this->conn->lastInsertId();
             }
-            
-            // Insert Enrollment record
-            $enrollmentQuery = "INSERT INTO Enrollment (
-                StudentID, GradeLevelID, StrandID, AcademicYear,
-                LearnerType, EnrollmentType, Status,
-                CreatedAt
-            ) VALUES (
-                :studentID, :gradeLevel, :strandID, :schoolYear,
-                :learnerType, :enrollmentType, 'Pending',
-                NOW()
-            )";
-            
-            $stmt2 = $this->conn->prepare($enrollmentQuery);
-            
-            $stmt2->bindParam(':studentID', $studentID, PDO::PARAM_INT);
-            $stmt2->bindParam(':gradeLevel', $data['gradeLevel'], PDO::PARAM_INT);
-            $stmt2->bindParam(':strandID', $data['strandID'], PDO::PARAM_INT);
-            $stmt2->bindParam(':schoolYear', $data['schoolYear']);
-            $stmt2->bindParam(':learnerType', $data['learnerType']);
-            $stmt2->bindParam(':enrollmentType', $data['enrollmentType']);
-            
-            $stmt2->execute();
-            $enrollmentID = $this->conn->lastInsertId();
-            
-            // Commit transaction
-            $this->conn->commit();
-            
-            return [
-                'success' => true,
-                'message' => $existingStudent ? 'Enrollment created for existing student' : 'New student enrolled successfully',
-                'studentID' => $studentID,
-                'enrollmentID' => $enrollmentID,
-                'isNewStudent' => !$existingStudent,
-                'data' => [
-                    'studentName' => $data['firstName'] . ' ' . $data['lastName'],
-                    'lrn' => $data['lrn'],
-                    'gradeLevel' => $data['gradeLevel'],
-                    'schoolYear' => $data['schoolYear'],
-                    'enrollmentType' => $data['enrollmentType'],
-                    'status' => 'Pending'
-                ]
+
+            // 9b. Upsert ParentGuardian rows
+            $guardianSets = [
+                ['Father',   'fatherLastName',   'fatherFirstName',   'fatherMiddleName',   null,                   null           ],
+                ['Mother',   'motherLastName',   'motherFirstName',   'motherMiddleName',   null,                   null           ],
+                ['Guardian', 'guardianLastName', 'guardianFirstName', 'guardianMiddleName', 'guardianRelationship', 'contactNumber'],
             ];
-            
-        } catch (PDOException $e) {
-            if ($this->conn->inTransaction()) {
-                $this->conn->rollBack();
-            }
-            
-            error_log("Enrollment submission error: " . $e->getMessage());
-            
-            return [
-                'success' => false,
-                'message' => 'Database error: ' . $e->getMessage()
-            ];
-        }
-    }
-    
-    /**
-     * Helper: Determine enrollment type based on learner type
-     */
-    private function determineEnrollmentType($learnerType) {
-        $transfereeTypes = [
-            'Irregular_Transferee',
-            'Regular_Balik_Aral',
-            'Irregular_Balik_Aral'
-        ];
-        
-        if (in_array($learnerType, $transfereeTypes)) {
-            return 'Transferee';
-        }
-        
-        return 'Regular';
-    }
-    
-    /**
-     * Get pending enrollments
-     */
-    public function getPendingEnrollments() {
-        try {
-            $query = "SELECT 
-                e.EnrollmentID,
-                e.StudentID,
-                s.LRN,
-                CONCAT(s.LastName, ', ', s.FirstName, ' ', IFNULL(s.MiddleName, '')) AS StudentName,
-                gl.GradeLevelName,
-                st.StrandName,
-                e.LearnerType,
-                e.EnrollmentType,
-                e.AcademicYear,
-                e.Status,
-                e.CreatedAt AS EnrollmentDate
-            FROM Enrollment e
-            JOIN Student s ON e.StudentID = s.StudentID
-            JOIN GradeLevel gl ON e.GradeLevelID = gl.GradeLevelID
-            LEFT JOIN Strand st ON e.StrandID = st.StrandID
-            WHERE e.Status = 'Pending'
-            ORDER BY e.CreatedAt DESC";
-            
-            $stmt = $this->conn->prepare($query);
-            $stmt->execute();
-            
-            return [
-                'success' => true,
-                'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)
-            ];
-            
-        } catch (PDOException $e) {
-            return [
-                'success' => false,
-                'message' => 'Error fetching enrollments: ' . $e->getMessage()
-            ];
-        }
-    }
-    
-    /**
-     * Get enrollment details
-     */
-    public function getEnrollmentDetails($enrollmentID) {
-        try {
-            $query = "SELECT 
-                e.*,
-                s.*,
-                gl.GradeLevelName,
-                st.StrandName,
-                CONCAT(s.LastName, ', ', s.FirstName, ' ', IFNULL(s.MiddleName, '')) AS FullName,
-                CONCAT(
-                    IFNULL(s.HouseNumber, ''), ' ',
-                    IFNULL(s.SitioStreet, ''), ', ',
-                    s.Barangay, ', ',
-                    s.Municipality, ', ',
-                    s.Province,
-                    IFNULL(CONCAT(' ', s.ZipCode), ''),
-                    IFNULL(CONCAT(', ', s.Country), '')
-                ) AS CompleteAddress
-            FROM Enrollment e
-            JOIN Student s ON e.StudentID = s.StudentID
-            JOIN GradeLevel gl ON e.GradeLevelID = gl.GradeLevelID
-            LEFT JOIN Strand st ON e.StrandID = st.StrandID
-            WHERE e.EnrollmentID = :enrollmentID";
-            
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':enrollmentID', $enrollmentID, PDO::PARAM_INT);
-            $stmt->execute();
-            
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if ($result) {
-                return [
-                    'success' => true,
-                    'data' => $result
-                ];
-            } else {
-                return [
-                    'success' => false,
-                    'message' => 'Enrollment not found'
-                ];
-            }
-            
-        } catch (PDOException $e) {
-            return [
-                'success' => false,
-                'message' => 'Error fetching details: ' . $e->getMessage()
-            ];
-        }
-    }
-    
-    /**
-     * Approve enrollment
-     */
-public function approveEnrollment($enrollmentID, $reviewerID) {
-    try {
-        $this->conn->beginTransaction();
+            foreach ($guardianSets as [$relType, $lnKey, $fnKey, $mnKey, $relKey, $ctKey]) {
+                $fn = !empty($data[$fnKey]) ? trim($data[$fnKey]) : null;
+                $ln = !empty($data[$lnKey]) ? trim($data[$lnKey]) : null;
+                if (!$fn && !$ln) continue;
 
-        // Update enrollment status
-        $query = "UPDATE Enrollment 
-                  SET Status = 'Confirmed',
-                      ProcessedBy = :reviewerID,
-                      ProcessedDate = NOW()
-                  WHERE EnrollmentID = :enrollmentID";
-        
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':enrollmentID', $enrollmentID, PDO::PARAM_INT);
-        $stmt->bindParam(':reviewerID', $reviewerID, PDO::PARAM_INT);
-        $stmt->execute();
+                $pgChk = $this->conn->prepare(
+                    "SELECT ParentGuardianID FROM parentguardian WHERE StudentID = :sid AND RelationshipType = :rel LIMIT 1"
+                );
+                $pgChk->execute([':sid' => $studentID, ':rel' => $relType]);
+                $pgRow = $pgChk->fetch(PDO::FETCH_ASSOC);
 
-        // Auto-create documentsubmission record if it doesn't exist yet
-        $docQuery = "INSERT INTO documentsubmission (StudentID, EnrollmentID, AcademicYear, CreatedBy)
-                     SELECT e.StudentID, e.EnrollmentID, e.AcademicYear, :reviewerID
-                     FROM enrollment e
-                     WHERE e.EnrollmentID = :enrollmentID
-                     AND NOT EXISTS (
-                         SELECT 1 FROM documentsubmission ds 
-                         WHERE ds.EnrollmentID = :enrollmentID
-                     )";
+                $contact  = ($ctKey  && !empty($data[$ctKey]))  ? trim($data[$ctKey])  : null;
+                $guardRel = ($relKey && !empty($data[$relKey])) ? trim($data[$relKey]) : null;
 
-        $docStmt = $this->conn->prepare($docQuery);
-        $docStmt->bindParam(':enrollmentID', $enrollmentID, PDO::PARAM_INT);
-        $docStmt->bindParam(':reviewerID', $reviewerID, PDO::PARAM_INT);
-        $docStmt->execute();
-
-        $this->conn->commit();
-
-        return [
-            'success' => true,
-            'message' => 'Enrollment approved successfully'
-        ];
-
-    } catch (PDOException $e) {
-        if ($this->conn->inTransaction()) {
-            $this->conn->rollBack();
-        }
-        return [
-            'success' => false,
-            'message' => 'Error approving enrollment: ' . $e->getMessage()
-        ];
-    }
-}
-    
-    /**
-     * Reject enrollment
-     */
-    public function rejectEnrollment($enrollmentID, $reviewerID, $reason) {
-        try {
-            $query = "UPDATE Enrollment 
-                      SET Status = 'Cancelled',
-                          ProcessedBy = :reviewerID,
-                          ProcessedDate = NOW(),
-                          Remarks = :reason
-                      WHERE EnrollmentID = :enrollmentID";
-            
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':enrollmentID', $enrollmentID, PDO::PARAM_INT);
-            $stmt->bindParam(':reviewerID', $reviewerID, PDO::PARAM_INT);
-            $stmt->bindParam(':reason', $reason);
-            
-            if ($stmt->execute()) {
-                return [
-                    'success' => true,
-                    'message' => 'Enrollment rejected'
-                ];
-            } else {
-                return [
-                    'success' => false,
-                    'message' => 'Failed to reject enrollment'
-                ];
-            }
-            
-        } catch (PDOException $e) {
-            return [
-                'success' => false,
-                'message' => 'Error rejecting enrollment: ' . $e->getMessage()
-            ];
-        }
-    }
-}
-
-// =====================================================
-// API Route Handler
-// =====================================================
-
-try {
-    $database = new Database();
-    $db = $database->getConnection();
-    
-    if ($db === null) {
-        throw new Exception('Database connection failed');
-    }
-    
-    $api = new EnrollmentAPI($db);
-    
-    $action = $_GET['action'] ?? 'submit';
-    
-    error_log("Enrollment API - Method: {$_SERVER['REQUEST_METHOD']}, Action: {$action}");
-    
-    switch ($_SERVER['REQUEST_METHOD']) {
-        case 'POST':
-            $inputData = json_decode(file_get_contents('php://input'), true);
-            error_log("POST Data: " . json_encode($inputData));
-            
-            if ($action === 'submit') {
-                $result = $api->submitEnrollment($inputData);
-                echo json_encode($result);
-                
-            } elseif ($action === 'approve') {
-                if (!isset($inputData['enrollmentID']) || !isset($inputData['reviewerID'])) {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'Missing enrollmentID or reviewerID'
+                if ($pgRow) {
+                    $this->conn->prepare("
+                        UPDATE parentguardian
+                        SET LastName = :ln, FirstName = :fn, MiddleName = :mn,
+                            GuardianRelationship = :guardRel, ContactNumber = :contact
+                        WHERE ParentGuardianID = :pgid
+                    ")->execute([
+                        ':ln' => $ln, ':fn' => $fn,
+                        ':mn' => !empty($data[$mnKey]) ? trim($data[$mnKey]) : null,
+                        ':guardRel' => $guardRel, ':contact' => $contact,
+                        ':pgid' => $pgRow['ParentGuardianID'],
                     ]);
-                    exit;
-                }
-                $result = $api->approveEnrollment($inputData['enrollmentID'], $inputData['reviewerID']);
-                echo json_encode($result);
-                
-            } elseif ($action === 'reject') {
-                if (!isset($inputData['enrollmentID']) || !isset($inputData['reviewerID']) || !isset($inputData['reason'])) {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'Missing enrollmentID, reviewerID, or reason'
+                } else {
+                    $this->conn->prepare("
+                        INSERT INTO parentguardian
+                            (StudentID, RelationshipType, LastName, FirstName, MiddleName, GuardianRelationship, ContactNumber)
+                        VALUES (:sid, :rel, :ln, :fn, :mn, :guardRel, :contact)
+                    ")->execute([
+                        ':sid' => $studentID, ':rel' => $relType,
+                        ':ln'  => $ln, ':fn' => $fn,
+                        ':mn'  => !empty($data[$mnKey]) ? trim($data[$mnKey]) : null,
+                        ':guardRel' => $guardRel, ':contact' => $contact,
                     ]);
-                    exit;
                 }
-                $result = $api->rejectEnrollment($inputData['enrollmentID'], $inputData['reviewerID'], $inputData['reason']);
-                echo json_encode($result);
-                
-            } else {
-                http_response_code(400);
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Invalid action for POST request: ' . $action
-                ]);
             }
-            break;
-            
-        case 'GET':
-            if ($action === 'pending') {
-                $result = $api->getPendingEnrollments();
-                echo json_encode($result);
-                
-            } elseif ($action === 'details') {
-                $enrollmentID = $_GET['id'] ?? null;
-                if (!$enrollmentID) {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'Enrollment ID required'
-                    ]);
-                    exit;
-                }
-                
-                $result = $api->getEnrollmentDetails($enrollmentID);
-                echo json_encode($result);
-                
-            } else {
-                http_response_code(400);
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Invalid action for GET request: ' . $action
-                ]);
-            }
-            break;
-            
-        default:
-            http_response_code(405);
-            echo json_encode([
-                'success' => false,
-                'message' => 'Method not allowed'
+
+            // 9c. Insert Enrollment
+            $enrollIns = $this->conn->prepare("
+                INSERT INTO enrollment
+                    (StudentID, GradeLevelID, StrandID, AcademicYearID, EnrollmentType, Status)
+                VALUES
+                    (:studentID, :gradeLevelID, :strandID, :academicYearID, :enrollmentType, 'Pending')
+            ");
+            $enrollIns->execute([
+                ':studentID'      => $studentID,
+                ':gradeLevelID'   => (int)$data['gradeLevelID'],
+                ':strandID'       => $strandID,
+                ':academicYearID' => (int)$data['academicYearID'],
+                ':enrollmentType' => $data['enrollmentType'],
             ]);
+            $enrollmentID = (int)$this->conn->lastInsertId();
+
+            // 9d. Audit
+            $this->writeAuditLog(
+                'enrollment', $enrollmentID, 'INSERT', null,
+                json_encode(['studentID' => $studentID, 'gradeLevelID' => $data['gradeLevelID']]),
+                (int)$data['createdBy'],
+                "Enrollment submitted for {$data['firstName']} {$data['lastName']}",
+                $user['Role']
+            );
+
+            $this->conn->commit();
+
+            return [
+                'success'      => true,
+                'message'      => $existingStudentID ? 'Enrollment created for existing student' : 'New student enrolled successfully',
+                'studentID'    => $studentID,
+                'enrollmentID' => $enrollmentID,
+                'isNewStudent' => !$existingStudentID,
+                'data' => [
+                    'studentName'    => "{$data['firstName']} {$data['lastName']}",
+                    'lrn'            => $lrn,
+                    'gradeLevelID'   => $data['gradeLevelID'],
+                    'academicYear'   => $ay['YearLabel'],
+                    'enrollmentType' => $data['enrollmentType'],
+                    'status'         => 'Pending',
+                ],
+            ];
+
+        } catch (PDOException $e) {
+            if ($this->conn->inTransaction()) $this->conn->rollBack();
+            error_log("Enrollment submission error: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Database error: ' . $e->getMessage()];
+        }
     }
-    
+
+    // ──────────────────────────────────────────────
+    // AUDIT LOG
+    // ──────────────────────────────────────────────
+    private function writeAuditLog($table, $recordID, $action, $old, $new, $changedBy, $desc = null, $role = null) {
+        try {
+            $this->conn->prepare("
+                INSERT INTO auditlog
+                    (TableName, RecordID, Action, OldValue, NewValue,
+                     ChangedBy, ActionDescription, UserRole, IPAddress)
+                VALUES
+                    (:tbl, :rid, :act, :old, :new, :uid, :desc, :role, :ip)
+            ")->execute([
+                ':tbl'  => $table, ':rid'  => $recordID, ':act' => $action,
+                ':old'  => $old,   ':new'  => $new,      ':uid' => $changedBy,
+                ':desc' => $desc,  ':role' => $role,
+                ':ip'   => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+            ]);
+        } catch (PDOException $e) {
+            error_log("Audit log write failed: " . $e->getMessage());
+        }
+    }
+}
+
+// ──────────────────────────────────────────────
+// ROUTER
+// ──────────────────────────────────────────────
+try {
+    $db = (new Database())->getConnection();
+    if (!$db) throw new Exception('Database connection failed');
+
+    $api    = new EnrollmentAPI($db);
+    $action = $_GET['action'] ?? 'submit';
+    $method = $_SERVER['REQUEST_METHOD'];
+
+    if ($method === 'GET') {
+        switch ($action) {
+            case 'pending':
+                echo json_encode($api->getPendingEnrollments());
+                break;
+            case 'details':
+                $id = $_GET['id'] ?? null;
+                echo json_encode($id
+                    ? $api->getEnrollmentDetails($id)
+                    : ['success' => false, 'message' => 'Enrollment ID required']);
+                break;
+            case 'stats':
+                echo json_encode($api->getStats());
+                break;
+            default:
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Unknown GET action: ' . $action]);
+        }
+
+    } elseif ($method === 'POST') {
+        $input = json_decode(file_get_contents('php://input'), true);
+        switch ($action) {
+            case 'submit':
+                echo json_encode($api->submitEnrollment($input));
+                break;
+            case 'approve':
+                if (empty($input['enrollmentID']) || empty($input['reviewerID'])) {
+                    echo json_encode(['success' => false, 'message' => 'Missing enrollmentID or reviewerID']);
+                } else {
+                    echo json_encode($api->approveEnrollment($input['enrollmentID'], $input['reviewerID']));
+                }
+                break;
+            case 'reject':
+                if (empty($input['enrollmentID']) || empty($input['reviewerID']) || !isset($input['reason'])) {
+                    echo json_encode(['success' => false, 'message' => 'Missing enrollmentID, reviewerID, or reason']);
+                } else {
+                    echo json_encode($api->rejectEnrollment($input['enrollmentID'], $input['reviewerID'], $input['reason']));
+                }
+                break;
+            default:
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Unknown POST action: ' . $action]);
+        }
+
+    } else {
+        http_response_code(405);
+        echo json_encode(['success' => false, 'message' => 'Method not allowed']);
+    }
+
 } catch (Exception $e) {
     http_response_code(500);
-    error_log("Enrollment API Error: " . $e->getMessage());
-    echo json_encode([
-        'success' => false,
-        'message' => 'Server error: ' . $e->getMessage()
-    ]);
+    error_log("Enrollment API fatal: " . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
 }
 ?>

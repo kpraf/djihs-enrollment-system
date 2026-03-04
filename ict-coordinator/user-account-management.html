@@ -6,16 +6,14 @@
     <title>ICT Coordinator | User Account Management</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
-      <link rel="icon" type="image/png" href="../assets/favicons/favicon-96x96.png" sizes="96x96" />
-      <link rel="icon" type="image/svg+xml" href="../assets/favicons/favicon.svg" />
-      <link rel="shortcut icon" href="../assets/favicons/favicon.ico" />
-      <link rel="apple-touch-icon" sizes="180x180" href="../assets/favicons/apple-touch-icon.png" />
-      <meta name="apple-mobile-web-app-title" content="DJIHS" />
-      <link rel="manifest" href="../assets/favicons/site.webmanifest" />
-
-    
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link rel="icon" type="image/png" href="../assets/favicons/favicon-96x96.png" sizes="96x96"/>
+    <link rel="icon" type="image/svg+xml" href="../assets/favicons/favicon.svg"/>
+    <link rel="shortcut icon" href="../assets/favicons/favicon.ico"/>
+    <link rel="apple-touch-icon" sizes="180x180" href="../assets/favicons/apple-touch-icon.png"/>
+    <meta name="apple-mobile-web-app-title" content="DJIHS"/>
+    <link rel="manifest" href="../assets/favicons/site.webmanifest"/>
     <script src="../js/auth.js"></script>
     <script>
         tailwind.config = {
@@ -27,35 +25,23 @@
                         "background-light": "#f6f7f8",
                         "background-dark": "#101922",
                     },
-                    fontFamily: {
-                        "display": ["Inter", "sans-serif"]
-                    },
+                    fontFamily: { "display": ["Inter", "sans-serif"] },
                 },
             },
         }
     </script>
     <style>
         @media print {
-            body * {
-                visibility: hidden;
-            }
-            #printableContent, #printableContent * {
-                visibility: visible;
-            }
-            #printableContent {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-            }
-            .no-print {
-                display: none !important;
-            }
+            body * { visibility: hidden; }
+            #printableContent, #printableContent * { visibility: visible; }
+            #printableContent { position: absolute; left: 0; top: 0; width: 100%; }
+            .no-print { display: none !important; }
         }
     </style>
 </head>
 <body class="font-display bg-background-light dark:bg-background-dark">
     <div class="relative flex min-h-screen w-full">
+
         <!-- Sidebar -->
         <aside class="w-72 h-screen sticky top-0 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex transition-colors duration-200">
             <div>
@@ -69,30 +55,30 @@
                     <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
                 </div>
                 <nav class="px-4 space-y-1">
-                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="dashboard.html">
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="dashboard.html">
                         <span class="material-symbols-outlined">dashboard</span>
                         <span class="text-sm font-medium">Dashboard</span>
                     </a>
-                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="employee-management.html">
-                        <span class="material-symbols-outlined">group</span>
-                        <span class="text-sm font-medium">Employee Management</span>
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="enrollment-management.html">
+                        <span class="material-icons-outlined text-[20px]">how_to_reg</span>
+                        <span class="text-sm font-medium">New Enrollment</span>
                     </a>
-                    <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm" href="user-account-management.html">
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="review-enrollments.html">
+                        <span class="material-icons-outlined text-[20px]">rate_review</span>
+                        <span class="text-sm font-medium">Review Enrollments</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="student-management.html">
+                        <span class="material-icons-outlined text-[20px]">groups</span>
+                        <span class="text-sm font-medium">Student Management</span>
+                    </a>
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" href="academic-year-management.html">
+                        <span class="material-icons-outlined text-[20px]">calendar_month</span>
+                        <span class="text-sm font-medium">Academic Years</span>
+                     </a>
+                     <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm" href="user-account-management.html">
                         <span class="material-symbols-outlined">person_add</span>
                         <span class="text-sm font-medium">Create User Accounts</span>
                     </a>
-                     <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="enrollment-management.html">
-                        <span class="material-icons-outlined text-[20px]">how_to_reg</span>
-                        <span class="text-sm font-medium">New Enrollment</span>
-                     </a>
-                     <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="review-enrollments.html">
-                        <span class="material-icons-outlined text-[20px]">rate_review</span>
-                        <span class="text-sm font-medium">Review Enrollments</span>
-                     </a>
-                     <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="student-management.html">
-                        <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">groups</span>
-                        <span class="text-sm font-medium">Student Management</span>
-                     </a>
                      <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="audit-log.html">
                         <span class="material-symbols-outlined">fact_check</span>
                         <span class="text-sm font-medium">Audit Log</span>
@@ -119,11 +105,12 @@
         <!-- Main Content -->
         <main class="flex-1 p-8">
             <div class="mx-auto max-w-7xl">
+
                 <!-- Header -->
                 <header class="flex flex-wrap items-center justify-between gap-4 mb-8">
-                    <div class="flex flex-col gap-1">
+                    <div>
                         <h2 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">User Account Management</h2>
-                        <p class="text-base font-normal text-gray-500 dark:text-gray-400">Create and manage system user accounts for staff members.</p>
+                        <p class="text-base text-gray-500 dark:text-gray-400 mt-1">Create and manage system user accounts for staff members.</p>
                     </div>
                     <div class="flex gap-3">
                         <button onclick="downloadAccountList()" class="flex h-10 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-bold text-white hover:bg-blue-700">
@@ -137,8 +124,8 @@
                     </div>
                 </header>
 
-                <!-- Stats Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <!-- Stats Cards — removed "Without Account" card (no employee table) -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <div class="bg-white dark:bg-background-dark/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
                         <p class="text-xs text-gray-500">Total Accounts</p>
                         <p id="totalAccounts" class="text-2xl font-bold text-primary">0</p>
@@ -150,10 +137,6 @@
                     <div class="bg-white dark:bg-background-dark/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
                         <p class="text-xs text-gray-500">Inactive</p>
                         <p id="inactiveAccounts" class="text-2xl font-bold text-red-600">0</p>
-                    </div>
-                    <div class="bg-white dark:bg-background-dark/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                        <p class="text-xs text-gray-500">Without Account</p>
-                        <p id="withoutAccount" class="text-2xl font-bold text-orange-600">0</p>
                     </div>
                 </div>
 
@@ -185,7 +168,7 @@
                     </div>
                 </div>
 
-                <!-- Table -->
+                <!-- Table — removed "Employee Link" column -->
                 <div class="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-background-dark/50">
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -194,14 +177,13 @@
                                     <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Name</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Username</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Role</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Employee Link</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
                                     <th class="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="userTableBody" class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-background-dark/50">
                                 <tr>
-                                    <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                                    <td colspan="5" class="px-6 py-8 text-center text-gray-500">
                                         <span class="material-symbols-outlined animate-spin text-4xl">refresh</span>
                                         <p class="mt-2">Loading accounts...</p>
                                     </td>
@@ -210,11 +192,12 @@
                         </table>
                     </div>
                 </div>
+
             </div>
         </main>
     </div>
 
-    <!-- Create User Modal -->
+    <!-- Create User Modal — removed "Link to Employee" field -->
     <div id="createModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
@@ -223,35 +206,23 @@
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
-            
             <form id="createUserForm" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium mb-2">Link to Employee (Optional)</label>
-                    <select id="employeeSelect" class="w-full px-3 py-2 border rounded-lg">
-                        <option value="">No Employee Link</option>
-                    </select>
-                </div>
-                
                 <div>
                     <label class="block text-sm font-medium mb-2">Username *</label>
                     <input type="text" id="username" required class="w-full px-3 py-2 border rounded-lg" placeholder="e.g., TEACHER001"/>
                 </div>
-                
                 <div>
                     <label class="block text-sm font-medium mb-2">Password *</label>
                     <input type="password" id="password" required class="w-full px-3 py-2 border rounded-lg" placeholder="Minimum 6 characters"/>
                 </div>
-                
                 <div>
                     <label class="block text-sm font-medium mb-2">First Name *</label>
                     <input type="text" id="firstName" required class="w-full px-3 py-2 border rounded-lg"/>
                 </div>
-                
                 <div>
                     <label class="block text-sm font-medium mb-2">Last Name *</label>
                     <input type="text" id="lastName" required class="w-full px-3 py-2 border rounded-lg"/>
                 </div>
-                
                 <div>
                     <label class="block text-sm font-medium mb-2">Role *</label>
                     <select id="role" required class="w-full px-3 py-2 border rounded-lg">
@@ -264,7 +235,6 @@
                         <option value="Subject_Teacher">Subject Teacher</option>
                     </select>
                 </div>
-                
                 <div class="flex gap-3 pt-4">
                     <button type="button" onclick="closeCreateModal()" class="flex-1 px-4 py-2 border rounded-lg">Cancel</button>
                     <button type="submit" class="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">Create Account</button>
@@ -273,40 +243,25 @@
         </div>
     </div>
 
-    <!-- Hidden printable content -->
-    <div id="printableContent" style="display: none;">
-        <!-- Content will be dynamically generated here -->
-    </div>
+    <div id="printableContent" style="display:none;"></div>
+
     <script src="../js/user-account-manager.js"></script>
     <script>
         let userManager;
 
         window.onload = async function() {
-            currentUser = checkAuth('ICT_Coordinator'); // or 'Registrar'
-            
+            const currentUser = checkAuth('ICT_Coordinator');
             if (currentUser) {
                 userManager = new UserAccountManager(currentUser.Role);
                 userManager.initializeEventListeners();
-                
                 await userManager.loadStats();
                 await userManager.loadUsers();
-                await userManager.loadEmployeesWithoutAccount();
             }
         };
 
-        // Global functions that delegate to userManager
-        function openCreateModal() {
-            userManager.openCreateModal();
-        }
-
-        function closeCreateModal() {
-            userManager.closeCreateModal();
-        }
-
-        function downloadAccountList() {
-            userManager.downloadAccountList();
-        }
+        function openCreateModal()    { userManager.openCreateModal(); }
+        function closeCreateModal()   { userManager.closeCreateModal(); }
+        function downloadAccountList(){ userManager.downloadAccountList(); }
     </script>
-
 </body>
 </html>

@@ -1,7 +1,9 @@
 // =====================================================
-// Revision Request Handler
+// Revision Request Handler - REVISED FOR NORMALIZED DB
 // File: js/revision-request-handler.js
-// Created: 2026-02-08
+// Updated: 2026-03-04
+// Revised to work with normalized database schema
+// Note: SupportingDocuments field removed (not in DB schema)
 // =====================================================
 
 class RevisionRequestHandler {
@@ -56,7 +58,7 @@ class RevisionRequestHandler {
                             Student: ${student.FullName || `${student.FirstName} ${student.LastName}`} (LRN: ${student.LRN})
                         </p>
                         <p class="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
-                            ⚠️ All revisions require Registrar or Principal approval
+                            ⚠️ All revisions require Registrar or ICT Coordinator approval
                         </p>
                     </div>
                     <button onclick="document.getElementById('revisionRequestModal').remove()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
@@ -79,7 +81,6 @@ class RevisionRequestHandler {
                             <option value="Contact_Info">Contact Information</option>
                             <option value="Parent_Guardian_Info">Parent/Guardian Information</option>
                             <option value="Address">Address</option>
-                            <option value="Enrollment_Info">Enrollment Information</option>
                             <option value="Other">Other</option>
                         </select>
                     </div>
@@ -144,22 +145,6 @@ class RevisionRequestHandler {
                         </p>
                     </div>
 
-                    <!-- Supporting Documents -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Supporting Documents
-                        </label>
-                        <textarea 
-                            id="revision-supporting-docs"
-                            rows="2" 
-                            class="form-textarea w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary"
-                            placeholder="List any supporting documents available (e.g., PSA Birth Certificate, Court Order, etc.)"
-                        ></textarea>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            Note: Document uploads are not required, but please specify what documents can be provided for verification
-                        </p>
-                    </div>
-
                     <!-- Warning Box -->
                     <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
                         <div class="flex gap-3">
@@ -167,9 +152,9 @@ class RevisionRequestHandler {
                             <div class="text-sm text-yellow-800 dark:text-yellow-300">
                                 <p class="font-semibold mb-1">Important Notes:</p>
                                 <ul class="list-disc list-inside space-y-1 text-xs">
-                                    <li>All revision requests require approval from Registrar or Principal</li>
-                                    <li>Changes will only be implemented after approval</li>
-                                    <li>Provide accurate information and supporting documentation</li>
+                                    <li>All revision requests require approval from Registrar or ICT Coordinator</li>
+                                    <li>Changes will be automatically applied after approval</li>
+                                    <li>Provide accurate information</li>
                                     <li>False information may result in disciplinary action</li>
                                 </ul>
                             </div>
@@ -246,7 +231,6 @@ class RevisionRequestHandler {
         const revisionType = document.getElementById('revision-type').value;
         const priority = document.getElementById('revision-priority').value;
         const justification = document.getElementById('revision-justification').value;
-        const supportingDocs = document.getElementById('revision-supporting-docs').value;
 
         // Validate
         if (!revisionType) {
@@ -298,7 +282,6 @@ class RevisionRequestHandler {
                     RequestType: revisionType,
                     FieldsToChange: fieldsToChange,
                     Justification: justification,
-                    SupportingDocuments: supportingDocs || null,
                     Priority: priority
                 })
             });
@@ -314,12 +297,12 @@ class RevisionRequestHandler {
 
         } catch (error) {
             console.error('Error submitting revision request:', error);
-            alert('Error submitting revision request');
+            alert('Error submitting revision request: ' + error.message);
         }
     }
 
     /**
-     * Show approval interface for Registrar/Principal
+     * Show approval interface for Registrar/ICT Coordinator
      */
     async showApprovalInterface(requestId) {
         try {
@@ -370,7 +353,6 @@ class RevisionRequestHandler {
                             <div class="mt-2 text-sm text-gray-600 dark:text-gray-400 space-y-1">
                                 <p><strong>Student:</strong> ${request.StudentName} (LRN: ${request.LRN})</p>
                                 <p><strong>Requested by:</strong> ${request.RequestedByName} (${request.RequesterRole})</p>
-                                <p><strong>Request Date:</strong> ${new Date(request.CreatedAt).toLocaleString()}</p>
                                 <p><strong>Type:</strong> ${request.RequestType.replace(/_/g, ' ')}</p>
                             </div>
                         </div>
@@ -414,16 +396,6 @@ class RevisionRequestHandler {
                         </div>
                     </div>
 
-                    <!-- Supporting Documents -->
-                    ${request.SupportingDocuments ? `
-                        <div>
-                            <h4 class="font-semibold text-gray-900 dark:text-white mb-2">Supporting Documents</h4>
-                            <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 text-sm text-gray-700 dark:text-gray-300">
-                                ${request.SupportingDocuments}
-                            </div>
-                        </div>
-                    ` : ''}
-
                     <!-- Review Notes -->
                     <div>
                         <label class="block font-semibold text-gray-900 dark:text-white mb-2">
@@ -449,7 +421,7 @@ class RevisionRequestHandler {
                     </button>
                     <button id="btn-approve-request" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
                         <span class="material-icons-outlined text-[18px]">check_circle</span>
-                        Approve
+                        Approve & Apply Changes
                     </button>
                 </div>
             </div>
@@ -473,7 +445,7 @@ class RevisionRequestHandler {
     async approveRequest(requestId) {
         const reviewNotes = document.getElementById('review-notes').value;
 
-        if (!confirm('Approve this revision request? Changes will be ready for implementation.')) {
+        if (!confirm('Approve this revision request? Changes will be applied immediately to the student record.')) {
             return;
         }
 
@@ -491,11 +463,15 @@ class RevisionRequestHandler {
             const result = await response.json();
 
             if (result.success) {
-                alert('Request approved successfully!');
+                alert('Request approved and changes applied successfully!');
                 document.getElementById('approvalModal').remove();
                 // Refresh list if available
                 if (typeof this.refreshRequestList === 'function') {
                     this.refreshRequestList();
+                }
+                // Refresh student list
+                if (typeof window.studentManagement !== 'undefined') {
+                    window.studentManagement.loadStudents();
                 }
             } else {
                 alert('Error approving request: ' + result.message);
@@ -503,7 +479,7 @@ class RevisionRequestHandler {
 
         } catch (error) {
             console.error('Error approving request:', error);
-            alert('Error approving request');
+            alert('Error approving request: ' + error.message);
         }
     }
 
@@ -545,43 +521,7 @@ class RevisionRequestHandler {
 
         } catch (error) {
             console.error('Error rejecting request:', error);
-            alert('Error rejecting request');
-        }
-    }
-
-    /**
-     * Implement approved revision (apply changes to database)
-     */
-    async implementRevision(requestId) {
-        if (!confirm('Implement this approved revision? Changes will be applied to the student record.')) {
-            return;
-        }
-
-        try {
-            const response = await fetch('../backend/api/revision-requests.php?action=implement', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    RequestID: requestId,
-                    ImplementedBy: this.currentUser.UserID
-                })
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                alert('Revision implemented successfully! Student record has been updated.');
-                // Refresh related views
-                if (typeof window.studentManagement !== 'undefined') {
-                    window.studentManagement.loadStudents();
-                }
-            } else {
-                alert('Error implementing revision: ' + result.message);
-            }
-
-        } catch (error) {
-            console.error('Error implementing revision:', error);
-            alert('Error implementing revision');
+            alert('Error rejecting request: ' + error.message);
         }
     }
 }
