@@ -1,5 +1,11 @@
 <?php
-// backend/api/get-school-years.php
+// =====================================================
+// Get School Years API - REVISED FOR NORMALIZED DB
+// File: backend/api/get-school-years.php
+// Updated: 2026-03-04
+// Revised to query academicyear table
+// =====================================================
+
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -18,17 +24,17 @@ try {
         throw new Exception('Database connection failed');
     }
     
-    $query = "SELECT DISTINCT AcademicYear 
-              FROM Enrollment 
-              WHERE AcademicYear IS NOT NULL AND AcademicYear != ''
-              ORDER BY AcademicYear DESC";
+    // Query the academicyear table for all school years
+    $query = "SELECT YearLabel 
+              FROM academicyear 
+              ORDER BY StartYear DESC, EndYear DESC";
     
     $stmt = $conn->prepare($query);
     $stmt->execute();
     
     $schoolYears = [];
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $schoolYears[] = $row['AcademicYear'];
+        $schoolYears[] = $row['YearLabel'];
     }
     
     echo json_encode([

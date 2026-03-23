@@ -1,5 +1,14 @@
 <?php
-// get-metrics.php - Calculate DepEd Key Performance Metrics
+// ============================================================
+// FILE: backend/api/get-metrics.php
+// Purpose: Calculate DepEd Key Performance Metrics
+// Updated: 2026-03-04 — Revised for normalized DB
+//   - enrollment.AcademicYearID (FK int) replaces AcademicYear string
+//   - section.AcademicYearID   (FK int) replaces AcademicYear string
+//   - student.Age removed — derived from DateOfBirth at query time
+//   - Removed SHOW COLUMNS check (column no longer exists)
+//   - employee table queries wrapped in try/catch (not in current schema)
+// ============================================================
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -12,132 +21,181 @@ try {
     $database = new Database();
     $conn = $database->getConnection();
 
-    // Verify the enrollment table structure
-    $tableCheck = $conn->query("SHOW COLUMNS FROM enrollment LIKE 'AcademicYear'");
-    if ($tableCheck->rowCount() === 0) {
-        throw new Exception("AcademicYear column not found in enrollment table. Please check your database schema.");
+    // ─── Resolve AcademicYearID from the ?sy= YearLabel parameter ──────────
+    // The frontend passes a YearLabel string (e.g. "2025-2026") or "all".
+    $syParam = isset($_GET['sy']) ? trim($_GET['sy']) : 'all';
+
+    /**
+     * Returns [AcademicYearID, YearLabel] for a given YearLabel string.
+     * Throws if the label is not found.
+     */
+    $resolveYear = function (string $yearLabel) use ($conn): array {
+        $stmt = $conn->prepare(
+            "SELECT AcademicYearID, YearLabel FROM academicyear WHERE YearLabel = :yl LIMIT 1"
+        );
+        $stmt->bindValue(':yl', $yearLabel);
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            throw new Exception("Academic year '$yearLabel' not found.");
+        }
+        return [(int) $row['AcademicYearID'], $row['YearLabel']];
+    };
+
+    // Resolve the requested year; fall back to active → latest when "all"
+    if ($syParam !== 'all') {
+        [$currentAYID, $currentSY] = $resolveYear($syParam);
+    } else {
+        // Find the active year, or the latest StartYear
+        $stmt = $conn->prepare(
+            "SELECT AcademicYearID, YearLabel FROM academicyear
+             ORDER BY IsActive DESC, StartYear DESC LIMIT 1"
+        );
+        $stmt->execute();
+        $ayRow = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$ayRow) {
+            throw new Exception('No academic year records found.');
+        }
+        $currentAYID = (int) $ayRow['AcademicYearID'];
+        $currentSY   = $ayRow['YearLabel'];
     }
 
-    // Check if there's any data
-    $dataCheck = $conn->query("SELECT COUNT(*) as count FROM enrollment");
-    $dataCount = $dataCheck->fetch(PDO::FETCH_ASSOC);
-
-    if ($dataCount['count'] == 0) {
+    // ─── Quick data-presence check ──────────────────────────────────────────
+    $checkStmt = $conn->query("SELECT COUNT(*) FROM enrollment");
+    if ((int) $checkStmt->fetchColumn() === 0) {
         echo json_encode([
             'success' => true,
             'message' => 'No enrollment data available. Please add enrollment records to see metrics.',
-            'data' => generateEmptyMetrics()
+            'data'    => generateEmptyMetrics(),
         ]);
         exit;
     }
 
-    $sy = isset($_GET['sy']) ? $_GET['sy'] : 'all';
-
-    // Get current academic year if 'all' is selected
-    $currentSY = $sy;
-    if ($sy === 'all') {
-        $syQuery = "SELECT DISTINCT AcademicYear FROM enrollment ORDER BY AcademicYear DESC LIMIT 1";
-        $syStmt = $conn->prepare($syQuery);
-        $syStmt->execute();
-        $syResult = $syStmt->fetch(PDO::FETCH_ASSOC);
-        $currentSY = $syResult ? $syResult['AcademicYear'] : date('Y') . '-' . (date('Y') + 1);
-    }
+    // ─── Helper: resolve a previous year's AcademicYearID ───────────────────
+    // Returns null when the previous year doesn't exist in the table yet.
+    $getPreviousAYID = function (string $yearLabel, int $yearsBack = 1) use ($conn): ?int {
+        $parts = explode('-', $yearLabel);
+        if (count($parts) !== 2) return null;
+        $prevLabel = ($parts[0] - $yearsBack) . '-' . ($parts[0] - $yearsBack + 1);
+        $stmt = $conn->prepare(
+            "SELECT AcademicYearID FROM academicyear WHERE YearLabel = :yl LIMIT 1"
+        );
+        $stmt->bindValue(':yl', $prevLabel);
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? (int) $row['AcademicYearID'] : null;
+    };
 
     $metrics = [];
 
+    // ─── Shared base condition ───────────────────────────────────────────────
+    // When "all" is selected we still scope to $currentAYID for per-SY metrics
+    // (which return 0/N/A anyway). GER/NER/Promotion use this.
+    $ayIDCurrent = $currentAYID;
+
     // ==========================================
-    // 1. GROSS ENROLLMENT RATIO (GER) — Estimated
+    // 1. TOTAL ENROLLMENT for current scope
     // ==========================================
-    // NOTE: True GER requires official school-age population data from PSA.
-    // We estimate it here as (enrollment / enrollment * 1.2) which always = 83.3%.
-    // Instead, we return total enrollment and flag it as estimated.
-    // Formula used: Total Enrollment / Estimated Population × 100
-    $gerQuery = "
-        SELECT COUNT(DISTINCT e.StudentID) as totalEnrollment
-        FROM enrollment e
-        WHERE e.Status IN ('Confirmed', 'Pending')
-        " . ($sy !== 'all' ? "AND e.AcademicYear = :sy" : "") . "
-    ";
-    $gerStmt = $conn->prepare($gerQuery);
-    if ($sy !== 'all') {
-        $gerStmt->bindParam(':sy', $sy);
+    // "all" → sum across every year; specific → filter by AcademicYearID
+    if ($syParam === 'all') {
+        $totalStmt = $conn->prepare(
+            "SELECT COUNT(DISTINCT StudentID) AS total FROM enrollment
+             WHERE Status IN ('Confirmed','Pending')"
+        );
+        $totalStmt->execute();
+    } else {
+        $totalStmt = $conn->prepare(
+            "SELECT COUNT(DISTINCT StudentID) AS total FROM enrollment
+             WHERE Status IN ('Confirmed','Pending')
+               AND AcademicYearID = :ayID"
+        );
+        $totalStmt->bindValue(':ayID', $ayIDCurrent, PDO::PARAM_INT);
+        $totalStmt->execute();
     }
-    $gerStmt->execute();
-    $gerData = $gerStmt->fetch(PDO::FETCH_ASSOC);
-    $totalEnrollment = intval($gerData['totalEnrollment']);
-
-    // Use 1.2x multiplier as population estimate — clearly labeled as estimated
-    $estimatedPopulation = $totalEnrollment > 0 ? $totalEnrollment * 1.2 : 1;
-    $metrics['ger'] = $totalEnrollment > 0 ?
-        round(($totalEnrollment / $estimatedPopulation) * 100, 2) : 0;
-    $metrics['gerIsEstimated'] = true; // Flag for frontend to display disclaimer
+    $totalEnrollment = (int) $totalStmt->fetchColumn();
 
     // ==========================================
-    // 2. NET ENROLLMENT RATIO (NER) — Estimated
+    // 2. GROSS ENROLLMENT RATIO (GER) — Estimated
     // ==========================================
-    // NOTE: True NER requires official age-appropriate population data from PSA.
-    // We calculate the proportion of enrolled students who are age-appropriate,
-    // expressed as a % of total enrollment (not true NER against population).
-    $nerQuery = "
-        SELECT COUNT(DISTINCT e.StudentID) as ageAppropriateEnrollment
-        FROM enrollment e
-        INNER JOIN student s ON e.StudentID = s.StudentID
-        INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
-        WHERE e.Status IN ('Confirmed', 'Pending')
-        AND (
-            (gl.GradeLevelNumber = 7  AND s.Age BETWEEN 12 AND 13) OR
-            (gl.GradeLevelNumber = 8  AND s.Age BETWEEN 13 AND 14) OR
-            (gl.GradeLevelNumber = 9  AND s.Age BETWEEN 14 AND 15) OR
-            (gl.GradeLevelNumber = 10 AND s.Age BETWEEN 15 AND 16) OR
-            (gl.GradeLevelNumber = 11 AND s.Age BETWEEN 16 AND 17) OR
-            (gl.GradeLevelNumber = 12 AND s.Age BETWEEN 17 AND 18)
-        )
-        " . ($sy !== 'all' ? "AND e.AcademicYear = :sy" : "") . "
-    ";
-    $nerStmt = $conn->prepare($nerQuery);
-    if ($sy !== 'all') {
-        $nerStmt->bindParam(':sy', $sy);
+    $estimatedPopulation  = $totalEnrollment > 0 ? $totalEnrollment * 1.2 : 1;
+    $metrics['ger']            = $totalEnrollment > 0
+        ? round(($totalEnrollment / $estimatedPopulation) * 100, 2) : 0;
+    $metrics['gerIsEstimated'] = true;
+
+    // ==========================================
+    // 3. NET ENROLLMENT RATIO (NER) — Estimated
+    // ==========================================
+    // Age is derived from DateOfBirth using TIMESTAMPDIFF (no stored Age column).
+    if ($syParam === 'all') {
+        $nerStmt = $conn->prepare(
+            "SELECT COUNT(DISTINCT e.StudentID) AS ageAppropriate
+             FROM enrollment e
+             INNER JOIN student   s  ON e.StudentID    = s.StudentID
+             INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
+             WHERE e.Status IN ('Confirmed','Pending')
+               AND (
+                   (gl.GradeLevelNumber = 7  AND TIMESTAMPDIFF(YEAR, s.DateOfBirth, CURDATE()) BETWEEN 12 AND 13) OR
+                   (gl.GradeLevelNumber = 8  AND TIMESTAMPDIFF(YEAR, s.DateOfBirth, CURDATE()) BETWEEN 13 AND 14) OR
+                   (gl.GradeLevelNumber = 9  AND TIMESTAMPDIFF(YEAR, s.DateOfBirth, CURDATE()) BETWEEN 14 AND 15) OR
+                   (gl.GradeLevelNumber = 10 AND TIMESTAMPDIFF(YEAR, s.DateOfBirth, CURDATE()) BETWEEN 15 AND 16) OR
+                   (gl.GradeLevelNumber = 11 AND TIMESTAMPDIFF(YEAR, s.DateOfBirth, CURDATE()) BETWEEN 16 AND 17) OR
+                   (gl.GradeLevelNumber = 12 AND TIMESTAMPDIFF(YEAR, s.DateOfBirth, CURDATE()) BETWEEN 17 AND 18)
+               )"
+        );
+        $nerStmt->execute();
+    } else {
+        $nerStmt = $conn->prepare(
+            "SELECT COUNT(DISTINCT e.StudentID) AS ageAppropriate
+             FROM enrollment e
+             INNER JOIN student    s  ON e.StudentID    = s.StudentID
+             INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
+             WHERE e.Status IN ('Confirmed','Pending')
+               AND e.AcademicYearID = :ayID
+               AND (
+                   (gl.GradeLevelNumber = 7  AND TIMESTAMPDIFF(YEAR, s.DateOfBirth, CURDATE()) BETWEEN 12 AND 13) OR
+                   (gl.GradeLevelNumber = 8  AND TIMESTAMPDIFF(YEAR, s.DateOfBirth, CURDATE()) BETWEEN 13 AND 14) OR
+                   (gl.GradeLevelNumber = 9  AND TIMESTAMPDIFF(YEAR, s.DateOfBirth, CURDATE()) BETWEEN 14 AND 15) OR
+                   (gl.GradeLevelNumber = 10 AND TIMESTAMPDIFF(YEAR, s.DateOfBirth, CURDATE()) BETWEEN 15 AND 16) OR
+                   (gl.GradeLevelNumber = 11 AND TIMESTAMPDIFF(YEAR, s.DateOfBirth, CURDATE()) BETWEEN 16 AND 17) OR
+                   (gl.GradeLevelNumber = 12 AND TIMESTAMPDIFF(YEAR, s.DateOfBirth, CURDATE()) BETWEEN 17 AND 18)
+               )"
+        );
+        $nerStmt->bindValue(':ayID', $ayIDCurrent, PDO::PARAM_INT);
+        $nerStmt->execute();
     }
-    $nerStmt->execute();
-    $nerData = $nerStmt->fetch(PDO::FETCH_ASSOC);
-
-    // Express as % of total enrolled (proportion of age-appropriate students)
-    $metrics['ner'] = $totalEnrollment > 0 ?
-        round(($nerData['ageAppropriateEnrollment'] / $totalEnrollment) * 100, 2) : 0;
-    $metrics['nerIsEstimated'] = true; // Flag for frontend to display disclaimer
+    $ageAppropriate       = (int) $nerStmt->fetchColumn();
+    $metrics['ner']            = $totalEnrollment > 0
+        ? round(($ageAppropriate / $totalEnrollment) * 100, 2) : 0;
+    $metrics['nerIsEstimated'] = true;
 
     // ==========================================
-    // 3. TRANSITION RATE (JHS → SHS)
+    // 4. TRANSITION RATE (JHS → SHS)
     // ==========================================
-    // Formula: G11 Enrollment (current year) / G10 Enrollment (previous year) × 100
-    if ($sy !== 'all') {
-        $syParts = explode('-', $sy);
-        if (count($syParts) === 2) {
-            $previousSY = ($syParts[0] - 1) . '-' . $syParts[0];
+    if ($syParam !== 'all') {
+        $prevAYID = $getPreviousAYID($currentSY, 1);
+        if ($prevAYID !== null) {
+            $transStmt = $conn->prepare(
+                "SELECT
+                     (SELECT COUNT(DISTINCT e.StudentID)
+                      FROM enrollment e
+                      INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
+                      WHERE gl.GradeLevelNumber = 11
+                        AND e.AcademicYearID = :currentAYID
+                        AND e.Status IN ('Confirmed','Pending')) AS g11Current,
+                     (SELECT COUNT(DISTINCT e.StudentID)
+                      FROM enrollment e
+                      INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
+                      WHERE gl.GradeLevelNumber = 10
+                        AND e.AcademicYearID = :prevAYID
+                        AND e.Status IN ('Confirmed','Pending')) AS g10Previous"
+            );
+            $transStmt->bindValue(':currentAYID', $ayIDCurrent, PDO::PARAM_INT);
+            $transStmt->bindValue(':prevAYID',    $prevAYID,    PDO::PARAM_INT);
+            $transStmt->execute();
+            $transData = $transStmt->fetch(PDO::FETCH_ASSOC);
 
-            $transitionQuery = "
-                SELECT
-                    (SELECT COUNT(DISTINCT e.StudentID)
-                     FROM enrollment e
-                     INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
-                     WHERE gl.GradeLevelNumber = 11
-                     AND e.AcademicYear = :currentSY
-                     AND e.Status IN ('Confirmed', 'Pending')) as g11Current,
-                    (SELECT COUNT(DISTINCT e.StudentID)
-                     FROM enrollment e
-                     INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
-                     WHERE gl.GradeLevelNumber = 10
-                     AND e.AcademicYear = :previousSY
-                     AND e.Status IN ('Confirmed', 'Pending')) as g10Previous
-            ";
-            $transitionStmt = $conn->prepare($transitionQuery);
-            $transitionStmt->bindParam(':currentSY', $sy);
-            $transitionStmt->bindParam(':previousSY', $previousSY);
-            $transitionStmt->execute();
-            $transitionData = $transitionStmt->fetch(PDO::FETCH_ASSOC);
-
-            $metrics['transitionRate'] = $transitionData['g10Previous'] > 0 ?
-                round(($transitionData['g11Current'] / $transitionData['g10Previous']) * 100, 2) : 0;
+            $metrics['transitionRate'] = $transData['g10Previous'] > 0
+                ? round(($transData['g11Current'] / $transData['g10Previous']) * 100, 2) : 0;
         } else {
             $metrics['transitionRate'] = 0;
         }
@@ -146,37 +204,33 @@ try {
     }
 
     // ==========================================
-    // 4. COHORT SURVIVAL RATE (JHS)
+    // 5. COHORT SURVIVAL RATE (JHS: G7 → G10)
     // ==========================================
-    // Formula: G10 Enrollment (current SY) / G7 Enrollment (3 years ago) × 100
-    if ($sy !== 'all') {
-        $syParts = explode('-', $sy);
-        if (count($syParts) === 2) {
-            $threeYearsAgo = ($syParts[0] - 3) . '-' . ($syParts[0] - 2);
-
-            $csrQuery = "
-                SELECT
-                    (SELECT COUNT(DISTINCT e.StudentID)
-                     FROM enrollment e
-                     INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
-                     WHERE gl.GradeLevelNumber = 10
-                     AND e.AcademicYear = :currentSY
-                     AND e.Status IN ('Confirmed', 'Pending')) as g10Current,
-                    (SELECT COUNT(DISTINCT e.StudentID)
-                     FROM enrollment e
-                     INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
-                     WHERE gl.GradeLevelNumber = 7
-                     AND e.AcademicYear = :threeYearsAgo
-                     AND e.Status IN ('Confirmed', 'Pending')) as g7Previous
-            ";
-            $csrStmt = $conn->prepare($csrQuery);
-            $csrStmt->bindParam(':currentSY', $sy);
-            $csrStmt->bindParam(':threeYearsAgo', $threeYearsAgo);
+    if ($syParam !== 'all') {
+        $threeYearsAgoAYID = $getPreviousAYID($currentSY, 3);
+        if ($threeYearsAgoAYID !== null) {
+            $csrStmt = $conn->prepare(
+                "SELECT
+                     (SELECT COUNT(DISTINCT e.StudentID)
+                      FROM enrollment e
+                      INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
+                      WHERE gl.GradeLevelNumber = 10
+                        AND e.AcademicYearID = :currentAYID
+                        AND e.Status IN ('Confirmed','Pending')) AS g10Current,
+                     (SELECT COUNT(DISTINCT e.StudentID)
+                      FROM enrollment e
+                      INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
+                      WHERE gl.GradeLevelNumber = 7
+                        AND e.AcademicYearID = :threeYearsAgoAYID
+                        AND e.Status IN ('Confirmed','Pending')) AS g7Previous"
+            );
+            $csrStmt->bindValue(':currentAYID',       $ayIDCurrent,       PDO::PARAM_INT);
+            $csrStmt->bindValue(':threeYearsAgoAYID', $threeYearsAgoAYID, PDO::PARAM_INT);
             $csrStmt->execute();
             $csrData = $csrStmt->fetch(PDO::FETCH_ASSOC);
 
-            $metrics['cohortSurvivalRateJHS'] = $csrData['g7Previous'] > 0 ?
-                round(($csrData['g10Current'] / $csrData['g7Previous']) * 100, 2) : 0;
+            $metrics['cohortSurvivalRateJHS'] = $csrData['g7Previous'] > 0
+                ? round(($csrData['g10Current'] / $csrData['g7Previous']) * 100, 2) : 0;
         } else {
             $metrics['cohortSurvivalRateJHS'] = 0;
         }
@@ -185,64 +239,55 @@ try {
     }
 
     // ==========================================
-    // 5. PROMOTION RATE
+    // 6. PROMOTION RATE
     // ==========================================
-    // Formula: Confirmed enrollments / Total enrollments × 100
-    // Note: "Confirmed" is used as a proxy for promoted since we track enrollment
-    // status rather than academic promotion directly.
-    $promotionQuery = "
-        SELECT COUNT(DISTINCT e.StudentID) as confirmed
-        FROM enrollment e
-        WHERE e.Status = 'Confirmed'
-        " . ($sy !== 'all' ? "AND e.AcademicYear = :sy" : "") . "
-    ";
-    $promotionStmt = $conn->prepare($promotionQuery);
-    if ($sy !== 'all') {
-        $promotionStmt->bindParam(':sy', $sy);
+    if ($syParam === 'all') {
+        $promStmt = $conn->prepare(
+            "SELECT COUNT(DISTINCT StudentID) AS confirmed FROM enrollment WHERE Status = 'Confirmed'"
+        );
+        $promStmt->execute();
+    } else {
+        $promStmt = $conn->prepare(
+            "SELECT COUNT(DISTINCT StudentID) AS confirmed FROM enrollment
+             WHERE Status = 'Confirmed' AND AcademicYearID = :ayID"
+        );
+        $promStmt->bindValue(':ayID', $ayIDCurrent, PDO::PARAM_INT);
+        $promStmt->execute();
     }
-    $promotionStmt->execute();
-    $promotionData = $promotionStmt->fetch(PDO::FETCH_ASSOC);
-
-    $metrics['promotionRate'] = $totalEnrollment > 0 ?
-        round(($promotionData['confirmed'] / $totalEnrollment) * 100, 2) : 0;
+    $confirmed = (int) $promStmt->fetchColumn();
+    $metrics['promotionRate'] = $totalEnrollment > 0
+        ? round(($confirmed / $totalEnrollment) * 100, 2) : 0;
 
     // ==========================================
-    // 6. RETENTION RATE
+    // 7. RETENTION RATE
     // ==========================================
-    // Formula: Students enrolled in both current & previous year / Previous year enrollment × 100
-    if ($sy !== 'all') {
-        $syParts = explode('-', $sy);
-        if (count($syParts) === 2) {
-            $previousSY = ($syParts[0] - 1) . '-' . $syParts[0];
+    if ($syParam !== 'all') {
+        $prevAYID = $prevAYID ?? $getPreviousAYID($currentSY, 1);
+        if ($prevAYID !== null) {
+            $retStmt = $conn->prepare(
+                "SELECT COUNT(DISTINCT e1.StudentID) AS retained
+                 FROM enrollment e1
+                 INNER JOIN enrollment e2 ON e1.StudentID = e2.StudentID
+                 WHERE e1.AcademicYearID = :currentAYID
+                   AND e2.AcademicYearID = :prevAYID
+                   AND e1.Status IN ('Confirmed','Pending')
+                   AND e2.Status IN ('Confirmed','Pending')"
+            );
+            $retStmt->bindValue(':currentAYID', $ayIDCurrent, PDO::PARAM_INT);
+            $retStmt->bindValue(':prevAYID',    $prevAYID,    PDO::PARAM_INT);
+            $retStmt->execute();
+            $retained = (int) $retStmt->fetchColumn();
 
-            $retentionQuery = "
-                SELECT COUNT(DISTINCT e1.StudentID) as retained
-                FROM enrollment e1
-                INNER JOIN enrollment e2 ON e1.StudentID = e2.StudentID
-                WHERE e1.AcademicYear = :currentSY
-                AND e2.AcademicYear = :previousSY
-                AND e1.Status IN ('Confirmed', 'Pending')
-                AND e2.Status IN ('Confirmed', 'Pending')
-            ";
-            $retentionStmt = $conn->prepare($retentionQuery);
-            $retentionStmt->bindParam(':currentSY', $sy);
-            $retentionStmt->bindParam(':previousSY', $previousSY);
-            $retentionStmt->execute();
-            $retentionData = $retentionStmt->fetch(PDO::FETCH_ASSOC);
+            $prevTotalStmt = $conn->prepare(
+                "SELECT COUNT(DISTINCT StudentID) AS total FROM enrollment
+                 WHERE AcademicYearID = :prevAYID AND Status IN ('Confirmed','Pending')"
+            );
+            $prevTotalStmt->bindValue(':prevAYID', $prevAYID, PDO::PARAM_INT);
+            $prevTotalStmt->execute();
+            $prevTotal = (int) $prevTotalStmt->fetchColumn();
 
-            $prevEnrollQuery = "
-                SELECT COUNT(DISTINCT StudentID) as prevEnrollment
-                FROM enrollment
-                WHERE AcademicYear = :previousSY
-                AND Status IN ('Confirmed', 'Pending')
-            ";
-            $prevEnrollStmt = $conn->prepare($prevEnrollQuery);
-            $prevEnrollStmt->bindParam(':previousSY', $previousSY);
-            $prevEnrollStmt->execute();
-            $prevEnrollData = $prevEnrollStmt->fetch(PDO::FETCH_ASSOC);
-
-            $metrics['retentionRate'] = $prevEnrollData['prevEnrollment'] > 0 ?
-                round(($retentionData['retained'] / $prevEnrollData['prevEnrollment']) * 100, 2) : 0;
+            $metrics['retentionRate'] = $prevTotal > 0
+                ? round(($retained / $prevTotal) * 100, 2) : 0;
         } else {
             $metrics['retentionRate'] = 0;
         }
@@ -251,224 +296,207 @@ try {
     }
 
     // ==========================================
-    // 7. DROPOUT / SCHOOL LEAVER RATE
+    // 8. DROPOUT / SCHOOL LEAVER RATE
     // ==========================================
-    // Formula: Dropped/Transferred-Out enrollments / Total enrollments (including dropped) × 100
-    // FIX: Query directly from enrollment table using enrollment Status,
-    // not from student.EnrollmentStatus (which is a historical flag).
-    $dropoutQuery = "
-        SELECT COUNT(DISTINCT e.StudentID) as dropped
-        FROM enrollment e
-        WHERE e.Status IN ('Dropped', 'Transferred_Out')
-        " . ($sy !== 'all' ? "AND e.AcademicYear = :sy" : "") . "
-    ";
-    $dropoutStmt = $conn->prepare($dropoutQuery);
-    if ($sy !== 'all') {
-        $dropoutStmt->bindParam(':sy', $sy);
+    if ($syParam === 'all') {
+        $dropStmt = $conn->prepare(
+            "SELECT COUNT(DISTINCT StudentID) AS dropped FROM enrollment
+             WHERE Status IN ('Dropped','Transferred_Out')"
+        );
+        $dropStmt->execute();
+    } else {
+        $dropStmt = $conn->prepare(
+            "SELECT COUNT(DISTINCT StudentID) AS dropped FROM enrollment
+             WHERE Status IN ('Dropped','Transferred_Out') AND AcademicYearID = :ayID"
+        );
+        $dropStmt->bindValue(':ayID', $ayIDCurrent, PDO::PARAM_INT);
+        $dropStmt->execute();
     }
-    $dropoutStmt->execute();
-    $dropoutData = $dropoutStmt->fetch(PDO::FETCH_ASSOC);
-
-    $totalForDropout = $totalEnrollment + $dropoutData['dropped'];
-    $metrics['dropoutRate'] = $totalForDropout > 0 ?
-        round(($dropoutData['dropped'] / $totalForDropout) * 100, 2) : 0;
+    $dropped            = (int) $dropStmt->fetchColumn();
+    $totalForDropout    = $totalEnrollment + $dropped;
+    $metrics['dropoutRate'] = $totalForDropout > 0
+        ? round(($dropped / $totalForDropout) * 100, 2) : 0;
 
     // ==========================================
-    // 8. COEFFICIENT OF EFFICIENCY
+    // 9. COEFFICIENT OF EFFICIENCY (Estimated)
     // ==========================================
-    // A proper CoE needs multi-year cohort data (ideal vs actual student-years).
-    // We approximate using confirmed enrollments / total enrollments as a proxy
-    // for "efficient" progression through the system.
     $metrics['coefficientOfEfficiency'] = $metrics['promotionRate'];
-    $metrics['coeIsEstimated'] = true;
+    $metrics['coeIsEstimated']          = true;
 
     // ==========================================
-    // 9. COMPLETION RATE
+    // 10. COMPLETION RATE (Estimated via CSR)
     // ==========================================
-    // True completion rate = graduates / cohort entrants.
-    // We use cohort survival rate as the best available approximation.
-    // When sy-specific data is available, this shows JHS cohort survival.
-    $metrics['completionRate'] = $metrics['cohortSurvivalRateJHS'];
-    $metrics['completionIsEstimated'] = ($sy === 'all');
+    $metrics['completionRate']        = $metrics['cohortSurvivalRateJHS'];
+    $metrics['completionIsEstimated'] = ($syParam === 'all');
 
     // ==========================================
-    // 10. STUDENT-TEACHER RATIO
+    // 11. STUDENT-TEACHER RATIO
     // ==========================================
-    // FIX: Also check EmploymentStatus = 'Active' to exclude On_Leave/Resigned employees
-    $teacherQuery = "
-        SELECT COUNT(*) as totalTeachers
-        FROM employee
-        WHERE EmploymentType = 'Teaching'
-        AND EmploymentStatus = 'Active'
-        AND IsActive = 1
-    ";
-    $teacherStmt = $conn->prepare($teacherQuery);
-    $teacherStmt->execute();
-    $teacherData = $teacherStmt->fetch(PDO::FETCH_ASSOC);
-
-    // Student-Classroom Ratio (using sections table)
-    if ($sy !== 'all') {
-        $sectionQuery = "
-            SELECT COUNT(*) as totalSections, COALESCE(SUM(Capacity), 0) as totalCapacity
-            FROM section
-            WHERE IsActive = 1
-            AND AcademicYear = :sy
-        ";
-        $sectionStmt = $conn->prepare($sectionQuery);
-        $sectionStmt->bindParam(':sy', $sy);
-    } else {
-        $sectionQuery = "
-            SELECT COUNT(*) as totalSections, COALESCE(SUM(Capacity), 0) as totalCapacity
-            FROM section
-            WHERE IsActive = 1
-        ";
-        $sectionStmt = $conn->prepare($sectionQuery);
+    // employee table is not in the current DB dump; wrapped in try/catch.
+    $totalTeachers = 0;
+    try {
+        $tchStmt = $conn->prepare(
+            "SELECT COUNT(*) FROM employee
+             WHERE EmploymentType = 'Teaching'
+               AND EmploymentStatus = 'Active'
+               AND IsActive = 1"
+        );
+        $tchStmt->execute();
+        $totalTeachers = (int) $tchStmt->fetchColumn();
+    } catch (Exception $e) {
+        // employee table not yet available
     }
-    $sectionStmt->execute();
-    $sectionData = $sectionStmt->fetch(PDO::FETCH_ASSOC);
-
-    $metrics['studentTeacherRatio'] = $teacherData['totalTeachers'] > 0 ?
-        round($totalEnrollment / $teacherData['totalTeachers'], 1) : 0;
-
-    $metrics['studentClassroomRatio'] = $sectionData['totalSections'] > 0 ?
-        round($totalEnrollment / $sectionData['totalSections'], 1) : 0;
-
-    $metrics['sectionUtilization'] = $sectionData['totalCapacity'] > 0 ?
-        round(($totalEnrollment / $sectionData['totalCapacity']) * 100, 2) : 0;
+    $metrics['studentTeacherRatio'] = $totalTeachers > 0
+        ? round($totalEnrollment / $totalTeachers, 1) : 0;
 
     // ==========================================
-    // GRADE LEVEL BREAKDOWN
+    // 12. STUDENT-CLASSROOM & SECTION UTILIZATION
     // ==========================================
-    // FIX: Use table alias consistently; do not inject $syCondition string directly.
-    // Use parameterized queries for all conditions.
-    if ($sy !== 'all') {
-        $gradeLevelQuery = "
-            SELECT
-                gl.GradeLevelNumber as gradeLevel,
-                COUNT(DISTINCT e.StudentID) as enrollment,
-                SUM(CASE WHEN e.Status = 'Confirmed'    THEN 1 ELSE 0 END) as promoted,
-                SUM(CASE WHEN e.Status IN ('Dropped', 'Transferred_Out') THEN 1 ELSE 0 END) as dropped
-            FROM enrollment e
-            INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
-            WHERE e.AcademicYear = :sy
-            GROUP BY gl.GradeLevelNumber
-            ORDER BY gl.GradeLevelNumber
-        ";
-        $gradeLevelStmt = $conn->prepare($gradeLevelQuery);
-        $gradeLevelStmt->bindParam(':sy', $sy);
+    // section table uses AcademicYearID (FK int).
+    if ($syParam !== 'all') {
+        $secStmt = $conn->prepare(
+            "SELECT COUNT(*) AS totalSections,
+                    COALESCE(SUM(Capacity), 0) AS totalCapacity
+             FROM section
+             WHERE IsActive = 1 AND AcademicYearID = :ayID"
+        );
+        $secStmt->bindValue(':ayID', $ayIDCurrent, PDO::PARAM_INT);
+        $secStmt->execute();
     } else {
-        $gradeLevelQuery = "
-            SELECT
-                gl.GradeLevelNumber as gradeLevel,
-                COUNT(DISTINCT e.StudentID) as enrollment,
-                SUM(CASE WHEN e.Status = 'Confirmed'    THEN 1 ELSE 0 END) as promoted,
-                SUM(CASE WHEN e.Status IN ('Dropped', 'Transferred_Out') THEN 1 ELSE 0 END) as dropped
-            FROM enrollment e
-            INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
-            GROUP BY gl.GradeLevelNumber
-            ORDER BY gl.GradeLevelNumber
-        ";
-        $gradeLevelStmt = $conn->prepare($gradeLevelQuery);
+        $secStmt = $conn->prepare(
+            "SELECT COUNT(*) AS totalSections,
+                    COALESCE(SUM(Capacity), 0) AS totalCapacity
+             FROM section WHERE IsActive = 1"
+        );
+        $secStmt->execute();
     }
-    $gradeLevelStmt->execute();
+    $secData = $secStmt->fetch(PDO::FETCH_ASSOC);
+
+    $metrics['studentClassroomRatio'] = $secData['totalSections'] > 0
+        ? round($totalEnrollment / $secData['totalSections'], 1) : 0;
+    $metrics['sectionUtilization']    = $secData['totalCapacity'] > 0
+        ? round(($totalEnrollment / $secData['totalCapacity']) * 100, 2) : 0;
+
+    // ==========================================
+    // 13. GRADE-LEVEL BREAKDOWN
+    // ==========================================
+    if ($syParam !== 'all') {
+        $glStmt = $conn->prepare(
+            "SELECT
+                 gl.GradeLevelNumber AS gradeLevel,
+                 COUNT(DISTINCT e.StudentID) AS enrollment,
+                 SUM(CASE WHEN e.Status = 'Confirmed' THEN 1 ELSE 0 END) AS promoted,
+                 SUM(CASE WHEN e.Status IN ('Dropped','Transferred_Out') THEN 1 ELSE 0 END) AS dropped
+             FROM enrollment e
+             INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
+             WHERE e.AcademicYearID = :ayID
+             GROUP BY gl.GradeLevelID, gl.GradeLevelNumber
+             ORDER BY gl.GradeLevelNumber"
+        );
+        $glStmt->bindValue(':ayID', $ayIDCurrent, PDO::PARAM_INT);
+        $glStmt->execute();
+    } else {
+        $glStmt = $conn->prepare(
+            "SELECT
+                 gl.GradeLevelNumber AS gradeLevel,
+                 COUNT(DISTINCT e.StudentID) AS enrollment,
+                 SUM(CASE WHEN e.Status = 'Confirmed' THEN 1 ELSE 0 END) AS promoted,
+                 SUM(CASE WHEN e.Status IN ('Dropped','Transferred_Out') THEN 1 ELSE 0 END) AS dropped
+             FROM enrollment e
+             INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
+             GROUP BY gl.GradeLevelID, gl.GradeLevelNumber
+             ORDER BY gl.GradeLevelNumber"
+        );
+        $glStmt->execute();
+    }
 
     $gradeLevelData = [];
-    while ($row = $gradeLevelStmt->fetch(PDO::FETCH_ASSOC)) {
-        $enrollment = intval($row['enrollment']);
-        $promoted   = intval($row['promoted']);
-        $dropped    = intval($row['dropped']);
-        $totalGrade = $enrollment + $dropped; // Include dropped for rate denominator
-
+    while ($row = $glStmt->fetch(PDO::FETCH_ASSOC)) {
+        $enr        = (int) $row['enrollment'];
+        $prom       = (int) $row['promoted'];
+        $drop       = (int) $row['dropped'];
+        $total      = $enr + $drop;
         $gradeLevelData[] = [
-            'gradeLevel'    => intval($row['gradeLevel']),
-            'enrollment'    => $enrollment,
-            'promotionRate' => $enrollment > 0 ? round(($promoted / $enrollment) * 100, 2) : 0,
-            'retentionRate' => $totalGrade > 0  ? round(($enrollment / $totalGrade) * 100, 2) : 0,
-            'dropoutRate'   => $totalGrade > 0  ? round(($dropped / $totalGrade) * 100, 2) : 0,
+            'gradeLevel'    => (int) $row['gradeLevel'],
+            'enrollment'    => $enr,
+            'promotionRate' => $enr   > 0 ? round(($prom / $enr)   * 100, 2) : 0,
+            'retentionRate' => $total > 0 ? round(($enr  / $total)  * 100, 2) : 0,
+            'dropoutRate'   => $total > 0 ? round(($drop / $total)  * 100, 2) : 0,
         ];
     }
     $metrics['gradeLevelData'] = $gradeLevelData;
 
     // ==========================================
-    // TRENDS (Year-over-year comparison)
+    // 14. TRENDS (year-over-year, last 5 years)
     // ==========================================
-    $trendsQuery = "
-        SELECT
-            e.AcademicYear as year,
-            COUNT(DISTINCT e.StudentID) as enrollment,
-            SUM(CASE WHEN e.Status = 'Confirmed' THEN 1 ELSE 0 END) as confirmed,
-            SUM(CASE WHEN e.Status IN ('Dropped', 'Transferred_Out') THEN 1 ELSE 0 END) as dropped
-        FROM enrollment e
-        GROUP BY e.AcademicYear
-        ORDER BY e.AcademicYear DESC
-        LIMIT 5
-    ";
-    $trendsStmt = $conn->prepare($trendsQuery);
+    // Join with academicyear to get the YearLabel for display.
+    $trendsStmt = $conn->prepare(
+        "SELECT
+             ay.YearLabel AS year,
+             COUNT(DISTINCT e.StudentID) AS enrollment,
+             SUM(CASE WHEN e.Status = 'Confirmed' THEN 1 ELSE 0 END) AS confirmed,
+             SUM(CASE WHEN e.Status IN ('Dropped','Transferred_Out') THEN 1 ELSE 0 END) AS dropped
+         FROM enrollment e
+         INNER JOIN academicyear ay ON e.AcademicYearID = ay.AcademicYearID
+         GROUP BY ay.AcademicYearID, ay.YearLabel, ay.StartYear
+         ORDER BY ay.StartYear DESC
+         LIMIT 5"
+    );
     $trendsStmt->execute();
 
     $trends = [];
     while ($row = $trendsStmt->fetch(PDO::FETCH_ASSOC)) {
-        $enrollment = intval($row['enrollment']);
-        $confirmed  = intval($row['confirmed']);
-        $dropped    = intval($row['dropped']);
-        $totalGrade = $enrollment + $dropped;
-
-        // Estimated enrollment rate: enrollment / (enrollment * 1.2) — always 83.3%; labeled clearly
-        $estPop = $enrollment > 0 ? $enrollment * 1.2 : 1;
+        $enr    = (int) $row['enrollment'];
+        $conf   = (int) $row['confirmed'];
+        $drop   = (int) $row['dropped'];
+        $total  = $enr + $drop;
+        $estPop = $enr > 0 ? $enr * 1.2 : 1;
 
         $trends[] = [
             'year'           => $row['year'],
-            'enrollmentRate' => round(($enrollment / $estPop) * 100, 2), // estimated
-            'promotionRate'  => $enrollment > 0 ? round(($confirmed / $enrollment) * 100, 2) : 0,
-            'retentionRate'  => $totalGrade > 0  ? round(($enrollment / $totalGrade) * 100, 2) : 0,
-            'dropoutRate'    => $totalGrade > 0  ? round(($dropped / $totalGrade) * 100, 2) : 0,
+            'enrollmentRate' => round(($enr  / $estPop)  * 100, 2),  // estimated
+            'promotionRate'  => $enr   > 0 ? round(($conf / $enr)   * 100, 2) : 0,
+            'retentionRate'  => $total > 0 ? round(($enr  / $total)  * 100, 2) : 0,
+            'dropoutRate'    => $total > 0 ? round(($drop / $total)  * 100, 2) : 0,
         ];
     }
     $metrics['trends'] = array_reverse($trends);
 
-    echo json_encode([
-        'success' => true,
-        'data' => $metrics
-    ]);
+    echo json_encode(['success' => true, 'data' => $metrics]);
 
 } catch (PDOException $e) {
     http_response_code(500);
     echo json_encode([
         'success' => false,
         'message' => 'Database error: ' . $e->getMessage(),
-        'debug' => [
-            'file'  => $e->getFile(),
-            'line'  => $e->getLine(),
-        ]
+        'debug'   => ['file' => $e->getFile(), 'line' => $e->getLine()],
     ]);
 } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'message' => 'Error: ' . $e->getMessage()
-    ]);
+    echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
 }
 
-function generateEmptyMetrics() {
+// ─── Helper ────────────────────────────────────────────────────────────────
+function generateEmptyMetrics(): array {
     return [
-        'ger'                    => 0,
-        'gerIsEstimated'         => true,
-        'ner'                    => 0,
-        'nerIsEstimated'         => true,
-        'transitionRate'         => 0,
-        'cohortSurvivalRateJHS'  => 0,
-        'promotionRate'          => 0,
-        'retentionRate'          => 0,
-        'dropoutRate'            => 0,
-        'coefficientOfEfficiency'=> 0,
-        'coeIsEstimated'         => true,
-        'completionRate'         => 0,
-        'completionIsEstimated'  => true,
-        'studentTeacherRatio'    => 0,
-        'studentClassroomRatio'  => 0,
-        'sectionUtilization'     => 0,
-        'gradeLevelData'         => [],
-        'trends'                 => []
+        'ger'                     => 0,
+        'gerIsEstimated'          => true,
+        'ner'                     => 0,
+        'nerIsEstimated'          => true,
+        'transitionRate'          => 0,
+        'cohortSurvivalRateJHS'   => 0,
+        'promotionRate'           => 0,
+        'retentionRate'           => 0,
+        'dropoutRate'             => 0,
+        'coefficientOfEfficiency' => 0,
+        'coeIsEstimated'          => true,
+        'completionRate'          => 0,
+        'completionIsEstimated'   => true,
+        'studentTeacherRatio'     => 0,
+        'studentClassroomRatio'   => 0,
+        'sectionUtilization'      => 0,
+        'gradeLevelData'          => [],
+        'trends'                  => [],
     ];
 }
 ?>

@@ -9,12 +9,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-      <link rel="icon" type="image/png" href="../assets/favicons/favicon-96x96.png" sizes="96x96" />
-      <link rel="icon" type="image/svg+xml" href="../assets/favicons/favicon.svg" />
-      <link rel="shortcut icon" href="../assets/favicons/favicon.ico" />
-      <link rel="apple-touch-icon" sizes="180x180" href="../assets/favicons/apple-touch-icon.png" />
-      <meta name="apple-mobile-web-app-title" content="DJIHS" />
-      <link rel="manifest" href="../assets/favicons/site.webmanifest" />
+    <link rel="icon" type="image/png" href="../assets/favicons/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="../assets/favicons/favicon.svg" />
+    <link rel="shortcut icon" href="../assets/favicons/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="../assets/favicons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="DJIHS" />
+    <link rel="manifest" href="../assets/favicons/site.webmanifest" />
 
     <!-- AUTHENTICATION PROTECTION -->
     <script src="../js/auth.js"></script>
@@ -22,21 +22,14 @@
         (function() {
             const isLoggedIn = localStorage.getItem('isLoggedIn');
             const userDataString = localStorage.getItem('user');
-            
-            if (!isLoggedIn || !userDataString) {
-                window.location.href = '../login.html';
-                return;
-            }
-            
+            if (!isLoggedIn || !userDataString) { window.location.href = '../login.html'; return; }
             try {
                 const user = JSON.parse(userDataString);
                 if (user.Role !== 'Admin') {
                     alert('Access denied. Admin access required.');
                     window.location.href = '../login.html';
                 }
-            } catch (e) {
-                window.location.href = '../login.html';
-            }
+            } catch (e) { window.location.href = '../login.html'; }
         })();
     </script>
 
@@ -50,9 +43,7 @@
                         "background-light": "#f6f7f8",
                         "background-dark": "#101922",
                     },
-                    fontFamily: {
-                        "display": ["Inter", "sans-serif"]
-                    },
+                    fontFamily: { "display": ["Inter", "sans-serif"] },
                 },
             },
         }
@@ -65,35 +56,58 @@
             border: 3px solid #f3f3f3;
             border-top: 3px solid #085019;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
+            width: 40px; height: 40px;
             animation: spin 1s linear infinite;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        @keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
         @media print {
             .no-print { display: none !important; }
             body { background: white !important; }
             .print-page-break { page-break-after: always; }
         }
-        .tab-btn {
-            position: relative;
-            transition: all 0.2s;
-        }
-        .tab-btn.active {
-            color: #085019;
-        }
+        .tab-btn { position: relative; transition: all 0.2s; }
+        .tab-btn.active { color: #085019; }
         .tab-btn.active::after {
             content: '';
             position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
+            bottom: 0; left: 0; right: 0;
             height: 2px;
             background-color: #085019;
         }
+
+        /* ─── Year Comparison styles ─────────────────────────────── */
+        .vs-badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 34px; height: 34px; border-radius: 50%;
+            background: #085019; color: white;
+            font-size: 10px; font-weight: 800; letter-spacing: 0.05em; flex-shrink: 0;
+        }
+        .cmp-kpi-card {
+            display: grid;
+            grid-template-columns: 1fr 48px 1fr;
+            align-items: stretch;
+        }
+        .cmp-kpi-side { padding: 16px 12px; text-align: center; }
+        .cmp-kpi-side.winner { background: rgba(8,80,25,0.06); border-radius: 8px; }
+        .dark .cmp-kpi-side.winner { background: rgba(8,80,25,0.14); }
+        .cmp-kpi-divider {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 4px; padding: 8px 0;
+        }
+        .cmp-kpi-divider .vline { width: 1px; flex: 1; background: #e5e7eb; }
+        .dark .cmp-kpi-divider .vline { background: #374151; }
+        .delta-chip {
+            display: inline-flex; align-items: center; gap: 2px;
+            padding: 2px 7px; border-radius: 9999px;
+            font-size: 11px; font-weight: 700;
+        }
+        .delta-chip.up   { background: #dcfce7; color: #15803d; }
+        .delta-chip.down { background: #fee2e2; color: #b91c1c; }
+        .delta-chip.flat { background: #f1f5f9; color: #64748b; }
+        .dark .delta-chip.up   { background: rgba(21,128,61,0.18);   color: #4ade80; }
+        .dark .delta-chip.down { background: rgba(185,28,28,0.18);   color: #f87171; }
+        .dark .delta-chip.flat { background: rgba(100,116,139,0.18); color: #94a3b8; }
     </style>
 </head>
 <body class="font-display bg-background-light dark:bg-background-dark">
@@ -191,31 +205,32 @@
                             <span class="material-icons-outlined text-[20px]">analytics</span>
                             <span class="text-sm font-medium">Analytics</span>
                         </a>
-                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="metrics.html">
-                        <span class="material-icons-outlined text-[20px]">speed</span>
-                        <span class="text-sm font-medium">Performance Metrics</span>
-                    </a>
+                        <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" href="metrics.html">
+                            <span class="material-icons-outlined text-[20px]">speed</span>
+                            <span class="text-sm font-medium">Performance Metrics</span>
+                        </a>
                     </nav>
                 </div>
-            <div class="p-4 border-t border-gray-200 dark:border-gray-700">
-                <div class="flex items-center gap-3 mb-4 px-2">
-                    <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-primary font-bold text-sm shrink-0">
-                        <span id="userInitials">--</span>
+                <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center gap-3 mb-4 px-2">
+                        <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                            <span id="userInitials">--</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-900 dark:text-white truncate" id="userName">Loading...</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 truncate" id="userRole">--</p>
+                        </div>
                     </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate" id="userName">Loading...</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate" id="userRole">--</p>
-                    </div>
+                    <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors logout-btn">
+                        <span class="material-icons-outlined text-[18px]">logout</span>
+                        Logout
+                    </button>
                 </div>
-                <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors logout-btn">
-                    <span class="material-icons-outlined text-[18px]">logout</span>
-                    Logout
-                </button>
-            </div>
             </aside>
             <!-- Main Content -->
             <main class="flex-1 p-6 lg:p-10">
                 <div class="mx-auto max-w-7xl">
+
                     <!-- Page Heading -->
                     <div class="flex flex-wrap justify-between gap-4 items-center mb-6 no-print">
                         <div class="flex flex-col gap-1">
@@ -253,14 +268,13 @@
                                             <div class="text-xs text-slate-500">Charts and graphs</div>
                                         </div>
                                     </button>
-                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Filters -->
-                    <div class="flex flex-wrap items-center gap-3 mb-6 no-print">
+                    <!-- Global Filters — hidden when on comparison tab -->
+                    <div id="globalFilters" class="flex flex-wrap items-center gap-3 mb-6 no-print">
                         <select id="syFilter" class="h-9 px-6 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300">
                             <option value="all">All School Years</option>
                         </select>
@@ -273,12 +287,8 @@
                             <option value="5">Grade 11</option>
                             <option value="6">Grade 12</option>
                         </select>
-                        <button onclick="applyFilters()" class="h-9 px-4 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium">
-                            Apply Filters
-                        </button>
-                        <button onclick="resetFilters()" class="h-9 px-4 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium hover:bg-slate-300 dark:hover:bg-slate-600">
-                            Reset
-                        </button>
+                        <button onclick="applyFilters()" class="h-9 px-4 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium">Apply Filters</button>
+                        <button onclick="resetFilters()" class="h-9 px-4 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium hover:bg-slate-300 dark:hover:bg-slate-600">Reset</button>
                     </div>
 
                     <!-- Loading State -->
@@ -288,36 +298,34 @@
 
                     <!-- Analytics Content -->
                     <div id="analyticsContent" style="display: none;">
+
                         <!-- Tabs Navigation -->
                         <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm mb-6 no-print">
                             <div class="flex overflow-x-auto border-b border-slate-200 dark:border-slate-700">
                                 <button onclick="switchTab('overview')" class="tab-btn active flex items-center gap-2 px-6 py-4 text-sm font-medium whitespace-nowrap" data-tab="overview">
-                                    <span class="material-icons-outlined text-[20px]">summarize</span>
-                                    Overview
+                                    <span class="material-icons-outlined text-[20px]">summarize</span>Overview
                                 </button>
                                 <button onclick="switchTab('trends')" class="tab-btn flex items-center gap-2 px-6 py-4 text-sm font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap" data-tab="trends">
-                                    <span class="material-icons-outlined text-[20px]">trending_up</span>
-                                    Enrollment Trends
+                                    <span class="material-icons-outlined text-[20px]">trending_up</span>Enrollment Trends
                                 </button>
                                 <button onclick="switchTab('demographics')" class="tab-btn flex items-center gap-2 px-6 py-4 text-sm font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap" data-tab="demographics">
-                                    <span class="material-icons-outlined text-[20px]">groups</span>
-                                    Demographics
+                                    <span class="material-icons-outlined text-[20px]">groups</span>Demographics
                                 </button>
                                 <button onclick="switchTab('distribution')" class="tab-btn flex items-center gap-2 px-6 py-4 text-sm font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap" data-tab="distribution">
-                                    <span class="material-icons-outlined text-[20px]">bar_chart</span>
-                                    Distribution
+                                    <span class="material-icons-outlined text-[20px]">bar_chart</span>Distribution
                                 </button>
                                 <button onclick="switchTab('strands')" id="strandsTab" class="tab-btn flex items-center gap-2 px-6 py-4 text-sm font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap" data-tab="strands" style="display: none;">
-                                    <span class="material-icons-outlined text-[20px]">school</span>
-                                    Senior High (Strands)
+                                    <span class="material-icons-outlined text-[20px]">school</span>Senior High (Strands)
+                                </button>
+                                <!-- ★ NEW TAB -->
+                                <button onclick="switchTab('comparison')" class="tab-btn flex items-center gap-2 px-6 py-4 text-sm font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap" data-tab="comparison">
+                                    <span class="material-icons-outlined text-[20px]">compare_arrows</span>Year Comparison
                                 </button>
                                 <button onclick="switchTab('detailed')" class="tab-btn flex items-center gap-2 px-6 py-4 text-sm font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap" data-tab="detailed">
-                                    <span class="material-icons-outlined text-[20px]">table_view</span>
-                                    Detailed Report
+                                    <span class="material-icons-outlined text-[20px]">table_view</span>Detailed Report
                                 </button>
                                 <button onclick="switchTab('all')" class="tab-btn flex items-center gap-2 px-6 py-4 text-sm font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap" data-tab="all">
-                                    <span class="material-icons-outlined text-[20px]">view_agenda</span>
-                                    View All
+                                    <span class="material-icons-outlined text-[20px]">view_agenda</span>View All
                                 </button>
                             </div>
                         </div>
@@ -328,18 +336,12 @@
                                 <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 shadow-sm">
                                     <p class="text-slate-600 dark:text-slate-400 text-sm font-medium">Total Enrolled Students</p>
                                     <p class="text-slate-900 dark:text-white text-3xl font-bold" id="totalStudents">0</p>
-                                    <p class="text-sm font-medium flex items-center gap-1" id="studentsTrend">
-                                        <span class="material-symbols-outlined text-base">trending_flat</span>
-                                        <span>No change</span>
-                                    </p>
+                                    <p class="text-sm font-medium flex items-center gap-1" id="studentsTrend"><span class="material-symbols-outlined text-base">trending_flat</span><span>No change</span></p>
                                 </div>
                                 <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 shadow-sm">
                                     <p class="text-slate-600 dark:text-slate-400 text-sm font-medium">Dropout Rate</p>
                                     <p class="text-slate-900 dark:text-white text-3xl font-bold" id="dropoutRate">0%</p>
-                                    <p class="text-sm font-medium flex items-center gap-1" id="dropoutTrend">
-                                        <span class="material-symbols-outlined text-base">trending_flat</span>
-                                        <span>No data</span>
-                                    </p>
+                                    <p class="text-sm font-medium flex items-center gap-1" id="dropoutTrend"><span class="material-symbols-outlined text-base">trending_flat</span><span>No data</span></p>
                                 </div>
                                 <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 shadow-sm">
                                     <p class="text-slate-600 dark:text-slate-400 text-sm font-medium">PWD Students</p>
@@ -352,38 +354,24 @@
                                     <p class="text-slate-500 dark:text-slate-400 text-sm" id="balikAralPercentage">0% of total</p>
                                 </div>
                             </div>
-
-                            <!-- Quick Insights -->
                             <div class="rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6">
                                 <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-4">Key Highlights</h3>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="quickInsights">
                                     <div class="flex items-start gap-3 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
                                         <span class="material-icons-outlined text-primary text-[24px]">info</span>
-                                        <div>
-                                            <p class="text-sm font-medium text-slate-900 dark:text-white">Total Enrollment</p>
-                                            <p class="text-xs text-slate-600 dark:text-slate-400 mt-1" id="insightTotal">Loading...</p>
-                                        </div>
+                                        <div><p class="text-sm font-medium text-slate-900 dark:text-white">Total Enrollment</p><p class="text-xs text-slate-600 dark:text-slate-400 mt-1" id="insightTotal">Loading...</p></div>
                                     </div>
                                     <div class="flex items-start gap-3 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
                                         <span class="material-icons-outlined text-blue-600 text-[24px]">people</span>
-                                        <div>
-                                            <p class="text-sm font-medium text-slate-900 dark:text-white">Gender Balance</p>
-                                            <p class="text-xs text-slate-600 dark:text-slate-400 mt-1" id="insightGender">Loading...</p>
-                                        </div>
+                                        <div><p class="text-sm font-medium text-slate-900 dark:text-white">Gender Balance</p><p class="text-xs text-slate-600 dark:text-slate-400 mt-1" id="insightGender">Loading...</p></div>
                                     </div>
                                     <div class="flex items-start gap-3 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
                                         <span class="material-icons-outlined text-purple-600 text-[24px]">accessibility</span>
-                                        <div>
-                                            <p class="text-sm font-medium text-slate-900 dark:text-white">Special Needs</p>
-                                            <p class="text-xs text-slate-600 dark:text-slate-400 mt-1" id="insightPWD">Loading...</p>
-                                        </div>
+                                        <div><p class="text-sm font-medium text-slate-900 dark:text-white">Special Needs</p><p class="text-xs text-slate-600 dark:text-slate-400 mt-1" id="insightPWD">Loading...</p></div>
                                     </div>
                                     <div class="flex items-start gap-3 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
                                         <span class="material-icons-outlined text-green-600 text-[24px]">school</span>
-                                        <div>
-                                            <p class="text-sm font-medium text-slate-900 dark:text-white">Largest Grade Level</p>
-                                            <p class="text-xs text-slate-600 dark:text-slate-400 mt-1" id="insightGrade">Loading...</p>
-                                        </div>
+                                        <div><p class="text-sm font-medium text-slate-900 dark:text-white">Largest Grade Level</p><p class="text-xs text-slate-600 dark:text-slate-400 mt-1" id="insightGrade">Loading...</p></div>
                                     </div>
                                 </div>
                             </div>
@@ -398,9 +386,7 @@
                                         <p class="text-slate-500 dark:text-slate-400 text-sm">Year-over-year comparison</p>
                                     </div>
                                 </div>
-                                <div class="relative flex-1 min-h-0">
-                                    <canvas id="enrollmentTrendsChart"></canvas>
-                                </div>
+                                <div class="relative flex-1 min-h-0"><canvas id="enrollmentTrendsChart"></canvas></div>
                             </div>
                         </div>
 
@@ -408,61 +394,23 @@
                         <div id="tab-demographics" class="tab-content" style="display: none;">
                             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 h-[400px]">
-                                    <div class="flex justify-between items-center">
-                                        <div>
-                                            <p class="text-slate-800 dark:text-white text-base font-medium">Gender Distribution</p>
-                                            <p class="text-slate-500 dark:text-slate-400 text-sm">Current enrollment</p>
-                                        </div>
-                                    </div>
-                                    <div class="relative flex-1 min-h-0">
-                                        <canvas id="genderChart"></canvas>
-                                    </div>
+                                    <div><p class="text-slate-800 dark:text-white text-base font-medium">Gender Distribution</p><p class="text-slate-500 dark:text-slate-400 text-sm">Current enrollment</p></div>
+                                    <div class="relative flex-1 min-h-0"><canvas id="genderChart"></canvas></div>
                                 </div>
-
                                 <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6">
-                                    <div>
-                                        <p class="text-slate-800 dark:text-white text-base font-medium">Special Categories</p>
-                                        <p class="text-slate-500 dark:text-slate-400 text-sm">Breakdown of student categories</p>
-                                    </div>
+                                    <div><p class="text-slate-800 dark:text-white text-base font-medium">Special Categories</p><p class="text-slate-500 dark:text-slate-400 text-sm">Breakdown of student categories</p></div>
                                     <div class="space-y-4 mt-4">
                                         <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-                                            <div class="flex items-center gap-3">
-                                                <span class="material-icons-outlined text-purple-600 text-[28px]">accessible</span>
-                                                <div>
-                                                    <p class="text-sm font-semibold text-slate-900 dark:text-white">PWD Students</p>
-                                                    <p class="text-xs text-slate-500 dark:text-slate-400">Persons with Disability</p>
-                                                </div>
-                                            </div>
-                                            <div class="text-right">
-                                                <p class="text-2xl font-bold text-slate-900 dark:text-white" id="pwdCountDemo">0</p>
-                                                <p class="text-xs text-slate-500 dark:text-slate-400" id="pwdPercentageDemo">0%</p>
-                                            </div>
+                                            <div class="flex items-center gap-3"><span class="material-icons-outlined text-purple-600 text-[28px]">accessible</span><div><p class="text-sm font-semibold text-slate-900 dark:text-white">PWD Students</p><p class="text-xs text-slate-500 dark:text-slate-400">Persons with Disability</p></div></div>
+                                            <div class="text-right"><p class="text-2xl font-bold text-slate-900 dark:text-white" id="pwdCountDemo">0</p><p class="text-xs text-slate-500 dark:text-slate-400" id="pwdPercentageDemo">0%</p></div>
                                         </div>
                                         <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-                                            <div class="flex items-center gap-3">
-                                                <span class="material-icons-outlined text-green-600 text-[28px]">school</span>
-                                                <div>
-                                                    <p class="text-sm font-semibold text-slate-900 dark:text-white">Balik-Aral Students</p>
-                                                    <p class="text-xs text-slate-500 dark:text-slate-400">Returning students</p>
-                                                </div>
-                                            </div>
-                                            <div class="text-right">
-                                                <p class="text-2xl font-bold text-slate-900 dark:text-white" id="balikAralCountDemo">0</p>
-                                                <p class="text-xs text-slate-500 dark:text-slate-400" id="balikAralPercentageDemo">0%</p>
-                                            </div>
+                                            <div class="flex items-center gap-3"><span class="material-icons-outlined text-green-600 text-[28px]">school</span><div><p class="text-sm font-semibold text-slate-900 dark:text-white">Balik-Aral Students</p><p class="text-xs text-slate-500 dark:text-slate-400">Returning students</p></div></div>
+                                            <div class="text-right"><p class="text-2xl font-bold text-slate-900 dark:text-white" id="balikAralCountDemo">0</p><p class="text-xs text-slate-500 dark:text-slate-400" id="balikAralPercentageDemo">0%</p></div>
                                         </div>
                                         <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-                                            <div class="flex items-center gap-3">
-                                                <span class="material-icons-outlined text-orange-600 text-[28px]">diversity_3</span>
-                                                <div>
-                                                    <p class="text-sm font-semibold text-slate-900 dark:text-white">IP Community</p>
-                                                    <p class="text-xs text-slate-500 dark:text-slate-400">Indigenous peoples</p>
-                                                </div>
-                                            </div>
-                                            <div class="text-right">
-                                                <p class="text-2xl font-bold text-slate-900 dark:text-white" id="ipCountDemo">0</p>
-                                                <p class="text-xs text-slate-500 dark:text-slate-400" id="ipPercentageDemo">0%</p>
-                                            </div>
+                                            <div class="flex items-center gap-3"><span class="material-icons-outlined text-orange-600 text-[28px]">diversity_3</span><div><p class="text-sm font-semibold text-slate-900 dark:text-white">IP Community</p><p class="text-xs text-slate-500 dark:text-slate-400">Indigenous peoples</p></div></div>
+                                            <div class="text-right"><p class="text-2xl font-bold text-slate-900 dark:text-white" id="ipCountDemo">0</p><p class="text-xs text-slate-500 dark:text-slate-400" id="ipPercentageDemo">0%</p></div>
                                         </div>
                                     </div>
                                 </div>
@@ -473,27 +421,12 @@
                         <div id="tab-distribution" class="tab-content" style="display: none;">
                             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 h-[400px]">
-                                    <div class="flex justify-between items-center">
-                                        <div>
-                                            <p class="text-slate-800 dark:text-white text-base font-medium">Grade Level Distribution</p>
-                                            <p class="text-slate-500 dark:text-slate-400 text-sm">Student distribution per grade</p>
-                                        </div>
-                                    </div>
-                                    <div class="relative flex-1 min-h-0">
-                                        <canvas id="gradeLevelChart"></canvas>
-                                    </div>
+                                    <div><p class="text-slate-800 dark:text-white text-base font-medium">Grade Level Distribution</p><p class="text-slate-500 dark:text-slate-400 text-sm">Student distribution per grade</p></div>
+                                    <div class="relative flex-1 min-h-0"><canvas id="gradeLevelChart"></canvas></div>
                                 </div>
-
                                 <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 h-[400px]">
-                                    <div class="flex justify-between items-center">
-                                        <div>
-                                            <p class="text-slate-800 dark:text-white text-base font-medium">Learner Type Distribution</p>
-                                            <p class="text-slate-500 dark:text-slate-400 text-sm">Current school year</p>
-                                        </div>
-                                    </div>
-                                    <div class="relative flex-1 min-h-0">
-                                        <canvas id="learnerTypeChart"></canvas>
-                                    </div>
+                                    <div><p class="text-slate-800 dark:text-white text-base font-medium">Learner Type Distribution</p><p class="text-slate-500 dark:text-slate-400 text-sm">Current school year</p></div>
+                                    <div class="relative flex-1 min-h-0"><canvas id="learnerTypeChart"></canvas></div>
                                 </div>
                             </div>
                         </div>
@@ -501,17 +434,123 @@
                         <!-- Tab Content: Strands -->
                         <div id="tab-strands" class="tab-content" style="display: none;">
                             <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 h-[500px]">
-                                <div class="flex justify-between items-center">
-                                    <div>
-                                        <p class="text-slate-800 dark:text-white text-lg font-semibold">Senior High School Strand Distribution</p>
-                                        <p class="text-slate-500 dark:text-slate-400 text-sm">Grade 11 & 12 students by strand</p>
-                                    </div>
-                                </div>
-                                <div class="relative flex-1 min-h-0">
-                                    <canvas id="strandChart"></canvas>
-                                </div>
+                                <div><p class="text-slate-800 dark:text-white text-lg font-semibold">Senior High School Strand Distribution</p><p class="text-slate-500 dark:text-slate-400 text-sm">Grade 11 &amp; 12 students by strand</p></div>
+                                <div class="relative flex-1 min-h-0"><canvas id="strandChart"></canvas></div>
                             </div>
                         </div>
+
+                        <!-- ══════════════════════════════════════
+                             ★ Tab Content: Year Comparison
+                        ══════════════════════════════════════ -->
+                        <div id="tab-comparison" class="tab-content" style="display: none;">
+
+                            <!-- Selector row -->
+                            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-5 mb-6">
+                                <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">Select Two School Years to Compare</p>
+                                <div class="flex flex-wrap items-center gap-4">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-3 h-3 rounded-full bg-primary shrink-0"></div>
+                                        <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Year A</label>
+                                        <select id="cmpYearA" class="h-9 px-4 rounded-lg bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm font-semibold text-slate-800 dark:text-white">
+                                            <option value="">Select year…</option>
+                                        </select>
+                                    </div>
+                                    <div class="vs-badge">VS</div>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-3 h-3 rounded-full bg-blue-500 shrink-0"></div>
+                                        <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Year B</label>
+                                        <select id="cmpYearB" class="h-9 px-4 rounded-lg bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm font-semibold text-slate-800 dark:text-white">
+                                            <option value="">Select year…</option>
+                                        </select>
+                                    </div>
+                                    <button onclick="runComparison()"
+                                        class="h-9 px-5 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-semibold flex items-center gap-2 transition-colors">
+                                        <span class="material-icons-outlined text-[18px]">compare_arrows</span>
+                                        Compare
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Empty state -->
+                            <div id="cmpPlaceholder" class="flex flex-col items-center justify-center py-24 text-center">
+                                <span class="material-icons-outlined text-[72px] text-slate-200 dark:text-slate-700 mb-4">compare_arrows</span>
+                                <p class="text-base font-semibold text-slate-500 dark:text-slate-400">Select two school years and click Compare</p>
+                                <p class="text-sm text-slate-400 dark:text-slate-500 mt-1">You'll see a full side-by-side breakdown of key metrics</p>
+                            </div>
+
+                            <!-- Loading -->
+                            <div id="cmpLoading" class="hidden flex items-center justify-center py-24">
+                                <div class="loading-spinner"></div>
+                            </div>
+
+                            <!-- Results -->
+                            <div id="cmpResults" class="hidden space-y-6">
+
+                                <!-- Year legend -->
+                                <div class="flex items-center gap-3">
+                                    <span class="flex items-center gap-1.5 text-sm font-bold text-slate-800 dark:text-white">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-primary inline-block"></span>
+                                        <span id="cmpLabelA">—</span>
+                                    </span>
+                                    <span class="text-slate-300 dark:text-slate-600 font-bold">vs.</span>
+                                    <span class="flex items-center gap-1.5 text-sm font-bold text-slate-800 dark:text-white">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>
+                                        <span id="cmpLabelB">—</span>
+                                    </span>
+                                </div>
+
+                                <!-- KPI grid -->
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="cmpKpiGrid"></div>
+
+                                <!-- Grade grouped bar chart -->
+                                <div class="rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6">
+                                    <p class="text-base font-semibold text-slate-900 dark:text-white mb-1">Grade Level Enrollment — Side by Side</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-5">Students per grade for each selected year</p>
+                                    <div style="height:300px;position:relative;"><canvas id="cmpGradeChart"></canvas></div>
+                                </div>
+
+                                <!-- Gender + Enrollment type -->
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    <div class="rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6">
+                                        <p class="text-base font-semibold text-slate-900 dark:text-white mb-1">Gender Distribution</p>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Male vs. Female per year</p>
+                                        <div style="height:220px;position:relative;"><canvas id="cmpGenderChart"></canvas></div>
+                                    </div>
+                                    <div class="rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6">
+                                        <p class="text-base font-semibold text-slate-900 dark:text-white mb-1">Enrollment Type</p>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">How students enrolled each year</p>
+                                        <div style="height:220px;position:relative;"><canvas id="cmpTypeChart"></canvas></div>
+                                    </div>
+                                </div>
+
+                                <!-- Detail table -->
+                                <div class="rounded-xl bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
+                                    <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+                                        <p class="text-base font-semibold text-slate-900 dark:text-white">Grade-by-Grade Breakdown</p>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400">Δ = change from Year A → Year B</p>
+                                    </div>
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full text-left text-sm">
+                                            <thead class="bg-slate-50 dark:bg-slate-700/50">
+                                                <tr>
+                                                    <th class="px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase">Grade</th>
+                                                    <th class="px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase text-center" id="cmpThA">Year A</th>
+                                                    <th class="px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase text-center" id="cmpThB">Year B</th>
+                                                    <th class="px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase text-center">Δ Change</th>
+                                                    <th class="px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase text-center">Male A / B</th>
+                                                    <th class="px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase text-center">Female A / B</th>
+                                                    <th class="px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase text-center">PWD A / B</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="cmpTableBody" class="divide-y divide-slate-100 dark:divide-slate-700">
+                                                <tr><td colspan="7" class="px-4 py-8 text-center text-slate-400">Run a comparison to see data.</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                            </div><!-- /cmpResults -->
+                        </div><!-- /tab-comparison -->
 
                         <!-- Tab Content: Detailed Report -->
                         <div id="tab-detailed" class="tab-content" style="display: none;">
@@ -542,193 +581,55 @@
 
                         <!-- Tab Content: View All -->
                         <div id="tab-all" class="tab-content" style="display: none;">
-                            <!-- Overview Summary Cards -->
                             <div class="mb-6">
-                                <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                                    <span class="material-icons-outlined text-primary">summarize</span>
-                                    Overview Summary
-                                </h2>
+                                <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2"><span class="material-icons-outlined text-primary">summarize</span>Overview Summary</h2>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                                    <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 shadow-sm">
-                                        <p class="text-slate-600 dark:text-slate-400 text-sm font-medium">Total Enrolled Students</p>
-                                        <p class="text-slate-900 dark:text-white text-3xl font-bold" id="totalStudentsAll">0</p>
-                                        <p class="text-sm font-medium flex items-center gap-1" id="studentsTrendAll">
-                                            <span class="material-symbols-outlined text-base">trending_flat</span>
-                                            <span>No change</span>
-                                        </p>
-                                    </div>
-                                    <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 shadow-sm">
-                                        <p class="text-slate-600 dark:text-slate-400 text-sm font-medium">Dropout Rate</p>
-                                        <p class="text-slate-900 dark:text-white text-3xl font-bold" id="dropoutRateAll">0%</p>
-                                        <p class="text-sm font-medium flex items-center gap-1" id="dropoutTrendAll">
-                                            <span class="material-symbols-outlined text-base">trending_flat</span>
-                                            <span>No data</span>
-                                        </p>
-                                    </div>
-                                    <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 shadow-sm">
-                                        <p class="text-slate-600 dark:text-slate-400 text-sm font-medium">PWD Students</p>
-                                        <p class="text-slate-900 dark:text-white text-3xl font-bold" id="pwdCountAll">0</p>
-                                        <p class="text-slate-500 dark:text-slate-400 text-sm" id="pwdPercentageAll">0% of total</p>
-                                    </div>
-                                    <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 shadow-sm">
-                                        <p class="text-slate-600 dark:text-slate-400 text-sm font-medium">Balik-Aral Students</p>
-                                        <p class="text-slate-900 dark:text-white text-3xl font-bold" id="balikAralCountAll">0</p>
-                                        <p class="text-slate-500 dark:text-slate-400 text-sm" id="balikAralPercentageAll">0% of total</p>
-                                    </div>
+                                    <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 shadow-sm"><p class="text-slate-600 dark:text-slate-400 text-sm font-medium">Total Enrolled Students</p><p class="text-slate-900 dark:text-white text-3xl font-bold" id="totalStudentsAll">0</p><p class="text-sm font-medium flex items-center gap-1" id="studentsTrendAll"><span class="material-symbols-outlined text-base">trending_flat</span><span>No change</span></p></div>
+                                    <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 shadow-sm"><p class="text-slate-600 dark:text-slate-400 text-sm font-medium">Dropout Rate</p><p class="text-slate-900 dark:text-white text-3xl font-bold" id="dropoutRateAll">0%</p><p class="text-sm font-medium flex items-center gap-1" id="dropoutTrendAll"><span class="material-symbols-outlined text-base">trending_flat</span><span>No data</span></p></div>
+                                    <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 shadow-sm"><p class="text-slate-600 dark:text-slate-400 text-sm font-medium">PWD Students</p><p class="text-slate-900 dark:text-white text-3xl font-bold" id="pwdCountAll">0</p><p class="text-slate-500 dark:text-slate-400 text-sm" id="pwdPercentageAll">0% of total</p></div>
+                                    <div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-800 shadow-sm"><p class="text-slate-600 dark:text-slate-400 text-sm font-medium">Balik-Aral Students</p><p class="text-slate-900 dark:text-white text-3xl font-bold" id="balikAralCountAll">0</p><p class="text-slate-500 dark:text-slate-400 text-sm" id="balikAralPercentageAll">0% of total</p></div>
                                 </div>
                             </div>
-
-                            <!-- Enrollment Trends Section -->
                             <div class="mb-6">
-                                <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                                    <span class="material-icons-outlined text-primary">trending_up</span>
-                                    Enrollment Trends
-                                </h2>
-                                <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 h-[400px]">
-                                    <div class="relative flex-1 min-h-0">
-                                        <canvas id="enrollmentTrendsChartAll"></canvas>
-                                    </div>
-                                </div>
+                                <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2"><span class="material-icons-outlined text-primary">trending_up</span>Enrollment Trends</h2>
+                                <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 h-[400px]"><div class="relative flex-1 min-h-0"><canvas id="enrollmentTrendsChartAll"></canvas></div></div>
                             </div>
-
-                            <!-- Demographics Section -->
                             <div class="mb-6">
-                                <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                                    <span class="material-icons-outlined text-primary">groups</span>
-                                    Demographics
-                                </h2>
+                                <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2"><span class="material-icons-outlined text-primary">groups</span>Demographics</h2>
                                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                    <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 h-[400px]">
-                                        <div>
-                                            <p class="text-slate-800 dark:text-white text-base font-medium">Gender Distribution</p>
-                                            <p class="text-slate-500 dark:text-slate-400 text-sm">Current enrollment</p>
-                                        </div>
-                                        <div class="relative flex-1 min-h-0">
-                                            <canvas id="genderChartAll"></canvas>
-                                        </div>
-                                    </div>
-
+                                    <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 h-[400px]"><div><p class="text-slate-800 dark:text-white text-base font-medium">Gender Distribution</p></div><div class="relative flex-1 min-h-0"><canvas id="genderChartAll"></canvas></div></div>
                                     <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6">
-                                        <div>
-                                            <p class="text-slate-800 dark:text-white text-base font-medium">Special Categories</p>
-                                            <p class="text-slate-500 dark:text-slate-400 text-sm">Breakdown of student categories</p>
-                                        </div>
+                                        <div><p class="text-slate-800 dark:text-white text-base font-medium">Special Categories</p></div>
                                         <div class="space-y-4 mt-4">
-                                            <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-                                                <div class="flex items-center gap-3">
-                                                    <span class="material-icons-outlined text-purple-600 text-[28px]">accessible</span>
-                                                    <div>
-                                                        <p class="text-sm font-semibold text-slate-900 dark:text-white">PWD Students</p>
-                                                        <p class="text-xs text-slate-500 dark:text-slate-400">Persons with Disability</p>
-                                                    </div>
-                                                </div>
-                                                <div class="text-right">
-                                                    <p class="text-2xl font-bold text-slate-900 dark:text-white" id="pwdCountDemoAll">0</p>
-                                                    <p class="text-xs text-slate-500 dark:text-slate-400" id="pwdPercentageDemoAll">0%</p>
-                                                </div>
-                                            </div>
-                                            <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-                                                <div class="flex items-center gap-3">
-                                                    <span class="material-icons-outlined text-green-600 text-[28px]">school</span>
-                                                    <div>
-                                                        <p class="text-sm font-semibold text-slate-900 dark:text-white">Balik-Aral Students</p>
-                                                        <p class="text-xs text-slate-500 dark:text-slate-400">Returning students</p>
-                                                    </div>
-                                                </div>
-                                                <div class="text-right">
-                                                    <p class="text-2xl font-bold text-slate-900 dark:text-white" id="balikAralCountDemoAll">0</p>
-                                                    <p class="text-xs text-slate-500 dark:text-slate-400" id="balikAralPercentageDemoAll">0%</p>
-                                                </div>
-                                            </div>
-                                            <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-                                                <div class="flex items-center gap-3">
-                                                    <span class="material-icons-outlined text-orange-600 text-[28px]">diversity_3</span>
-                                                    <div>
-                                                        <p class="text-sm font-semibold text-slate-900 dark:text-white">IP Community</p>
-                                                        <p class="text-xs text-slate-500 dark:text-slate-400">Indigenous peoples</p>
-                                                    </div>
-                                                </div>
-                                                <div class="text-right">
-                                                    <p class="text-2xl font-bold text-slate-900 dark:text-white" id="ipCountDemoAll">0</p>
-                                                    <p class="text-xs text-slate-500 dark:text-slate-400" id="ipPercentageDemoAll">0%</p>
-                                                </div>
-                                            </div>
+                                            <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg"><div class="flex items-center gap-3"><span class="material-icons-outlined text-purple-600 text-[28px]">accessible</span><div><p class="text-sm font-semibold text-slate-900 dark:text-white">PWD Students</p></div></div><div class="text-right"><p class="text-2xl font-bold text-slate-900 dark:text-white" id="pwdCountDemoAll">0</p><p class="text-xs text-slate-500 dark:text-slate-400" id="pwdPercentageDemoAll">0%</p></div></div>
+                                            <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg"><div class="flex items-center gap-3"><span class="material-icons-outlined text-green-600 text-[28px]">school</span><div><p class="text-sm font-semibold text-slate-900 dark:text-white">Balik-Aral Students</p></div></div><div class="text-right"><p class="text-2xl font-bold text-slate-900 dark:text-white" id="balikAralCountDemoAll">0</p><p class="text-xs text-slate-500 dark:text-slate-400" id="balikAralPercentageDemoAll">0%</p></div></div>
+                                            <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg"><div class="flex items-center gap-3"><span class="material-icons-outlined text-orange-600 text-[28px]">diversity_3</span><div><p class="text-sm font-semibold text-slate-900 dark:text-white">IP Community</p></div></div><div class="text-right"><p class="text-2xl font-bold text-slate-900 dark:text-white" id="ipCountDemoAll">0</p><p class="text-xs text-slate-500 dark:text-slate-400" id="ipPercentageDemoAll">0%</p></div></div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-
-                            <!-- Distribution Section -->
                             <div class="mb-6">
-                                <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                                    <span class="material-icons-outlined text-primary">bar_chart</span>
-                                    Distribution Analysis
-                                </h2>
+                                <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2"><span class="material-icons-outlined text-primary">bar_chart</span>Distribution Analysis</h2>
                                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                    <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 h-[400px]">
-                                        <div>
-                                            <p class="text-slate-800 dark:text-white text-base font-medium">Grade Level Distribution</p>
-                                            <p class="text-slate-500 dark:text-slate-400 text-sm">Student distribution per grade</p>
-                                        </div>
-                                        <div class="relative flex-1 min-h-0">
-                                            <canvas id="gradeLevelChartAll"></canvas>
-                                        </div>
-                                    </div>
-
-                                    <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 h-[400px]">
-                                        <div>
-                                            <p class="text-slate-800 dark:text-white text-base font-medium">Learner Type Distribution</p>
-                                            <p class="text-slate-500 dark:text-slate-400 text-sm">Current school year</p>
-                                        </div>
-                                        <div class="relative flex-1 min-h-0">
-                                            <canvas id="learnerTypeChartAll"></canvas>
-                                        </div>
-                                    </div>
+                                    <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 h-[400px]"><div><p class="text-slate-800 dark:text-white text-base font-medium">Grade Level Distribution</p></div><div class="relative flex-1 min-h-0"><canvas id="gradeLevelChartAll"></canvas></div></div>
+                                    <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 h-[400px]"><div><p class="text-slate-800 dark:text-white text-base font-medium">Learner Type Distribution</p></div><div class="relative flex-1 min-h-0"><canvas id="learnerTypeChartAll"></canvas></div></div>
                                 </div>
                             </div>
-
-                            <!-- Senior High Strands Section -->
                             <div id="strandSectionAll" class="mb-6" style="display: none;">
-                                <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                                    <span class="material-icons-outlined text-primary">school</span>
-                                    Senior High School Strands
-                                </h2>
-                                <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 h-[400px]">
-                                    <div>
-                                        <p class="text-slate-800 dark:text-white text-base font-medium">Strand Distribution</p>
-                                        <p class="text-slate-500 dark:text-slate-400 text-sm">Grade 11 & 12 students by strand</p>
-                                    </div>
-                                    <div class="relative flex-1 min-h-0">
-                                        <canvas id="strandChartAll"></canvas>
-                                    </div>
-                                </div>
+                                <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2"><span class="material-icons-outlined text-primary">school</span>Senior High School Strands</h2>
+                                <div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 h-[400px]"><div><p class="text-slate-800 dark:text-white text-base font-medium">Strand Distribution</p><p class="text-slate-500 dark:text-slate-400 text-sm">Grade 11 &amp; 12 students by strand</p></div><div class="relative flex-1 min-h-0"><canvas id="strandChartAll"></canvas></div></div>
                             </div>
-
-                            <!-- Detailed Statistics Section -->
                             <div class="mb-6">
-                                <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                                    <span class="material-icons-outlined text-primary">table_view</span>
-                                    Detailed Report
-                                </h2>
+                                <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2"><span class="material-icons-outlined text-primary">table_view</span>Detailed Report</h2>
                                 <div class="rounded-xl bg-white dark:bg-slate-800 shadow-sm p-6 overflow-x-auto">
                                     <table class="w-full text-left">
-                                        <thead>
-                                            <tr class="border-b border-slate-200 dark:border-slate-700">
-                                                <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Grade Level</th>
-                                                <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Total</th>
-                                                <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Male</th>
-                                                <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Female</th>
-                                                <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">PWD</th>
-                                                <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Balik-Aral</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="statsTableBodyAll" class="divide-y divide-slate-100 dark:divide-slate-700">
-                                            <tr><td colspan="6" class="p-3 text-center text-slate-500">Loading data...</td></tr>
-                                        </tbody>
+                                        <thead><tr class="border-b border-slate-200 dark:border-slate-700"><th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Grade Level</th><th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Total</th><th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Male</th><th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Female</th><th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">PWD</th><th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Balik-Aral</th></tr></thead>
+                                        <tbody id="statsTableBodyAll" class="divide-y divide-slate-100 dark:divide-slate-700"><tr><td colspan="6" class="p-3 text-center text-slate-500">Loading data...</td></tr></tbody>
                                     </table>
                                 </div>
                             </div>
                         </div>
+
                     </div>
                 </div>
             </main>
@@ -736,617 +637,535 @@
     </div>
 
     <script>
-        let enrollmentTrendsChart, genderChart, learnerTypeChart, gradeLevelChart, strandChart;
-        let enrollmentTrendsChartAll, genderChartAll, learnerTypeChartAll, gradeLevelChartAll, strandChartAll;
-        let analyticsData = {};
-        let currentTab = 'overview';
+    // ─── State ────────────────────────────────────────────────────
+    let enrollmentTrendsChart, genderChart, learnerTypeChart, gradeLevelChart, strandChart;
+    let enrollmentTrendsChartAll, genderChartAll, learnerTypeChartAll, gradeLevelChartAll, strandChartAll;
+    let cmpGradeChart, cmpGenderChart, cmpTypeChart;
+    let analyticsData = {};
+    let currentTab    = 'overview';
+    let schoolYears   = [];
 
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeCharts();
-            loadSchoolYears();
-            setupEventListeners();
-            displayUserInfo();
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeCharts();
+        loadSchoolYears();
+        setupEventListeners();
+        displayUserInfo();
+    });
+
+    function displayUserInfo() {
+        const userData = JSON.parse(localStorage.getItem('user') || '{}');
+        if (userData.FirstName && userData.LastName) {
+            document.getElementById('userName').textContent     = `${userData.FirstName} ${userData.LastName}`;
+            document.getElementById('userInitials').textContent = `${userData.FirstName[0]}${userData.LastName[0]}`.toUpperCase();
+        }
+    }
+
+    function setupEventListeners() {
+        const exportBtn  = document.getElementById('exportBtn');
+        const exportMenu = document.getElementById('exportMenu');
+        exportBtn.addEventListener('click', (e) => { e.stopPropagation(); exportMenu.classList.toggle('hidden'); updateExportMenu(); });
+        document.addEventListener('click', () => exportMenu.classList.add('hidden'));
+        exportMenu.addEventListener('click', (e) => e.stopPropagation());
+    }
+
+    function updateExportMenu() {
+        const tabNames = {
+            overview: 'Overview Summary', trends: 'Enrollment Trends',
+            demographics: 'Demographics',  distribution: 'Distribution Analysis',
+            strands: 'Senior High Strands', comparison: 'Year Comparison',
+            detailed: 'Detailed Report',    all: 'Complete Analytics'
+        };
+        const name = tabNames[currentTab] || 'Current View';
+        document.getElementById('exportCsvText').textContent   = `Export ${name} (CSV)`;
+        document.getElementById('exportExcelText').textContent = `Export ${name} (Excel)`;
+    }
+
+    // ─── Tabs ─────────────────────────────────────────────────────
+    function switchTab(tabName) {
+        currentTab = tabName;
+        document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+        document.getElementById(`tab-${tabName}`).style.display = 'block';
+
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.remove('active');
+            b.classList.add('text-slate-600', 'dark:text-slate-400');
         });
+        const active = document.querySelector(`[data-tab="${tabName}"]`);
+        if (active) { active.classList.add('active'); active.classList.remove('text-slate-600', 'dark:text-slate-400'); }
 
-        function displayUserInfo() {
-            const userData = JSON.parse(localStorage.getItem('user') || '{}');
-            const userNameEl = document.getElementById('userName');
-            const userInitialsEl = document.getElementById('userInitials');
-            
-            if (userData.FirstName && userData.LastName) {
-                userNameEl.textContent = `${userData.FirstName} ${userData.LastName}`;
-                userInitialsEl.textContent = `${userData.FirstName[0]}${userData.LastName[0]}`.toUpperCase();
+        // Hide global filters on comparison tab — it has its own year selectors
+        document.getElementById('globalFilters').style.display =
+            tabName === 'comparison' ? 'none' : '';
+
+        if (tabName === 'trends')       { enrollmentTrendsChart?.update(); }
+        else if (tabName === 'demographics') { genderChart?.update(); }
+        else if (tabName === 'distribution') { gradeLevelChart?.update(); learnerTypeChart?.update(); }
+        else if (tabName === 'strands') { strandChart?.update(); }
+        else if (tabName === 'all')     {
+            [enrollmentTrendsChartAll, genderChartAll, gradeLevelChartAll, learnerTypeChartAll, strandChartAll]
+                .forEach(c => c?.update());
+        }
+    }
+
+    // ─── School years (shared: global filter + comparison selects) ─
+    async function loadSchoolYears() {
+        try {
+            const response = await fetch('../backend/api/get-school-years.php');
+            const data = await response.json();
+
+            const syFilter = document.getElementById('syFilter');
+            const cmpA     = document.getElementById('cmpYearA');
+            const cmpB     = document.getElementById('cmpYearB');
+
+            if (data.success && data.schoolYears?.length > 0) {
+                schoolYears = data.schoolYears;
+                data.schoolYears.forEach((sy, i) => {
+                    syFilter.appendChild(new Option(`S.Y. ${sy}`, sy));
+                    cmpA.appendChild(new Option(`S.Y. ${sy}`, sy));
+                    cmpB.appendChild(new Option(`S.Y. ${sy}`, sy));
+                    // Pre-select: Year A = most recent, Year B = second
+                    if (i === 0) cmpA.value = sy;
+                    if (i === 1) cmpB.value = sy;
+                });
             }
+        } catch (error) {
+            console.error('Error loading school years:', error);
         }
+        loadAnalyticsData();
+    }
 
-        function setupEventListeners() {
-            const exportBtn = document.getElementById('exportBtn');
-            const exportMenu = document.getElementById('exportMenu');
-            
-            exportBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                exportMenu.classList.toggle('hidden');
-                updateExportMenu();
-            });
+    // ─── Main analytics data ──────────────────────────────────────
+    async function loadAnalyticsData() {
+        document.getElementById('loadingState').style.display     = 'flex';
+        document.getElementById('analyticsContent').style.display = 'none';
 
-            document.addEventListener('click', () => {
-                exportMenu.classList.add('hidden');
-            });
+        const sy    = document.getElementById('syFilter').value;
+        const grade = document.getElementById('gradeFilter').value;
 
-            exportMenu.addEventListener('click', (e) => {
-                e.stopPropagation();
-            });
-        }
+        try {
+            const response = await fetch(`../backend/api/get-analytics.php?sy=${sy}&grade=${grade}`);
+            const data = await response.json();
 
-        function updateExportMenu() {
-            const tabNames = {
-                'overview': 'Overview Summary',
-                'trends': 'Enrollment Trends',
-                'demographics': 'Demographics',
-                'distribution': 'Distribution Analysis',
-                'strands': 'Senior High Strands',
-                'detailed': 'Detailed Report',
-                'all': 'Complete Analytics'
-            };
-
-            const currentTabName = tabNames[currentTab] || 'Current View';
-            
-            document.getElementById('exportCsvText').textContent = `Export ${currentTabName} (CSV)`;
-            document.getElementById('exportExcelText').textContent = `Export ${currentTabName} (Excel)`;
-
-            // Show "Export Complete Report" only on Overview tab, hide on View All (since it's already complete)
-            const exportAllOption = document.getElementById('exportAllOption');
-            if (currentTab === 'overview') {
-                exportAllOption.style.display = 'block';
+            if (data.success) {
+                analyticsData = data.data;
+                updateDashboard();
+                document.getElementById('loadingState').style.display     = 'none';
+                document.getElementById('analyticsContent').style.display = 'block';
             } else {
-                exportAllOption.style.display = 'none';
+                console.error('Error:', data.message);
+                alert('Failed to load analytics data: ' + data.message);
             }
+        } catch (error) {
+            console.error('Error loading analytics:', error);
+            alert('Failed to load analytics data.');
         }
+    }
 
-        function switchTab(tabName) {
-            currentTab = tabName;
-            
-            // Hide all tab contents
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.style.display = 'none';
-            });
-            
-            // Show selected tab content
-            document.getElementById(`tab-${tabName}`).style.display = 'block';
-            
-            // Update tab buttons
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active');
-                btn.classList.add('text-slate-600', 'dark:text-slate-400');
-            });
-            
-            const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
-            activeBtn.classList.add('active');
-            activeBtn.classList.remove('text-slate-600', 'dark:text-slate-400');
-            
-            // Update charts if needed
-            if (tabName === 'trends' && enrollmentTrendsChart) {
-                enrollmentTrendsChart.update();
-            } else if (tabName === 'demographics' && genderChart) {
-                genderChart.update();
-            } else if (tabName === 'distribution') {
-                if (gradeLevelChart) gradeLevelChart.update();
-                if (learnerTypeChart) learnerTypeChart.update();
-            } else if (tabName === 'strands' && strandChart) {
-                strandChart.update();
-            } else if (tabName === 'all') {
-                // Update all charts in the View All tab
-                if (enrollmentTrendsChartAll) enrollmentTrendsChartAll.update();
-                if (genderChartAll) genderChartAll.update();
-                if (gradeLevelChartAll) gradeLevelChartAll.update();
-                if (learnerTypeChartAll) learnerTypeChartAll.update();
-                if (strandChartAll) strandChartAll.update();
-            }
+    function updateDashboard() {
+        const total = analyticsData.totalStudents || 1;
+        const pct   = n => ((n / total) * 100).toFixed(1);
+
+        document.getElementById('totalStudents').textContent  = analyticsData.totalStudents || 0;
+        document.getElementById('dropoutRate').textContent    = (analyticsData.dropoutRate || 0) + '%';
+        document.getElementById('pwdCount').textContent       = analyticsData.pwdCount || 0;
+        document.getElementById('balikAralCount').textContent = analyticsData.balikAralCount || 0;
+        document.getElementById('pwdPercentage').textContent  = pct(analyticsData.pwdCount) + '% of total';
+        document.getElementById('balikAralPercentage').textContent = pct(analyticsData.balikAralCount) + '% of total';
+
+        document.getElementById('pwdCountDemo').textContent       = analyticsData.pwdCount || 0;
+        document.getElementById('pwdPercentageDemo').textContent  = pct(analyticsData.pwdCount) + '%';
+        document.getElementById('balikAralCountDemo').textContent = analyticsData.balikAralCount || 0;
+        document.getElementById('balikAralPercentageDemo').textContent = pct(analyticsData.balikAralCount) + '%';
+        document.getElementById('ipCountDemo').textContent        = analyticsData.ipCount || 0;
+        document.getElementById('ipPercentageDemo').textContent   = pct(analyticsData.ipCount) + '%';
+
+        document.getElementById('totalStudentsAll').textContent       = analyticsData.totalStudents || 0;
+        document.getElementById('dropoutRateAll').textContent         = (analyticsData.dropoutRate || 0) + '%';
+        document.getElementById('pwdCountAll').textContent            = analyticsData.pwdCount || 0;
+        document.getElementById('balikAralCountAll').textContent      = analyticsData.balikAralCount || 0;
+        document.getElementById('pwdPercentageAll').textContent       = pct(analyticsData.pwdCount) + '% of total';
+        document.getElementById('balikAralPercentageAll').textContent = pct(analyticsData.balikAralCount) + '% of total';
+        document.getElementById('pwdCountDemoAll').textContent        = analyticsData.pwdCount || 0;
+        document.getElementById('pwdPercentageDemoAll').textContent   = pct(analyticsData.pwdCount) + '%';
+        document.getElementById('balikAralCountDemoAll').textContent  = analyticsData.balikAralCount || 0;
+        document.getElementById('balikAralPercentageDemoAll').textContent = pct(analyticsData.balikAralCount) + '%';
+        document.getElementById('ipCountDemoAll').textContent         = analyticsData.ipCount || 0;
+        document.getElementById('ipPercentageDemoAll').textContent    = pct(analyticsData.ipCount) + '%';
+
+        updateTrends();
+        updateQuickInsights();
+        updateCharts();
+        updateStatsTable();
+        updateStrandVisibility();
+    }
+
+    function updateQuickInsights() {
+        const total  = analyticsData.totalStudents || 0;
+        const male   = analyticsData.genderDistribution?.male   || 0;
+        const female = analyticsData.genderDistribution?.female || 0;
+        const pwd    = analyticsData.pwdCount || 0;
+        const pct    = n => total ? ((n/total)*100).toFixed(1) : 0;
+
+        document.getElementById('insightTotal').textContent  = `${total} students currently enrolled across all grade levels`;
+        document.getElementById('insightGender').textContent = `${male} male (${pct(male)}%) and ${female} female (${pct(female)}%)`;
+        document.getElementById('insightPWD').textContent    = `${pwd} students with special needs (${pct(pwd)}% of total enrollment)`;
+
+        const gradeDist  = analyticsData.gradeLevelDistribution || [];
+        const maxGrade   = Math.max(...gradeDist);
+        const maxIdx     = gradeDist.indexOf(maxGrade);
+        const gradeNames = ['Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12'];
+        document.getElementById('insightGrade').textContent = `${gradeNames[maxIdx]} with ${maxGrade} students`;
+    }
+
+    function updateTrends() {
+        const setTrend = (id, change, lowerIsBetter = false) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const icon  = change > 0 ? 'arrow_upward' : change < 0 ? 'arrow_downward' : 'trending_flat';
+            const good  = lowerIsBetter ? change < 0 : change > 0;
+            const color = change === 0 ? 'text-slate-500' : (good ? 'text-green-600' : 'text-red-600');
+            el.className = `text-sm font-medium flex items-center gap-1 ${color}`;
+            el.innerHTML = `<span class="material-symbols-outlined text-base">${icon}</span><span>${change > 0 ? '+' : ''}${change} from last year</span>`;
+        };
+
+        if (analyticsData.previousYearTotal !== undefined) {
+            const change = analyticsData.totalStudents - analyticsData.previousYearTotal;
+            setTrend('studentsTrend', change);
+            setTrend('studentsTrendAll', change);
         }
-
-        async function loadSchoolYears() {
-            try {
-                const response = await fetch('../backend/api/get-school-years.php');
-                const data = await response.json();
-                
-                const syFilter = document.getElementById('syFilter');
-                if (data.success && data.schoolYears && data.schoolYears.length > 0) {
-                    data.schoolYears.forEach(sy => {
-                        const option = document.createElement('option');
-                        option.value = sy;
-                        option.textContent = `S.Y. ${sy}`;
-                        syFilter.appendChild(option);
-                    });
-                    
-                    loadAnalyticsData();
-                } else {
-                    loadAnalyticsData();
-                }
-            } catch (error) {
-                console.error('Error loading school years:', error);
-                loadAnalyticsData();
-            }
-        }
-
-        async function loadAnalyticsData() {
-            document.getElementById('loadingState').style.display = 'flex';
-            document.getElementById('analyticsContent').style.display = 'none';
-            
-            const sy = document.getElementById('syFilter').value;
-            const grade = document.getElementById('gradeFilter').value;
-            
-            try {
-                const response = await fetch(`../backend/api/get-analytics.php?sy=${sy}&grade=${grade}`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    analyticsData = data.data;
-                    updateDashboard();
-                    document.getElementById('loadingState').style.display = 'none';
-                    document.getElementById('analyticsContent').style.display = 'block';
-                } else {
-                    console.error('Error:', data.message);
-                    alert('Failed to load analytics data: ' + data.message);
-                }
-            } catch (error) {
-                console.error('Error loading analytics:', error);
-                alert('Failed to load analytics data.');
-            }
-        }
-
-        function updateDashboard() {
-            // Update overview stats
-            document.getElementById('totalStudents').textContent = analyticsData.totalStudents || 0;
-            document.getElementById('dropoutRate').textContent = (analyticsData.dropoutRate || 0) + '%';
-            document.getElementById('pwdCount').textContent = analyticsData.pwdCount || 0;
-            document.getElementById('balikAralCount').textContent = analyticsData.balikAralCount || 0;
-            
-            const total = analyticsData.totalStudents || 1;
-            const pwdPercent = ((analyticsData.pwdCount / total) * 100).toFixed(1);
-            const balikAralPercent = ((analyticsData.balikAralCount / total) * 100).toFixed(1);
-            
-            document.getElementById('pwdPercentage').textContent = pwdPercent + '% of total';
-            document.getElementById('balikAralPercentage').textContent = balikAralPercent + '% of total';
-            
-            // Update demographics tab
-            document.getElementById('pwdCountDemo').textContent = analyticsData.pwdCount || 0;
-            document.getElementById('pwdPercentageDemo').textContent = pwdPercent + '%';
-            document.getElementById('balikAralCountDemo').textContent = analyticsData.balikAralCount || 0;
-            document.getElementById('balikAralPercentageDemo').textContent = balikAralPercent + '%';
-            document.getElementById('ipCountDemo').textContent = analyticsData.ipCount || 0;
-            document.getElementById('ipPercentageDemo').textContent = ((analyticsData.ipCount / total) * 100).toFixed(1) + '%';
-            
-            // Update View All tab
-            document.getElementById('totalStudentsAll').textContent = analyticsData.totalStudents || 0;
-            document.getElementById('dropoutRateAll').textContent = (analyticsData.dropoutRate || 0) + '%';
-            document.getElementById('pwdCountAll').textContent = analyticsData.pwdCount || 0;
-            document.getElementById('balikAralCountAll').textContent = analyticsData.balikAralCount || 0;
-            document.getElementById('pwdPercentageAll').textContent = pwdPercent + '% of total';
-            document.getElementById('balikAralPercentageAll').textContent = balikAralPercent + '% of total';
-            
-            document.getElementById('pwdCountDemoAll').textContent = analyticsData.pwdCount || 0;
-            document.getElementById('pwdPercentageDemoAll').textContent = pwdPercent + '%';
-            document.getElementById('balikAralCountDemoAll').textContent = analyticsData.balikAralCount || 0;
-            document.getElementById('balikAralPercentageDemoAll').textContent = balikAralPercent + '%';
-            document.getElementById('ipCountDemoAll').textContent = analyticsData.ipCount || 0;
-            document.getElementById('ipPercentageDemoAll').textContent = ((analyticsData.ipCount / total) * 100).toFixed(1) + '%';
-            
-            updateTrends();
-            updateQuickInsights();
-            updateCharts();
-            updateStatsTable();
-            updateStrandVisibility();
-        }
-
-        function updateQuickInsights() {
-            const total = analyticsData.totalStudents || 0;
-            const male = analyticsData.genderDistribution?.male || 0;
-            const female = analyticsData.genderDistribution?.female || 0;
-            const pwd = analyticsData.pwdCount || 0;
-            
-            document.getElementById('insightTotal').textContent = 
-                `${total} students currently enrolled across all grade levels`;
-            
-            document.getElementById('insightGender').textContent = 
-                `${male} male (${((male/total)*100).toFixed(1)}%) and ${female} female (${((female/total)*100).toFixed(1)}%)`;
-            
-            document.getElementById('insightPWD').textContent = 
-                `${pwd} students with special needs (${((pwd/total)*100).toFixed(1)}% of total enrollment)`;
-            
-            // Find largest grade level
-            const gradeDist = analyticsData.gradeLevelDistribution || [];
-            const maxGrade = Math.max(...gradeDist);
-            const maxGradeIndex = gradeDist.indexOf(maxGrade);
-            const gradeNames = ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
-            
-            document.getElementById('insightGrade').textContent = 
-                `${gradeNames[maxGradeIndex]} with ${maxGrade} students`;
-        }
-
-        function updateTrends() {
-            const studentsTrend = document.getElementById('studentsTrend');
-            const dropoutTrend = document.getElementById('dropoutTrend');
-            const studentsTrendAll = document.getElementById('studentsTrendAll');
-            const dropoutTrendAll = document.getElementById('dropoutTrendAll');
-            
-            if (analyticsData.previousYearTotal !== undefined) {
-                const change = analyticsData.totalStudents - analyticsData.previousYearTotal;
-                const icon = change > 0 ? 'arrow_upward' : change < 0 ? 'arrow_downward' : 'trending_flat';
-                const color = change > 0 ? 'text-green-600' : change < 0 ? 'text-red-600' : 'text-slate-500';
-                
-                const trendHTML = `
-                    <span class="material-symbols-outlined text-base">${icon}</span>
-                    <span>${change > 0 ? '+' : ''}${change} from last year</span>
-                `;
-                
-                studentsTrend.className = `text-sm font-medium flex items-center gap-1 ${color}`;
-                studentsTrend.innerHTML = trendHTML;
-                studentsTrendAll.className = `text-sm font-medium flex items-center gap-1 ${color}`;
-                studentsTrendAll.innerHTML = trendHTML;
-            }
-            
-            if (analyticsData.previousDropoutRate !== undefined) {
-                const change = analyticsData.dropoutRate - analyticsData.previousDropoutRate;
-                const icon = change < 0 ? 'arrow_downward' : change > 0 ? 'arrow_upward' : 'trending_flat';
+        if (analyticsData.previousDropoutRate !== undefined) {
+            const change = analyticsData.dropoutRate - analyticsData.previousDropoutRate;
+            ['dropoutTrend','dropoutTrendAll'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const icon  = change < 0 ? 'arrow_downward' : change > 0 ? 'arrow_upward' : 'trending_flat';
                 const color = change < 0 ? 'text-green-600' : change > 0 ? 'text-red-600' : 'text-slate-500';
-                
-                const trendHTML = `
-                    <span class="material-symbols-outlined text-base">${icon}</span>
-                    <span>${change > 0 ? '+' : ''}${change.toFixed(1)}% from last year</span>
-                `;
-                
-                dropoutTrend.className = `text-sm font-medium flex items-center gap-1 ${color}`;
-                dropoutTrend.innerHTML = trendHTML;
-                dropoutTrendAll.className = `text-sm font-medium flex items-center gap-1 ${color}`;
-                dropoutTrendAll.innerHTML = trendHTML;
-            }
-        }
-
-        function initializeCharts() {
-            const trendsCtx = document.getElementById('enrollmentTrendsChart').getContext('2d');
-            enrollmentTrendsChart = new Chart(trendsCtx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Total Enrollment',
-                        data: [],
-                        borderColor: '#085019',
-                        backgroundColor: 'rgba(8, 80, 25, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: true, position: 'bottom' } },
-                    scales: {
-                        y: { beginAtZero: true }
-                    }
-                }
-            });
-
-            const genderCtx = document.getElementById('genderChart').getContext('2d');
-            genderChart = new Chart(genderCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Male', 'Female'],
-                    datasets: [{
-                        data: [0, 0],
-                        backgroundColor: ['#3B82F6', '#EC4899']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } }
-                }
-            });
-
-            const learnerCtx = document.getElementById('learnerTypeChart').getContext('2d');
-            learnerTypeChart = new Chart(learnerCtx, {
-                type: 'bar',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Students',
-                        data: [],
-                        backgroundColor: '#085019'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true }
-                    }
-                }
-            });
-
-            const gradeCtx = document.getElementById('gradeLevelChart').getContext('2d');
-            gradeLevelChart = new Chart(gradeCtx, {
-                type: 'bar',
-                data: {
-                    labels: ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'],
-                    datasets: [{
-                        label: 'Students',
-                        data: [0, 0, 0, 0, 0, 0],
-                        backgroundColor: '#085019'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true }
-                    }
-                }
-            });
-
-            const strandCtx = document.getElementById('strandChart').getContext('2d');
-            strandChart = new Chart(strandCtx, {
-                type: 'bar',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Students',
-                        data: [],
-                        backgroundColor: ['#085019', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true }
-                    }
-                }
-            });
-
-            // Initialize "View All" tab charts
-            const trendsCtxAll = document.getElementById('enrollmentTrendsChartAll').getContext('2d');
-            enrollmentTrendsChartAll = new Chart(trendsCtxAll, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Total Enrollment',
-                        data: [],
-                        borderColor: '#085019',
-                        backgroundColor: 'rgba(8, 80, 25, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: true, position: 'bottom' } },
-                    scales: {
-                        y: { beginAtZero: true }
-                    }
-                }
-            });
-
-            const genderCtxAll = document.getElementById('genderChartAll').getContext('2d');
-            genderChartAll = new Chart(genderCtxAll, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Male', 'Female'],
-                    datasets: [{
-                        data: [0, 0],
-                        backgroundColor: ['#3B82F6', '#EC4899']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } }
-                }
-            });
-
-            const learnerCtxAll = document.getElementById('learnerTypeChartAll').getContext('2d');
-            learnerTypeChartAll = new Chart(learnerCtxAll, {
-                type: 'bar',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Students',
-                        data: [],
-                        backgroundColor: '#085019'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true }
-                    }
-                }
-            });
-
-            const gradeCtxAll = document.getElementById('gradeLevelChartAll').getContext('2d');
-            gradeLevelChartAll = new Chart(gradeCtxAll, {
-                type: 'bar',
-                data: {
-                    labels: ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'],
-                    datasets: [{
-                        label: 'Students',
-                        data: [0, 0, 0, 0, 0, 0],
-                        backgroundColor: '#085019'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true }
-                    }
-                }
-            });
-
-            const strandCtxAll = document.getElementById('strandChartAll').getContext('2d');
-            strandChartAll = new Chart(strandCtxAll, {
-                type: 'bar',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Students',
-                        data: [],
-                        backgroundColor: ['#085019', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true }
-                    }
-                }
+                el.className = `text-sm font-medium flex items-center gap-1 ${color}`;
+                el.innerHTML = `<span class="material-symbols-outlined text-base">${icon}</span><span>${change > 0 ? '+' : ''}${change.toFixed(1)}% from last year</span>`;
             });
         }
+    }
 
-        function updateCharts() {
-            if (analyticsData.enrollmentTrends) {
-                const labels = analyticsData.enrollmentTrends.map(t => 'S.Y. ' + t.year);
-                const data = analyticsData.enrollmentTrends.map(t => t.count);
-                
-                enrollmentTrendsChart.data.labels = labels;
-                enrollmentTrendsChart.data.datasets[0].data = data;
-                enrollmentTrendsChart.update();
-                
-                enrollmentTrendsChartAll.data.labels = labels;
-                enrollmentTrendsChartAll.data.datasets[0].data = data;
-                enrollmentTrendsChartAll.update();
-            }
+    function initializeCharts() {
+        const mk = (id, type, data, opts = {}) => {
+            const ctx = document.getElementById(id)?.getContext('2d');
+            if (!ctx) return null;
+            return new Chart(ctx, { type, data, options: { responsive: true, maintainAspectRatio: false, ...opts } });
+        };
 
-            if (analyticsData.genderDistribution) {
-                const genderData = [
-                    analyticsData.genderDistribution.male || 0,
-                    analyticsData.genderDistribution.female || 0
-                ];
-                
-                genderChart.data.datasets[0].data = genderData;
-                genderChart.update();
-                
-                genderChartAll.data.datasets[0].data = genderData;
-                genderChartAll.update();
-            }
+        const trendsOpts = { plugins: { legend: { display: true, position: 'bottom' } }, scales: { y: { beginAtZero: true } } };
+        const barOpts    = { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } };
 
-            if (analyticsData.learnerTypeDistribution) {
-                const types = analyticsData.learnerTypeDistribution;
-                const labels = Object.keys(types).map(k => k.replace(/_/g, ' '));
-                const data = Object.values(types);
-                
-                learnerTypeChart.data.labels = labels;
-                learnerTypeChart.data.datasets[0].data = data;
-                learnerTypeChart.update();
-                
-                learnerTypeChartAll.data.labels = labels;
-                learnerTypeChartAll.data.datasets[0].data = data;
-                learnerTypeChartAll.update();
-            }
+        enrollmentTrendsChart = mk('enrollmentTrendsChart', 'line',
+            { labels: [], datasets: [{ label: 'Total Enrollment', data: [], borderColor: '#085019', backgroundColor: 'rgba(8,80,25,0.1)', tension: 0.4, fill: true }] }, trendsOpts);
 
-            if (analyticsData.gradeLevelDistribution) {
-                gradeLevelChart.data.datasets[0].data = analyticsData.gradeLevelDistribution;
-                gradeLevelChart.update();
-                
-                gradeLevelChartAll.data.datasets[0].data = analyticsData.gradeLevelDistribution;
-                gradeLevelChartAll.update();
-            }
+        genderChart = mk('genderChart', 'doughnut',
+            { labels: ['Male','Female'], datasets: [{ data: [0,0], backgroundColor: ['#3B82F6','#EC4899'] }] },
+            { plugins: { legend: { position: 'bottom' } } });
 
-            if (analyticsData.strandDistribution && analyticsData.strandDistribution.length > 0) {
-                const labels = analyticsData.strandDistribution.map(s => s.code);
-                const data = analyticsData.strandDistribution.map(s => s.count);
-                
-                strandChart.data.labels = labels;
-                strandChart.data.datasets[0].data = data;
-                strandChart.update();
-                
-                strandChartAll.data.labels = labels;
-                strandChartAll.data.datasets[0].data = data;
-                strandChartAll.update();
-            }
+        learnerTypeChart = mk('learnerTypeChart', 'bar',
+            { labels: [], datasets: [{ label: 'Students', data: [], backgroundColor: '#085019' }] }, barOpts);
+
+        gradeLevelChart = mk('gradeLevelChart', 'bar',
+            { labels: ['Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12'],
+              datasets: [{ label: 'Students', data: [0,0,0,0,0,0], backgroundColor: '#085019' }] }, barOpts);
+
+        strandChart = mk('strandChart', 'bar',
+            { labels: [], datasets: [{ label: 'Students', data: [], backgroundColor: ['#085019','#10b981','#3b82f6','#8b5cf6','#ec4899','#f59e0b'] }] }, barOpts);
+
+        enrollmentTrendsChartAll = mk('enrollmentTrendsChartAll', 'line',
+            { labels: [], datasets: [{ label: 'Total Enrollment', data: [], borderColor: '#085019', backgroundColor: 'rgba(8,80,25,0.1)', tension: 0.4, fill: true }] }, trendsOpts);
+
+        genderChartAll = mk('genderChartAll', 'doughnut',
+            { labels: ['Male','Female'], datasets: [{ data: [0,0], backgroundColor: ['#3B82F6','#EC4899'] }] },
+            { plugins: { legend: { position: 'bottom' } } });
+
+        learnerTypeChartAll = mk('learnerTypeChartAll', 'bar',
+            { labels: [], datasets: [{ label: 'Students', data: [], backgroundColor: '#085019' }] }, barOpts);
+
+        gradeLevelChartAll = mk('gradeLevelChartAll', 'bar',
+            { labels: ['Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12'],
+              datasets: [{ label: 'Students', data: [0,0,0,0,0,0], backgroundColor: '#085019' }] }, barOpts);
+
+        strandChartAll = mk('strandChartAll', 'bar',
+            { labels: [], datasets: [{ label: 'Students', data: [], backgroundColor: ['#085019','#10b981','#3b82f6','#8b5cf6','#ec4899','#f59e0b'] }] }, barOpts);
+    }
+
+    function updateCharts() {
+        if (analyticsData.enrollmentTrends) {
+            const labels = analyticsData.enrollmentTrends.map(t => 'S.Y. ' + t.year);
+            const data   = analyticsData.enrollmentTrends.map(t => t.count);
+            [enrollmentTrendsChart, enrollmentTrendsChartAll].forEach(c => {
+                if (!c) return; c.data.labels = labels; c.data.datasets[0].data = data; c.update();
+            });
         }
-
-        function updateStrandVisibility() {
-            const strandsTab = document.getElementById('strandsTab');
-            const strandSectionAll = document.getElementById('strandSectionAll');
-            
-            if (analyticsData.strandDistribution && analyticsData.strandDistribution.length > 0) {
-                strandsTab.style.display = 'flex';
-                strandSectionAll.style.display = 'block';
-            } else {
-                strandsTab.style.display = 'none';
-                strandSectionAll.style.display = 'none';
-                // If current tab is strands and no data, switch to overview
-                if (currentTab === 'strands') {
-                    switchTab('overview');
-                }
-            }
+        if (analyticsData.genderDistribution) {
+            const gd = [analyticsData.genderDistribution.male||0, analyticsData.genderDistribution.female||0];
+            [genderChart, genderChartAll].forEach(c => { if (!c) return; c.data.datasets[0].data = gd; c.update(); });
         }
+        if (analyticsData.learnerTypeDistribution) {
+            const labels = Object.keys(analyticsData.learnerTypeDistribution).map(k => k.replace(/_/g,' '));
+            const data   = Object.values(analyticsData.learnerTypeDistribution);
+            [learnerTypeChart, learnerTypeChartAll].forEach(c => {
+                if (!c) return; c.data.labels = labels; c.data.datasets[0].data = data; c.update();
+            });
+        }
+        if (analyticsData.gradeLevelDistribution) {
+            [gradeLevelChart, gradeLevelChartAll].forEach(c => {
+                if (!c) return; c.data.datasets[0].data = analyticsData.gradeLevelDistribution; c.update();
+            });
+        }
+        if (analyticsData.strandDistribution?.length > 0) {
+            const labels = analyticsData.strandDistribution.map(s => s.code);
+            const data   = analyticsData.strandDistribution.map(s => s.count);
+            [strandChart, strandChartAll].forEach(c => {
+                if (!c) return; c.data.labels = labels; c.data.datasets[0].data = data; c.update();
+            });
+        }
+    }
 
-        function updateStatsTable() {
-            const tbody = document.getElementById('statsTableBody');
-            const tbodyAll = document.getElementById('statsTableBodyAll');
-            tbody.innerHTML = '';
-            tbodyAll.innerHTML = '';
+    function updateStrandVisibility() {
+        const strandsTab    = document.getElementById('strandsTab');
+        const strandSection = document.getElementById('strandSectionAll');
+        const show = analyticsData.strandDistribution?.length > 0;
+        strandsTab.style.display    = show ? 'flex' : 'none';
+        strandSection.style.display = show ? 'block' : 'none';
+        if (!show && currentTab === 'strands') switchTab('overview');
+    }
 
-            if (analyticsData.detailedStats && analyticsData.detailedStats.length > 0) {
-                analyticsData.detailedStats.forEach(stat => {
-                    const row = document.createElement('tr');
-                    row.className = 'hover:bg-slate-50 dark:hover:bg-slate-800/50';
-                    row.innerHTML = `
+    function updateStatsTable() {
+        const tbody    = document.getElementById('statsTableBody');
+        const tbodyAll = document.getElementById('statsTableBodyAll');
+        tbody.innerHTML = tbodyAll.innerHTML = '';
+
+        if (analyticsData.detailedStats?.length > 0) {
+            analyticsData.detailedStats.forEach(stat => {
+                const html = `
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                         <td class="p-3 text-sm text-slate-700 dark:text-slate-300">Grade ${stat.grade}</td>
                         <td class="p-3 text-sm text-slate-700 dark:text-slate-300 font-medium">${stat.total}</td>
                         <td class="p-3 text-sm text-slate-700 dark:text-slate-300">${stat.male}</td>
                         <td class="p-3 text-sm text-slate-700 dark:text-slate-300">${stat.female}</td>
                         <td class="p-3 text-sm text-slate-700 dark:text-slate-300">${stat.pwd}</td>
                         <td class="p-3 text-sm text-slate-700 dark:text-slate-300">${stat.balikAral}</td>
-                    `;
-                    tbody.appendChild(row);
-                    
-                    // Clone for View All tab
-                    const rowAll = row.cloneNode(true);
-                    tbodyAll.appendChild(rowAll);
-                });
-            } else {
-                const noDataRow = '<tr><td colspan="6" class="p-3 text-center text-slate-500">No data available</td></tr>';
-                tbody.innerHTML = noDataRow;
-                tbodyAll.innerHTML = noDataRow;
-            }
+                    </tr>`;
+                tbody.insertAdjacentHTML('beforeend', html);
+                tbodyAll.insertAdjacentHTML('beforeend', html);
+            });
+        } else {
+            const empty = '<tr><td colspan="6" class="p-3 text-center text-slate-500">No data available</td></tr>';
+            tbody.innerHTML = tbodyAll.innerHTML = empty;
+        }
+    }
+
+    // ════════════════════════════════════════════════════════
+    // ★ YEAR COMPARISON
+    // ════════════════════════════════════════════════════════
+
+    async function runComparison() {
+        const yearA = document.getElementById('cmpYearA').value;
+        const yearB = document.getElementById('cmpYearB').value;
+
+        if (!yearA || !yearB) { alert('Please select two school years to compare.'); return; }
+        if (yearA === yearB)  { alert('Please select two different school years.'); return; }
+
+        document.getElementById('cmpPlaceholder').classList.add('hidden');
+        document.getElementById('cmpResults').classList.add('hidden');
+        document.getElementById('cmpLoading').classList.remove('hidden');
+
+        try {
+            const [resA, resB] = await Promise.all([
+                fetch(`../backend/api/get-analytics.php?sy=${encodeURIComponent(yearA)}`).then(r => r.json()),
+                fetch(`../backend/api/get-analytics.php?sy=${encodeURIComponent(yearB)}`).then(r => r.json()),
+            ]);
+            if (!resA.success || !resB.success) throw new Error('Failed to load one or both years.');
+            renderComparison(yearA, resA.data, yearB, resB.data);
+        } catch (err) {
+            console.error(err);
+            alert('Error loading comparison data: ' + err.message);
+            document.getElementById('cmpPlaceholder').classList.remove('hidden');
+        } finally {
+            document.getElementById('cmpLoading').classList.add('hidden');
+        }
+    }
+
+    function renderComparison(yearA, dA, yearB, dB) {
+        // Labels
+        document.getElementById('cmpLabelA').textContent = `S.Y. ${yearA}`;
+        document.getElementById('cmpLabelB').textContent = `S.Y. ${yearB}`;
+        document.getElementById('cmpThA').textContent    = `S.Y. ${yearA}`;
+        document.getElementById('cmpThB').textContent    = `S.Y. ${yearB}`;
+
+        // ── KPI cards ─────────────────────────────────────────────
+        const kpis = [
+            { label: 'Total Enrolled',  icon: 'groups',      a: dA.totalStudents||0,                      b: dB.totalStudents||0,                      better: 'up'   },
+            { label: 'Dropout Rate',    icon: 'person_off',   a: dA.dropoutRate||0,                        b: dB.dropoutRate||0,                        better: 'down', suffix: '%' },
+            { label: 'PWD Students',    icon: 'accessible',   a: dA.pwdCount||0,                           b: dB.pwdCount||0,                           better: null  },
+            { label: 'Balik-Aral',      icon: 'school',       a: dA.balikAralCount||0,                     b: dB.balikAralCount||0,                     better: null  },
+            { label: 'Male Students',   icon: 'man',          a: dA.genderDistribution?.male||0,           b: dB.genderDistribution?.male||0,           better: 'up'  },
+            { label: 'Female Students', icon: 'woman',        a: dA.genderDistribution?.female||0,         b: dB.genderDistribution?.female||0,         better: 'up'  },
+            { label: 'IP Community',    icon: 'diversity_3',  a: dA.ipCount||0,                            b: dB.ipCount||0,                            better: null  },
+            { label: 'Transferees',     icon: 'swap_horiz',   a: dA.learnerTypeDistribution?.Transferee||0, b: dB.learnerTypeDistribution?.Transferee||0, better: null },
+        ];
+
+        const totalA = dA.totalStudents || 1;
+        const totalB = dB.totalStudents || 1;
+
+        document.getElementById('cmpKpiGrid').innerHTML = kpis.map(k => {
+            const suffix = k.suffix || '';
+            const delta  = k.b - k.a;
+            const pct    = k.a !== 0 ? ((delta / k.a) * 100).toFixed(1) : null;
+
+            const aWins = k.better === 'up'   ? k.a > k.b
+                        : k.better === 'down' ? k.a < k.b : false;
+            const bWins = k.better === 'up'   ? k.b > k.a
+                        : k.better === 'down' ? k.b < k.a : false;
+
+            const chipClass = delta === 0 ? 'flat'
+                            : k.better === 'up'   ? (delta > 0 ? 'up'   : 'down')
+                            : k.better === 'down' ? (delta < 0 ? 'up'   : 'down')
+                            : 'flat';
+            const chipIcon  = delta > 0 ? '▲' : delta < 0 ? '▼' : '—';
+
+            return `
+            <div class="rounded-xl bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
+                <div class="px-4 py-2.5 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
+                    <span class="material-icons-outlined text-primary text-[17px]">${k.icon}</span>
+                    <span class="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">${k.label}</span>
+                </div>
+                <div class="cmp-kpi-card">
+                    <div class="cmp-kpi-side ${aWins ? 'winner' : ''}">
+                        <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">S.Y. ${yearA}</p>
+                        <p class="text-3xl font-black text-slate-900 dark:text-white">${k.a}${suffix}</p>
+                        <p class="text-[11px] text-slate-400 mt-0.5">${((k.a/totalA)*100).toFixed(1)}% of total</p>
+                    </div>
+                    <div class="cmp-kpi-divider">
+                        <div class="vline"></div>
+                        <span class="delta-chip ${chipClass}">${chipIcon}&thinsp;${Math.abs(delta)}${suffix}</span>
+                        ${pct !== null ? `<span class="text-[10px] text-slate-400">${delta >= 0 ? '+' : ''}${pct}%</span>` : ''}
+                        <div class="vline"></div>
+                    </div>
+                    <div class="cmp-kpi-side ${bWins ? 'winner' : ''}">
+                        <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">S.Y. ${yearB}</p>
+                        <p class="text-3xl font-black text-slate-900 dark:text-white">${k.b}${suffix}</p>
+                        <p class="text-[11px] text-slate-400 mt-0.5">${((k.b/totalB)*100).toFixed(1)}% of total</p>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+
+        // ── Grade grouped bar ──────────────────────────────────────
+        if (cmpGradeChart)  cmpGradeChart.destroy();
+        if (cmpGenderChart) cmpGenderChart.destroy();
+        if (cmpTypeChart)   cmpTypeChart.destroy();
+
+        const grpOpts = {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' } },
+            scales: { y: { beginAtZero: true }, x: { grid: { display: false } } }
+        };
+
+        const gradeCtx = document.getElementById('cmpGradeChart')?.getContext('2d');
+        if (gradeCtx) {
+            cmpGradeChart = new Chart(gradeCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12'],
+                    datasets: [
+                        { label: `S.Y. ${yearA}`, data: dA.gradeLevelDistribution||[0,0,0,0,0,0], backgroundColor: 'rgba(8,80,25,0.82)', borderRadius: 4 },
+                        { label: `S.Y. ${yearB}`, data: dB.gradeLevelDistribution||[0,0,0,0,0,0], backgroundColor: 'rgba(59,130,246,0.78)', borderRadius: 4 },
+                    ]
+                },
+                options: grpOpts
+            });
         }
 
-        function applyFilters() {
-            loadAnalyticsData();
+        const genderCtx = document.getElementById('cmpGenderChart')?.getContext('2d');
+        if (genderCtx) {
+            cmpGenderChart = new Chart(genderCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Male','Female'],
+                    datasets: [
+                        { label: `S.Y. ${yearA}`, data: [dA.genderDistribution?.male||0, dA.genderDistribution?.female||0], backgroundColor: 'rgba(8,80,25,0.82)', borderRadius: 4 },
+                        { label: `S.Y. ${yearB}`, data: [dB.genderDistribution?.male||0, dB.genderDistribution?.female||0], backgroundColor: 'rgba(59,130,246,0.78)', borderRadius: 4 },
+                    ]
+                },
+                options: grpOpts
+            });
         }
 
-        function resetFilters() {
-            document.getElementById('syFilter').value = 'all';
-            document.getElementById('gradeFilter').value = 'all';
-            loadAnalyticsData();
+        const typeCtx = document.getElementById('cmpTypeChart')?.getContext('2d');
+        if (typeCtx) {
+            const allTypes = [...new Set([
+                ...Object.keys(dA.learnerTypeDistribution||{}),
+                ...Object.keys(dB.learnerTypeDistribution||{}),
+            ])];
+            cmpTypeChart = new Chart(typeCtx, {
+                type: 'bar',
+                data: {
+                    labels: allTypes.map(k => k.replace(/_/g,' ')),
+                    datasets: [
+                        { label: `S.Y. ${yearA}`, data: allTypes.map(k => dA.learnerTypeDistribution?.[k]||0), backgroundColor: 'rgba(8,80,25,0.82)', borderRadius: 4 },
+                        { label: `S.Y. ${yearB}`, data: allTypes.map(k => dB.learnerTypeDistribution?.[k]||0), backgroundColor: 'rgba(59,130,246,0.78)', borderRadius: 4 },
+                    ]
+                },
+                options: grpOpts
+            });
         }
 
-        function exportData(format, isComplete) {
-            const sy = document.getElementById('syFilter').value;
-            const grade = document.getElementById('gradeFilter').value;
-            
-            let section = isComplete ? 'all' : currentTab;
-            
-            const url = `../backend/api/export-analytics.php?format=${format}&sy=${sy}&grade=${grade}&section=${section}`;
-            window.open(url, '_blank');
-        }
+        // ── Grade-by-grade table ───────────────────────────────────
+        const byGrade = stats => {
+            const m = {};
+            (stats||[]).forEach(s => { m[s.grade] = s; });
+            return m;
+        };
+        const mA = byGrade(dA.detailedStats);
+        const mB = byGrade(dB.detailedStats);
+        const grades = [...new Set([...Object.keys(mA), ...Object.keys(mB)])].sort((a,b) => +a - +b);
+        const gradeNames = { 7:'Grade 7', 8:'Grade 8', 9:'Grade 9', 10:'Grade 10', 11:'Grade 11', 12:'Grade 12' };
 
-        function printVisual() {
-            window.print();
-        }
+        const chip = (a, b) => {
+            const d   = b - a;
+            const cls = d > 0 ? 'up' : d < 0 ? 'down' : 'flat';
+            const ico = d > 0 ? '▲' : d < 0 ? '▼' : '—';
+            return `<span class="delta-chip ${cls}">${ico} ${Math.abs(d)}</span>`;
+        };
+
+        document.getElementById('cmpTableBody').innerHTML = grades.length
+            ? grades.map(g => {
+                const a = mA[g] || { total:0, male:0, female:0, pwd:0 };
+                const b = mB[g] || { total:0, male:0, female:0, pwd:0 };
+                return `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors">
+                    <td class="px-4 py-3 text-sm font-semibold text-slate-800 dark:text-white">${gradeNames[g]||'Grade '+g}</td>
+                    <td class="px-4 py-3 text-sm text-center font-medium text-slate-700 dark:text-slate-300">${a.total}</td>
+                    <td class="px-4 py-3 text-sm text-center font-medium text-slate-700 dark:text-slate-300">${b.total}</td>
+                    <td class="px-4 py-3 text-center">${chip(a.total, b.total)}</td>
+                    <td class="px-4 py-3 text-sm text-center text-slate-500 dark:text-slate-400">${a.male} / ${b.male}</td>
+                    <td class="px-4 py-3 text-sm text-center text-slate-500 dark:text-slate-400">${a.female} / ${b.female}</td>
+                    <td class="px-4 py-3 text-sm text-center text-slate-500 dark:text-slate-400">${a.pwd} / ${b.pwd}</td>
+                </tr>`;
+            }).join('')
+            : '<tr><td colspan="7" class="px-4 py-8 text-center text-slate-400">No data found for the selected years.</td></tr>';
+
+        document.getElementById('cmpResults').classList.remove('hidden');
+    }
+
+    // ─── Filters & export ─────────────────────────────────────────
+    function applyFilters() { loadAnalyticsData(); }
+    function resetFilters() {
+        document.getElementById('syFilter').value    = 'all';
+        document.getElementById('gradeFilter').value = 'all';
+        loadAnalyticsData();
+    }
+    function exportData(format, isComplete) {
+        const sy    = document.getElementById('syFilter').value;
+        const grade = document.getElementById('gradeFilter').value;
+        const section = isComplete ? 'all' : currentTab;
+        window.open(`../backend/api/export-analytics.php?format=${format}&sy=${sy}&grade=${grade}&section=${section}`, '_blank');
+    }
+    function printVisual() { window.print(); }
     </script>
     <script src="../js/mobile-nav.js"></script>
 </body>

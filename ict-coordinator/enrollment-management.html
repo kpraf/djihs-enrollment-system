@@ -97,20 +97,6 @@
                         <span class="material-symbols-outlined">dashboard</span>
                         <span class="text-sm font-medium">Dashboard</span>
                     </a>
-                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="employee-management.html">
-                        <span class="material-symbols-outlined">group</span>
-                        <span class="text-sm font-medium">Employee Management</span>
-                    </a>
-                    <!-- 
-                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="manage-access.html">
-                        <span class="material-symbols-outlined">admin_panel_settings</span>
-                        <span class="text-sm font-medium">System Access</span>
-                    </a>
-                    -->
-                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="user-account-management.html">
-                        <span class="material-symbols-outlined">person_add</span>
-                        <span class="text-sm font-medium">Create User Accounts</span>
-                    </a>
                      <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm" href="enrollment-management.html">
                         <span class="material-icons-outlined text-[20px]">how_to_reg</span>
                         <span class="text-sm font-medium">New Enrollment</span>
@@ -123,6 +109,14 @@
                         <span class="material-icons-outlined text-[20px] group-hover:text-primary dark:group-hover:text-green-400 transition-colors">groups</span>
                         <span class="text-sm font-medium">Student Management</span>
                      </a>
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" href="academic-year-management.html">
+                        <span class="material-icons-outlined text-[20px]">calendar_month</span>
+                        <span class="text-sm font-medium">Academic Years</span>
+                     </a>
+                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="user-account-management.html">
+                        <span class="material-symbols-outlined">person_add</span>
+                        <span class="text-sm font-medium">Create User Accounts</span>
+                    </a>
                      <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="audit-log.html">
                         <span class="material-symbols-outlined">fact_check</span>
                         <span class="text-sm font-medium">Audit Log</span>
@@ -493,16 +487,17 @@
                            <span class="material-icons-outlined text-primary">calendar_today</span>
                            School Year for Import <span class="text-red-500">*</span>
                         </p>
-                        <input 
-                           id="bulkSchoolYear" 
-                           class="form-input flex w-full md:w-64 min-w-0 flex-1 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 text-base font-normal leading-normal" 
-                           placeholder="2025-2026" 
-                           type="text"
-                           pattern="\d{4}-\d{4}"
-                           required
-                        />
+                        <select
+                           id="bulkAcademicYearSelect"
+                           class="form-select flex w-full md:w-72 min-w-0 rounded-lg text-slate-800 dark:text-white
+                                 focus:outline-none focus:ring-2 focus:ring-primary/50
+                                 border border-slate-300 dark:border-slate-700
+                                 bg-white dark:bg-slate-900 p-3 text-base font-normal leading-normal">
+                           <option value="">Loading school years…</option>
+                        </select>
                         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                           Format: YYYY-YYYY (e.g., 2025-2026). All imported students will be enrolled for this school year.
+                           Only active and non-archived school years are shown.
+                           All imported students will be enrolled for the selected year.
                         </p>
                      </label>
                   </div>

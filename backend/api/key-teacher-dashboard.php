@@ -1,7 +1,17 @@
 <?php
 // ============================================
 // FILE: backend/api/key-teacher-dashboard.php
-// Purpose: Get dashboard statistics and data for Key Teacher
+// Purpose: Key Teacher dashboard stats
+// Updated: 2026-03-04 — Revised for normalized DB
+//   - enrollment.AcademicYearID / section.AcademicYearID (FK int)
+//     replace the former AcademicYear string columns
+//   - section.CurrentEnrollment removed (not in schema);
+//     computed via COUNT of active sectionassignment rows
+//   - sectionassignment has no StudentID column;
+//     student identity resolved via sectionassignment → enrollment
+//   - section.AdviserEmployeeID removed (not in schema);
+//     adviser resolved via section.AdviserID → user table only
+//   - employee table references removed (not in current schema)
 // ============================================
 
 error_reporting(E_ALL);
@@ -15,349 +25,362 @@ header('Access-Control-Allow-Headers: Content-Type');
 require_once '../config/database.php';
 
 $database = new Database();
-$conn = $database->getConnection();
+$conn     = $database->getConnection();
 
 $action = isset($_GET['action']) ? $_GET['action'] : 'overview';
 
 try {
     switch ($action) {
-        case 'overview':
-            getDashboardOverview($conn);
-            break;
-        case 'sections':
-            getSectionOverview($conn);
-            break;
-        case 'alerts':
-            getActionAlerts($conn);
-            break;
-        default:
-            throw new Exception('Invalid action');
+        case 'overview': getDashboardOverview($conn); break;
+        case 'sections': getSectionOverview($conn);   break;
+        case 'alerts':   getActionAlerts($conn);      break;
+        default: throw new Exception('Invalid action');
     }
 } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'message' => $e->getMessage()
-    ]);
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
 
-function getDashboardOverview($conn) {
-    $academicYear = isset($_GET['year']) ? $_GET['year'] : null;
-    $gradeLevel = isset($_GET['grade']) ? $_GET['grade'] : null;
-    
-    // If no year specified, get current/latest year
-    if (!$academicYear) {
-        $yearQuery = "SELECT DISTINCT AcademicYear FROM enrollment 
-                      WHERE Status IN ('Confirmed', 'Pending') 
-                      ORDER BY AcademicYear DESC LIMIT 1";
-        $stmt = $conn->prepare($yearQuery);
+// ─── Shared helper: resolve AcademicYearID from a YearLabel string ─────────
+// Returns ['id' => int, 'label' => string].
+// When $yearLabel is null, falls back to the active year then the latest.
+function resolveAcademicYear(PDO $conn, ?string $yearLabel): array
+{
+    if ($yearLabel) {
+        $stmt = $conn->prepare(
+            "SELECT AcademicYearID, YearLabel FROM academicyear WHERE YearLabel = :yl LIMIT 1"
+        );
+        $stmt->bindValue(':yl', $yearLabel);
         $stmt->execute();
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        $academicYear = $result ? $result['AcademicYear'] : date('Y') . '-' . (date('Y') + 1);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) throw new Exception("Academic year '$yearLabel' not found.");
+        return ['id' => (int)$row['AcademicYearID'], 'label' => $row['YearLabel']];
     }
-    
-    // Total enrolled students (confirmed + pending)
-    $enrolledQuery = "SELECT COUNT(DISTINCT e.StudentID) as total
-                      FROM enrollment e
-                      INNER JOIN gradelevel gl ON e.GradeLevelID = gl.GradeLevelID
-                      WHERE e.AcademicYear = :year
-                      AND e.Status IN ('Confirmed', 'Pending')";
-    
-    if ($gradeLevel) {
-        $enrolledQuery .= " AND gl.GradeLevelNumber = :grade";
-    }
-    
-    $stmt = $conn->prepare($enrolledQuery);
-    $stmt->bindValue(':year', $academicYear);
-    if ($gradeLevel) {
-        $stmt->bindValue(':grade', $gradeLevel);
-    }
+
+    $stmt = $conn->prepare(
+        "SELECT AcademicYearID, YearLabel FROM academicyear
+         ORDER BY IsActive DESC, StartYear DESC LIMIT 1"
+    );
     $stmt->execute();
-    $enrolled = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    // Total sections
-    $sectionsQuery = "SELECT COUNT(*) as total
-                      FROM section s
-                      INNER JOIN gradelevel gl ON s.GradeLevelID = gl.GradeLevelID
-                      WHERE s.AcademicYear = :year
-                      AND s.IsActive = 1";
-    
-    if ($gradeLevel) {
-        $sectionsQuery .= " AND gl.GradeLevelNumber = :grade";
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) throw new Exception('No academic year records found.');
+    return ['id' => (int)$row['AcademicYearID'], 'label' => $row['YearLabel']];
+}
+
+// ============================================================
+// ACTION: overview
+// ============================================================
+function getDashboardOverview(PDO $conn): void
+{
+    $yearParam  = isset($_GET['year'])  ? trim($_GET['year'])  : null;
+    $gradeParam = isset($_GET['grade']) ? trim($_GET['grade']) : null;
+
+    $ay   = resolveAcademicYear($conn, $yearParam);
+    $ayID = $ay['id'];
+
+    // ── Total enrolled students (Confirmed + Pending) ──────────────────
+    $sql = "SELECT COUNT(DISTINCT e.StudentID) AS total
+            FROM enrollment e
+            WHERE e.AcademicYearID = :ayID
+              AND e.Status IN ('Confirmed','Pending')";
+    if ($gradeParam) {
+        $sql .= " AND e.GradeLevelID IN (
+                     SELECT GradeLevelID FROM gradelevel WHERE GradeLevelNumber = :grade)";
     }
-    
-    $stmt = $conn->prepare($sectionsQuery);
-    $stmt->bindValue(':year', $academicYear);
-    if ($gradeLevel) {
-        $stmt->bindValue(':grade', $gradeLevel);
-    }
+    $stmt = $conn->prepare($sql);
+    $stmt->bindValue(':ayID', $ayID, PDO::PARAM_INT);
+    if ($gradeParam) $stmt->bindValue(':grade', $gradeParam, PDO::PARAM_INT);
     $stmt->execute();
-    $sections = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    // Average fill rate
-    $fillRateQuery = "SELECT 
-                        SUM(CurrentEnrollment) as totalEnrolled,
-                        SUM(Capacity) as totalCapacity
-                      FROM section s
-                      INNER JOIN gradelevel gl ON s.GradeLevelID = gl.GradeLevelID
-                      WHERE s.AcademicYear = :year
-                      AND s.IsActive = 1";
-    
-    if ($gradeLevel) {
-        $fillRateQuery .= " AND gl.GradeLevelNumber = :grade";
+    $totalEnrolled = (int)$stmt->fetchColumn();
+
+    // ── Total active sections ──────────────────────────────────────────
+    $sql = "SELECT COUNT(*) AS total
+            FROM section s
+            WHERE s.AcademicYearID = :ayID AND s.IsActive = 1";
+    if ($gradeParam) {
+        $sql .= " AND s.GradeLevelID IN (
+                     SELECT GradeLevelID FROM gradelevel WHERE GradeLevelNumber = :grade)";
     }
-    
-    $stmt = $conn->prepare($fillRateQuery);
-    $stmt->bindValue(':year', $academicYear);
-    if ($gradeLevel) {
-        $stmt->bindValue(':grade', $gradeLevel);
-    }
+    $stmt = $conn->prepare($sql);
+    $stmt->bindValue(':ayID', $ayID, PDO::PARAM_INT);
+    if ($gradeParam) $stmt->bindValue(':grade', $gradeParam, PDO::PARAM_INT);
     $stmt->execute();
-    $fillRate = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    $avgFillRate = 0;
-    if ($fillRate['totalCapacity'] > 0) {
-        $avgFillRate = round(($fillRate['totalEnrolled'] / $fillRate['totalCapacity']) * 100);
+    $totalSections = (int)$stmt->fetchColumn();
+
+    // ── Average fill rate (computed enrollment vs capacity) ───────────
+    // CurrentEnrollment is not stored; count active sectionassignment rows per section.
+    $sql = "SELECT
+                COALESCE(SUM(assigned.cnt), 0) AS totalAssigned,
+                COALESCE(SUM(s.Capacity),   0) AS totalCapacity
+            FROM section s
+            LEFT JOIN (
+                SELECT sa.SectionID, COUNT(*) AS cnt
+                FROM sectionassignment sa
+                WHERE sa.IsActive = 1
+                GROUP BY sa.SectionID
+            ) assigned ON assigned.SectionID = s.SectionID
+            WHERE s.AcademicYearID = :ayID AND s.IsActive = 1";
+    if ($gradeParam) {
+        $sql .= " AND s.GradeLevelID IN (
+                     SELECT GradeLevelID FROM gradelevel WHERE GradeLevelNumber = :grade)";
     }
-    
-    // Students assigned to sections
-    $assignedQuery = "SELECT COUNT(DISTINCT sa.StudentID) as total
-                      FROM sectionassignment sa
-                      INNER JOIN section s ON sa.SectionID = s.SectionID
-                      INNER JOIN gradelevel gl ON s.GradeLevelID = gl.GradeLevelID
-                      WHERE s.AcademicYear = :year
-                      AND sa.IsActive = 1";
-    
-    if ($gradeLevel) {
-        $assignedQuery .= " AND gl.GradeLevelNumber = :grade";
-    }
-    
-    $stmt = $conn->prepare($assignedQuery);
-    $stmt->bindValue(':year', $academicYear);
-    if ($gradeLevel) {
-        $stmt->bindValue(':grade', $gradeLevel);
-    }
+    $stmt = $conn->prepare($sql);
+    $stmt->bindValue(':ayID', $ayID, PDO::PARAM_INT);
+    if ($gradeParam) $stmt->bindValue(':grade', $gradeParam, PDO::PARAM_INT);
     $stmt->execute();
-    $assigned = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    $unassigned = $enrolled['total'] - $assigned['total'];
-    
+    $fillRow = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    $avgFillRate = $fillRow['totalCapacity'] > 0
+        ? (int)round(($fillRow['totalAssigned'] / $fillRow['totalCapacity']) * 100)
+        : 0;
+
+    // ── Students already assigned to a section ────────────────────────
+    // sectionassignment links via EnrollmentID; resolve StudentID through enrollment.
+    $sql = "SELECT COUNT(DISTINCT e.StudentID) AS total
+            FROM sectionassignment sa
+            INNER JOIN enrollment e ON sa.EnrollmentID = e.EnrollmentID
+            INNER JOIN section    s ON sa.SectionID    = s.SectionID
+            WHERE s.AcademicYearID   = :ayID
+              AND e.AcademicYearID   = :ayID2
+              AND e.Status IN ('Confirmed','Pending')
+              AND sa.IsActive = 1";
+    if ($gradeParam) {
+        $sql .= " AND s.GradeLevelID IN (
+                     SELECT GradeLevelID FROM gradelevel WHERE GradeLevelNumber = :grade)";
+    }
+    $stmt = $conn->prepare($sql);
+    $stmt->bindValue(':ayID',  $ayID, PDO::PARAM_INT);
+    $stmt->bindValue(':ayID2', $ayID, PDO::PARAM_INT);
+    if ($gradeParam) $stmt->bindValue(':grade', $gradeParam, PDO::PARAM_INT);
+    $stmt->execute();
+    $assignedStudents = (int)$stmt->fetchColumn();
+
+    $unassigned = max(0, $totalEnrolled - $assignedStudents);
+
     echo json_encode([
         'success' => true,
         'data' => [
-            'totalEnrolled' => (int)$enrolled['total'],
-            'totalSections' => (int)$sections['total'],
-            'avgFillRate' => $avgFillRate,
-            'assignedStudents' => (int)$assigned['total'],
-            'unassignedStudents' => $unassigned,
-            'academicYear' => $academicYear
-        ]
+            'totalEnrolled'     => $totalEnrolled,
+            'totalSections'     => $totalSections,
+            'avgFillRate'       => $avgFillRate,
+            'assignedStudents'  => $assignedStudents,
+            'unassignedStudents'=> $unassigned,
+            'academicYear'      => $ay['label'],
+        ],
     ]);
 }
 
-function getSectionOverview($conn) {
-    $academicYear = isset($_GET['year']) ? $_GET['year'] : null;
-    $gradeLevel = isset($_GET['grade']) ? $_GET['grade'] : null;
-    $search = isset($_GET['search']) ? $_GET['search'] : '';
-    
-    // If no year specified, get current/latest year
-    if (!$academicYear) {
-        $yearQuery = "SELECT DISTINCT AcademicYear FROM section 
-                      WHERE IsActive = 1 
-                      ORDER BY AcademicYear DESC LIMIT 1";
-        $stmt = $conn->prepare($yearQuery);
-        $stmt->execute();
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        $academicYear = $result ? $result['AcademicYear'] : date('Y') . '-' . (date('Y') + 1);
-    }
-    
-    $query = "SELECT 
+// ============================================================
+// ACTION: sections
+// ============================================================
+function getSectionOverview(PDO $conn): void
+{
+    $yearParam   = isset($_GET['year'])   ? trim($_GET['year'])   : null;
+    $gradeParam  = isset($_GET['grade'])  ? trim($_GET['grade'])  : null;
+    $searchParam = isset($_GET['search']) ? trim($_GET['search']) : '';
+
+    $ay   = resolveAcademicYear($conn, $yearParam);
+    $ayID = $ay['id'];
+
+    // Compute current enrollment per section from sectionassignment
+    $sql = "SELECT
                 s.SectionID,
                 s.SectionName,
                 s.Capacity,
-                s.CurrentEnrollment,
                 gl.GradeLevelName,
                 st.StrandCode,
-                COALESCE(CONCAT(e.LastName, ', ', e.FirstName), CONCAT(u.LastName, ', ', u.FirstName)) as AdviserName,
-                CASE 
-                    WHEN s.CurrentEnrollment >= s.Capacity THEN 'Full'
-                    WHEN s.CurrentEnrollment >= (s.Capacity * 0.9) THEN 'Nearing Capacity'
+                CONCAT(u.LastName, ', ', u.FirstName) AS AdviserName,
+                COALESCE(assigned.cnt, 0) AS CurrentEnrollment,
+                ROUND(COALESCE(assigned.cnt, 0) / s.Capacity * 100) AS FillPercentage,
+                CASE
+                    WHEN COALESCE(assigned.cnt, 0) >= s.Capacity             THEN 'Full'
+                    WHEN COALESCE(assigned.cnt, 0) >= (s.Capacity * 0.9)    THEN 'Nearing Capacity'
                     ELSE 'Open'
-                END as Status,
-                ROUND((s.CurrentEnrollment / s.Capacity) * 100) as FillPercentage
-              FROM section s
-              INNER JOIN gradelevel gl ON s.GradeLevelID = gl.GradeLevelID
-              LEFT JOIN strand st ON s.StrandID = st.StrandID
-              LEFT JOIN employee e ON s.AdviserEmployeeID = e.EmployeeID
-              LEFT JOIN user u ON s.AdviserID = u.UserID
-              WHERE s.AcademicYear = :year
+                END AS Status
+            FROM section s
+            INNER JOIN gradelevel gl ON s.GradeLevelID = gl.GradeLevelID
+            LEFT JOIN  strand     st ON s.StrandID     = st.StrandID
+            LEFT JOIN  user        u ON s.AdviserID    = u.UserID
+            LEFT JOIN (
+                SELECT sa.SectionID, COUNT(*) AS cnt
+                FROM sectionassignment sa
+                WHERE sa.IsActive = 1
+                GROUP BY sa.SectionID
+            ) assigned ON assigned.SectionID = s.SectionID
+            WHERE s.AcademicYearID = :ayID
               AND s.IsActive = 1";
-    
-    $params = [':year' => $academicYear];
-    
-    if ($gradeLevel) {
-        $query .= " AND gl.GradeLevelNumber = :grade";
-        $params[':grade'] = $gradeLevel;
+
+    $params = [':ayID' => $ayID];
+
+    if ($gradeParam) {
+        $sql .= " AND gl.GradeLevelNumber = :grade";
+        $params[':grade'] = $gradeParam;
     }
-    
-    if ($search) {
-        $query .= " AND (s.SectionName LIKE :search 
-                    OR CONCAT(e.LastName, ', ', e.FirstName) LIKE :search
-                    OR CONCAT(u.LastName, ', ', u.FirstName) LIKE :search)";
-        $params[':search'] = "%$search%";
+
+    if ($searchParam !== '') {
+        $sql .= " AND (
+                     s.SectionName LIKE :search
+                  OR CONCAT(u.LastName, ', ', u.FirstName) LIKE :search
+                 )";
+        $params[':search'] = '%' . $searchParam . '%';
     }
-    
-    $query .= " ORDER BY gl.GradeLevelNumber, s.SectionName";
-    
-    $stmt = $conn->prepare($query);
+
+    $sql .= " ORDER BY gl.GradeLevelNumber, s.SectionName";
+
+    $stmt = $conn->prepare($sql);
     foreach ($params as $key => $value) {
         $stmt->bindValue($key, $value);
     }
     $stmt->execute();
-    
-    $sections = [];
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $sections[] = $row;
-    }
-    
+
+    $sections = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
     echo json_encode([
-        'success' => true,
+        'success'  => true,
         'sections' => $sections,
-        'count' => count($sections)
+        'count'    => count($sections),
     ]);
 }
 
-function getActionAlerts($conn) {
-    $academicYear = isset($_GET['year']) ? $_GET['year'] : null;
-    
-    // If no year specified, get current/latest year
-    if (!$academicYear) {
-        $yearQuery = "SELECT DISTINCT AcademicYear FROM section 
-                      WHERE IsActive = 1 
-                      ORDER BY AcademicYear DESC LIMIT 1";
-        $stmt = $conn->prepare($yearQuery);
-        $stmt->execute();
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        $academicYear = $result ? $result['AcademicYear'] : date('Y') . '-' . (date('Y') + 1);
-    }
-    
+// ============================================================
+// ACTION: alerts
+// ============================================================
+function getActionAlerts(PDO $conn): void
+{
+    $yearParam = isset($_GET['year']) ? trim($_GET['year']) : null;
+
+    $ay   = resolveAcademicYear($conn, $yearParam);
+    $ayID = $ay['id'];
+
     $alerts = [];
-    
-    // Check for sections nearing capacity (90-99% full)
-    $nearingQuery = "SELECT 
-                        s.SectionName,
-                        s.CurrentEnrollment,
-                        s.Capacity,
-                        ROUND((s.CurrentEnrollment / s.Capacity) * 100) as FillPercentage
-                     FROM section s
-                     WHERE s.AcademicYear = :year
-                     AND s.IsActive = 1
-                     AND s.CurrentEnrollment >= (s.Capacity * 0.9)
-                     AND s.CurrentEnrollment < s.Capacity
-                     ORDER BY FillPercentage DESC";
-    
-    $stmt = $conn->prepare($nearingQuery);
-    $stmt->bindValue(':year', $academicYear);
+
+    // ── Sections nearing capacity (90–99 %) ───────────────────────────
+    $stmt = $conn->prepare(
+        "SELECT
+             s.SectionName,
+             s.Capacity,
+             COALESCE(assigned.cnt, 0)                                AS CurrentEnrollment,
+             ROUND(COALESCE(assigned.cnt, 0) / s.Capacity * 100)     AS FillPercentage
+         FROM section s
+         LEFT JOIN (
+             SELECT sa.SectionID, COUNT(*) AS cnt
+             FROM sectionassignment sa WHERE sa.IsActive = 1
+             GROUP BY sa.SectionID
+         ) assigned ON assigned.SectionID = s.SectionID
+         WHERE s.AcademicYearID = :ayID
+           AND s.IsActive = 1
+           AND COALESCE(assigned.cnt, 0) >= (s.Capacity * 0.9)
+           AND COALESCE(assigned.cnt, 0) <  s.Capacity
+         ORDER BY FillPercentage DESC"
+    );
+    $stmt->bindValue(':ayID', $ayID, PDO::PARAM_INT);
     $stmt->execute();
-    
+
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $alerts[] = [
-            'type' => 'warning',
-            'icon' => 'priority_high',
-            'title' => "{$row['SectionName']} is {$row['FillPercentage']}% full.",
-            'description' => "Consider closing enrollment soon. ({$row['CurrentEnrollment']}/{$row['Capacity']} students)"
+            'type'        => 'warning',
+            'icon'        => 'priority_high',
+            'title'       => "{$row['SectionName']} is {$row['FillPercentage']}% full.",
+            'description' => "Consider closing enrollment soon. ({$row['CurrentEnrollment']}/{$row['Capacity']} students)",
         ];
     }
-    
-    // Check for full sections
-    $fullQuery = "SELECT s.SectionName, s.Capacity
-                  FROM section s
-                  WHERE s.AcademicYear = :year
-                  AND s.IsActive = 1
-                  AND s.CurrentEnrollment >= s.Capacity
-                  ORDER BY s.SectionName";
-    
-    $stmt = $conn->prepare($fullQuery);
-    $stmt->bindValue(':year', $academicYear);
+
+    // ── Full sections ─────────────────────────────────────────────────
+    $stmt = $conn->prepare(
+        "SELECT
+             s.SectionName,
+             s.Capacity
+         FROM section s
+         LEFT JOIN (
+             SELECT sa.SectionID, COUNT(*) AS cnt
+             FROM sectionassignment sa WHERE sa.IsActive = 1
+             GROUP BY sa.SectionID
+         ) assigned ON assigned.SectionID = s.SectionID
+         WHERE s.AcademicYearID = :ayID
+           AND s.IsActive = 1
+           AND COALESCE(assigned.cnt, 0) >= s.Capacity
+         ORDER BY s.SectionName"
+    );
+    $stmt->bindValue(':ayID', $ayID, PDO::PARAM_INT);
     $stmt->execute();
-    
+
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $alerts[] = [
-            'type' => 'danger',
-            'icon' => 'group',
-            'title' => "{$row['SectionName']} is now full.",
-            'description' => "No further enrollments are possible. ({$row['Capacity']}/{$row['Capacity']} students)"
+            'type'        => 'danger',
+            'icon'        => 'group',
+            'title'       => "{$row['SectionName']} is now full.",
+            'description' => "No further enrollments are possible. ({$row['Capacity']}/{$row['Capacity']} students)",
         ];
     }
-    
-    // Check for pending enrollments
-    $pendingQuery = "SELECT COUNT(*) as count
-                     FROM enrollment e
-                     INNER JOIN student s ON e.StudentID = s.StudentID
-                     WHERE e.AcademicYear = :year
-                     AND e.Status = 'Pending'
-                     AND NOT EXISTS (
-                         SELECT 1 FROM sectionassignment sa
-                         WHERE sa.StudentID = s.StudentID
-                         AND sa.EnrollmentID = e.EnrollmentID
-                         AND sa.IsActive = 1
-                     )";
-    
-    $stmt = $conn->prepare($pendingQuery);
-    $stmt->bindValue(':year', $academicYear);
+
+    // ── Pending enrollments with no section assignment ────────────────
+    // sectionassignment links via EnrollmentID (no StudentID column on that table).
+    $stmt = $conn->prepare(
+        "SELECT COUNT(*) AS cnt
+         FROM enrollment e
+         WHERE e.AcademicYearID = :ayID
+           AND e.Status = 'Pending'
+           AND NOT EXISTS (
+               SELECT 1 FROM sectionassignment sa
+               WHERE sa.EnrollmentID = e.EnrollmentID
+                 AND sa.IsActive = 1
+           )"
+    );
+    $stmt->bindValue(':ayID', $ayID, PDO::PARAM_INT);
     $stmt->execute();
-    $pending = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if ($pending['count'] > 0) {
+    $pendingCount = (int)$stmt->fetchColumn();
+
+    if ($pendingCount > 0) {
         $alerts[] = [
-            'type' => 'info',
-            'icon' => 'person_add',
-            'title' => "New enrollments pending.",
-            'description' => "{$pending['count']} student" . ($pending['count'] > 1 ? 's are' : ' is') . " waiting for section assignment."
+            'type'        => 'info',
+            'icon'        => 'person_add',
+            'title'       => "New enrollments pending.",
+            'description' => "$pendingCount student" . ($pendingCount > 1 ? 's are' : ' is')
+                           . " waiting for section assignment.",
         ];
     }
-    
-    // Check for unassigned confirmed students
-    $unassignedQuery = "SELECT COUNT(*) as count
-                        FROM enrollment e
-                        INNER JOIN student s ON e.StudentID = s.StudentID
-                        WHERE e.AcademicYear = :year
-                        AND e.Status = 'Confirmed'
-                        AND NOT EXISTS (
-                            SELECT 1 FROM sectionassignment sa
-                            WHERE sa.StudentID = s.StudentID
-                            AND sa.EnrollmentID = e.EnrollmentID
-                            AND sa.IsActive = 1
-                        )";
-    
-    $stmt = $conn->prepare($unassignedQuery);
-    $stmt->bindValue(':year', $academicYear);
+
+    // ── Confirmed enrollments with no section assignment ─────────────
+    $stmt = $conn->prepare(
+        "SELECT COUNT(*) AS cnt
+         FROM enrollment e
+         WHERE e.AcademicYearID = :ayID
+           AND e.Status = 'Confirmed'
+           AND NOT EXISTS (
+               SELECT 1 FROM sectionassignment sa
+               WHERE sa.EnrollmentID = e.EnrollmentID
+                 AND sa.IsActive = 1
+           )"
+    );
+    $stmt->bindValue(':ayID', $ayID, PDO::PARAM_INT);
     $stmt->execute();
-    $unassigned = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if ($unassigned['count'] > 0) {
+    $unassignedCount = (int)$stmt->fetchColumn();
+
+    if ($unassignedCount > 0) {
         $alerts[] = [
-            'type' => 'warning',
-            'icon' => 'assignment_late',
-            'title' => "Confirmed students not assigned.",
-            'description' => "{$unassigned['count']} confirmed student" . ($unassigned['count'] > 1 ? 's need' : ' needs') . " section assignment."
+            'type'        => 'warning',
+            'icon'        => 'assignment_late',
+            'title'       => "Confirmed students not assigned.",
+            'description' => "$unassignedCount confirmed student"
+                           . ($unassignedCount > 1 ? 's need' : ' needs')
+                           . " section assignment.",
         ];
     }
-    
-    // If no alerts, add a success message
+
+    // ── All clear ─────────────────────────────────────────────────────
     if (empty($alerts)) {
         $alerts[] = [
-            'type' => 'success',
-            'icon' => 'check_circle',
-            'title' => "All systems running smoothly!",
-            'description' => "No action items require your attention at this time."
+            'type'        => 'success',
+            'icon'        => 'check_circle',
+            'title'       => "All systems running smoothly!",
+            'description' => "No action items require your attention at this time.",
         ];
     }
-    
+
     echo json_encode([
         'success' => true,
-        'alerts' => $alerts,
-        'count' => count($alerts)
+        'alerts'  => $alerts,
+        'count'   => count($alerts),
     ]);
 }
 ?>

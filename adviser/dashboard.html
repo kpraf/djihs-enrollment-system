@@ -9,457 +9,459 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
     <link rel="icon" type="image/png" href="../assets/favicons/favicon-96x96.png" sizes="96x96"/>
-    
+
     <script src="../js/auth.js"></script>
     <script>
         initAuth('Adviser'); // required role for this page
     </script>
-    
+
     <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
             theme: {
                 extend: {
                     colors: {
-                        "primary": "#085019",
-                        "background-light": "#f6f7f8",
-                        "background-dark": "#101922",
-                        "success": "#50E3C2",
-                        "warning": "#F5A623",
-                        "danger": "#D0021B",
+                        "primary":           "#085019",
+                        "background-light":  "#f6f7f8",
+                        "background-dark":   "#101922",
+                        "success":           "#50E3C2",
+                        "warning":           "#F5A623",
+                        "danger":            "#D0021B",
                     },
-                    fontFamily: {
-                        "display": ["Inter", "sans-serif"]
-                    },
+                    fontFamily: { "display": ["Inter", "sans-serif"] },
                 },
             },
         }
     </script>
 </head>
 <body class="font-display bg-background-light dark:bg-background-dark">
-    <div class="relative flex min-h-screen w-full">
-        <!-- Sidebar -->
-        <aside class="w-72 h-screen sticky top-0 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex transition-colors duration-200">
-            <div>
-                <div class="p-6">
-                    <div class="flex items-center gap-3 mb-1">
-                        <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center overflow-hidden shrink-0 border border-yellow-200 dark:border-yellow-700">
-                            <img alt="School Logo" class="w-full h-full object-cover opacity-90" src="../assets/images/djihs-logo-small.png"/>
-                        </div>
+<div class="relative flex min-h-screen w-full">
+
+    <!-- ────────── Sidebar ────────── -->
+    <aside class="w-72 h-screen sticky top-0 bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex transition-colors duration-200">
+        <div>
+            <div class="p-6">
+                <div class="flex items-center gap-3 mb-1">
+                    <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center overflow-hidden shrink-0 border border-yellow-200 dark:border-yellow-700">
+                        <img alt="School Logo" class="w-full h-full object-cover opacity-90" src="../assets/images/djihs-logo-small.png"/>
                     </div>
-                    <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS Adviser</h1>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
                 </div>
-                <nav class="px-4 space-y-1">
-                    <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm" href="../adviser/dashboard.html">
-                        <span class="material-icons-outlined text-[20px]">dashboard</span>
-                        <span class="text-sm font-medium">Dashboard</span>
-                    </a>
-                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="../adviser/my-section.html">
-                        <span class="material-icons-outlined text-[20px]">account_tree</span>
-                        <span class="text-sm font-medium">My Sections</span>
-                    </a>
-                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="enrollment-management.html">
-                        <span class="material-icons-outlined text-[20px]">how_to_reg</span>
-                        <span class="text-sm font-medium">New Enrollment</span>
-                    </a>
-                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="review-enrollments.html">
-                        <span class="material-icons-outlined text-[20px]">rate_review</span>
-                        <span class="text-sm font-medium">Review Enrollments</span>
-                    </a>
-                    <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="student-management.html">
-                        <span class="material-icons-outlined text-[20px]">groups</span>
-                        <span class="text-sm font-medium">Student Management</span>
-                    </a>
-                </nav>
+                <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight mt-3">DJIHS Adviser</h1>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
             </div>
-            <div class="p-4 border-t border-gray-200 dark:border-gray-700">
-                <div class="flex items-center gap-3 mb-4 px-2">
-                    <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-primary font-bold text-sm shrink-0">
-                        <span id="userInitials">--</span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate" id="userName">Loading...</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate" id="userRole">--</p>
-                    </div>
+            <nav class="px-4 space-y-1">
+                <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg transition-colors shadow-sm" href="../adviser/dashboard.html">
+                    <span class="material-icons-outlined text-[20px]">dashboard</span>
+                    <span class="text-sm font-medium">Dashboard</span>
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="../adviser/my-section.html">
+                    <span class="material-icons-outlined text-[20px]">account_tree</span>
+                    <span class="text-sm font-medium">My Sections</span>
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="enrollment-management.html">
+                    <span class="material-icons-outlined text-[20px]">how_to_reg</span>
+                    <span class="text-sm font-medium">New Enrollment</span>
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="review-enrollments.html">
+                    <span class="material-icons-outlined text-[20px]">rate_review</span>
+                    <span class="text-sm font-medium">Review Enrollments</span>
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group" href="student-management.html">
+                    <span class="material-icons-outlined text-[20px]">groups</span>
+                    <span class="text-sm font-medium">Student Management</span>
+                </a>
+            </nav>
+        </div>
+        <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+            <div class="flex items-center gap-3 mb-4 px-2">
+                <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                    <span id="userInitials">--</span>
                 </div>
-                <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors logout-btn">
-                    <span class="material-icons-outlined text-[18px]">logout</span>
-                    Logout
-                </button>
-            </div>
-        </aside>
-
-        <!-- Main Content -->
-        <main class="flex-1 p-8">
-            <div class="mx-auto max-w-7xl">
-                <!-- Page Heading -->
-                <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-                    <div class="flex flex-col gap-1">
-                        <h1 class="text-slate-900 dark:text-white text-3xl font-bold tracking-tight">Dashboard</h1>
-                        <p class="text-slate-500 dark:text-slate-400 text-base font-normal leading-normal">Welcome back! Here's your section overview.</p>
-                    </div>
-                    
-                    <!-- Academic Year Filter -->
-                    <div class="flex items-center gap-2">
-                        <label for="academicYearFilter" class="text-sm font-medium text-slate-700 dark:text-slate-300">Academic Year:</label>
-                        <select id="academicYearFilter" class="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary text-sm min-w-[140px]">
-                            <!-- Options will be populated dynamically -->
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Loading State -->
-                <div id="loadingState" class="flex items-center justify-center py-12">
-                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-                </div>
-
-                <!-- Dashboard Content -->
-                <div id="dashboardContent" class="hidden space-y-6">
-                    <!-- Stats Cards -->
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <!-- Total Sections -->
-                        <div class="bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
-                            <div class="flex items-center gap-3 mb-2">
-                                <span class="material-icons-outlined text-primary text-2xl">account_tree</span>
-                                <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">My Sections</h3>
-                            </div>
-                            <p class="text-2xl font-bold text-slate-900 dark:text-white" id="totalSections">0</p>
-                        </div>
-
-                        <!-- Total Students -->
-                        <div class="bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
-                            <div class="flex items-center gap-3 mb-2">
-                                <span class="material-icons-outlined text-blue-600 text-2xl">groups</span>
-                                <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Total Students</h3>
-                            </div>
-                            <p class="text-2xl font-bold text-slate-900 dark:text-white" id="totalStudents">0</p>
-                        </div>
-
-                        <!-- Average Capacity -->
-                        <div class="bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
-                            <div class="flex items-center gap-3 mb-2">
-                                <span class="material-icons-outlined text-orange-600 text-2xl">speed</span>
-                                <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Avg. Fill Rate</h3>
-                            </div>
-                            <p class="text-2xl font-bold text-slate-900 dark:text-white" id="avgCapacity">0%</p>
-                        </div>
-
-                        <!-- Pending Enrollments -->
-                        <div class="bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
-                            <div class="flex items-center gap-3 mb-2">
-                                <span class="material-icons-outlined text-purple-600 text-2xl">pending_actions</span>
-                                <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Pending Review</h3>
-                            </div>
-                            <p class="text-2xl font-bold text-slate-900 dark:text-white" id="pendingEnrollments">0</p>
-                        </div>
-                    </div>
-
-                    <!-- Main Grid -->
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <!-- Section Overview -->
-                        <div class="lg:col-span-2 bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
-                            <div class="flex items-center justify-between mb-6">
-                                <h2 class="text-xl font-bold text-slate-900 dark:text-white">Section Overview</h2>
-                                <a href="my-section.html" class="text-sm text-primary hover:underline">View All →</a>
-                            </div>
-
-                            <div class="space-y-4" id="sectionsContainer">
-                                <!-- Sections will be inserted here -->
-                            </div>
-
-                            <div id="noSections" class="hidden text-center py-12">
-                                <span class="material-icons-outlined text-6xl text-slate-300 dark:text-slate-600 mb-4">folder_off</span>
-                                <p class="text-slate-500 dark:text-slate-400">No sections assigned for this academic year.</p>
-                            </div>
-                        </div>
-
-                        <!-- Action Items & Quick Stats -->
-                        <div class="space-y-6">
-                            <!-- Action Items -->
-                            <div class="bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
-                                <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Action Items</h2>
-                                <div class="space-y-4" id="actionItems">
-                                    <!-- Action items will be inserted here -->
-                                </div>
-                                <div id="noActions" class="hidden text-center py-8">
-                                    <span class="material-icons-outlined text-4xl text-slate-300 dark:text-slate-600 mb-2">check_circle</span>
-                                    <p class="text-sm text-slate-500 dark:text-slate-400">All clear! No actions needed.</p>
-                                </div>
-                            </div>
-
-                            <!-- Quick Actions -->
-                            <div class="bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
-                                <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Quick Actions</h2>
-                                <div class="space-y-3">
-                                    <a href="enrollment-management.html" class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                                        <span class="material-icons-outlined text-primary">person_add</span>
-                                        <span class="text-sm font-medium text-slate-700 dark:text-slate-300">New Enrollment</span>
-                                    </a>
-                                    <a href="review-enrollments.html" class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                                        <span class="material-icons-outlined text-blue-600">rate_review</span>
-                                        <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Review Enrollments</span>
-                                    </a>
-                                    <a href="student-management.html" class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                                        <span class="material-icons-outlined text-orange-600">manage_accounts</span>
-                                        <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Manage Students</span>
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-900 dark:text-white truncate" id="userName">Loading...</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate" id="userRole">--</p>
                 </div>
             </div>
-        </main>
-    </div>
+            <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors logout-btn">
+                <span class="material-icons-outlined text-[18px]">logout</span>
+                Logout
+            </button>
+        </div>
+    </aside>
 
-    <script>
-        let allSectionsData = [];
-        let currentAcademicYear = null;
-        let availableYears = [];
+    <!-- ────────── Main Content ────────── -->
+    <main class="flex-1 p-8">
+        <div class="mx-auto max-w-7xl">
 
-        document.addEventListener('DOMContentLoaded', async () => {
-            initializeUserDisplay();
-            await loadDashboardData();
-            setupEventListeners();
-        });
+            <!-- Page Heading -->
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+                <div class="flex flex-col gap-1">
+                    <h1 class="text-slate-900 dark:text-white text-3xl font-bold tracking-tight">Dashboard</h1>
+                    <p class="text-slate-500 dark:text-slate-400 text-base font-normal leading-normal">Welcome back! Here's your section overview.</p>
+                </div>
+                <!-- Academic Year Filter -->
+                <div class="flex items-center gap-2">
+                    <label for="academicYearFilter" class="text-sm font-medium text-slate-700 dark:text-slate-300">Academic Year:</label>
+                    <select id="academicYearFilter" class="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary text-sm min-w-[140px]">
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+            </div>
 
-        function initializeUserDisplay() {
-            const user = JSON.parse(localStorage.getItem('user'));
-            if (user) {
-                const initials = (user.FirstName[0] + user.LastName[0]).toUpperCase();
-                document.getElementById('userInitials').textContent = initials;
-                document.getElementById('userName').textContent = `${user.FirstName} ${user.LastName}`;
+            <!-- Loading State -->
+            <div id="loadingState" class="flex items-center justify-center py-12">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+
+            <!-- Dashboard Content -->
+            <div id="dashboardContent" class="hidden space-y-6">
+
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+
+                    <div class="bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="material-icons-outlined text-primary text-2xl">account_tree</span>
+                            <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">My Sections</h3>
+                        </div>
+                        <p class="text-2xl font-bold text-slate-900 dark:text-white" id="totalSections">0</p>
+                    </div>
+
+                    <div class="bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="material-icons-outlined text-blue-600 text-2xl">groups</span>
+                            <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Total Students</h3>
+                        </div>
+                        <p class="text-2xl font-bold text-slate-900 dark:text-white" id="totalStudents">0</p>
+                    </div>
+
+                    <div class="bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="material-icons-outlined text-orange-600 text-2xl">speed</span>
+                            <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Avg. Fill Rate</h3>
+                        </div>
+                        <p class="text-2xl font-bold text-slate-900 dark:text-white" id="avgCapacity">0%</p>
+                    </div>
+
+                    <!-- 
+                        FIX: was hitting enrollments.php?status=Pending&processed_by=...
+                        Now uses enrollment.php?action=stats → result.data.pendingCount
+                    -->
+                    <div class="bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="material-icons-outlined text-purple-600 text-2xl">pending_actions</span>
+                            <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Pending Review</h3>
+                        </div>
+                        <p class="text-2xl font-bold text-slate-900 dark:text-white" id="pendingEnrollments">0</p>
+                    </div>
+                </div>
+
+                <!-- Main Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                    <!-- Section Overview -->
+                    <div class="lg:col-span-2 bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h2 class="text-xl font-bold text-slate-900 dark:text-white">Section Overview</h2>
+                            <a href="my-section.html" class="text-sm text-primary hover:underline">View All →</a>
+                        </div>
+                        <div class="space-y-4" id="sectionsContainer"></div>
+                        <div id="noSections" class="hidden text-center py-12">
+                            <span class="material-icons-outlined text-6xl text-slate-300 dark:text-slate-600 mb-4">folder_off</span>
+                            <p class="text-slate-500 dark:text-slate-400">No sections assigned for this academic year.</p>
+                        </div>
+                    </div>
+
+                    <!-- Right column -->
+                    <div class="space-y-6">
+
+                        <!-- Action Items -->
+                        <div class="bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
+                            <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Action Items</h2>
+                            <div class="space-y-4" id="actionItems"></div>
+                            <div id="noActions" class="hidden text-center py-8">
+                                <span class="material-icons-outlined text-4xl text-slate-300 dark:text-slate-600 mb-2">check_circle</span>
+                                <p class="text-sm text-slate-500 dark:text-slate-400">All clear! No actions needed.</p>
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div class="bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
+                            <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Quick Actions</h2>
+                            <div class="space-y-3">
+                                <a href="enrollment-management.html" class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                                    <span class="material-icons-outlined text-primary">person_add</span>
+                                    <span class="text-sm font-medium text-slate-700 dark:text-slate-300">New Enrollment</span>
+                                </a>
+                                <a href="review-enrollments.html" class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                                    <span class="material-icons-outlined text-blue-600">rate_review</span>
+                                    <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Review Enrollments</span>
+                                </a>
+                                <a href="student-management.html" class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                                    <span class="material-icons-outlined text-orange-600">manage_accounts</span>
+                                    <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Manage Students</span>
+                                </a>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div><!-- /dashboardContent -->
+
+        </div>
+    </main>
+</div>
+
+<script>
+    // ─── State ───────────────────────────────────────────────
+    let allSectionsData    = [];
+    let currentAcademicYear = null;
+    let availableYears     = [];
+    let pendingCount       = 0;   // stored so generateActionItems can read it after async load
+
+    // ─── Boot ────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', async () => {
+        initializeUserDisplay();
+        await loadDashboardData();
+        setupEventListeners();
+    });
+
+    function initializeUserDisplay() {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (user.FirstName && user.LastName) {
+            document.getElementById('userInitials').textContent =
+                (user.FirstName[0] + user.LastName[0]).toUpperCase();
+            document.getElementById('userName').textContent =
+                `${user.FirstName} ${user.LastName}`;
+            document.getElementById('userRole').textContent = user.Role || '';
+        }
+    }
+
+    function setupEventListeners() {
+        document.getElementById('academicYearFilter')
+            .addEventListener('change', e => filterByAcademicYear(e.target.value));
+    }
+
+    // ─── Load all data ────────────────────────────────────────
+    async function loadDashboardData() {
+        try {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+            // Run both fetches in parallel
+            const [sectionsRes, statsRes] = await Promise.all([
+                fetch(`../backend/api/adviser-sections.php?user_id=${user.UserID}`),
+                // FIX: correct filename (enrollment.php) and correct action param
+                fetch(`../backend/api/enrollment.php?action=stats`)
+            ]);
+
+            const sectionsResult = await sectionsRes.json();
+            const statsResult    = await statsRes.json();
+
+            // ── Pending count from stats endpoint ──────────────
+            // enrollment.php?action=stats returns { success, data: { pendingCount, confirmedToday, totalConfirmed } }
+            if (statsResult.success && statsResult.data) {
+                pendingCount = statsResult.data.pendingCount ?? 0;
             }
-        }
+            document.getElementById('pendingEnrollments').textContent = pendingCount;
 
-        function setupEventListeners() {
-            document.getElementById('academicYearFilter').addEventListener('change', (e) => {
-                filterByAcademicYear(e.target.value);
-            });
-        }
-
-        async function loadDashboardData() {
-            try {
-                const user = JSON.parse(localStorage.getItem('user'));
-                
-                // Fetch adviser's sections
-                const response = await fetch(`../backend/api/adviser-sections.php?user_id=${user.UserID}`);
-                const result = await response.json();
-
-                if (!result.success || !result.data || result.data.length === 0) {
-                    showNoData();
-                    return;
-                }
-
-                allSectionsData = result.data;
-                
-                // Extract unique academic years
-                availableYears = [...new Set(allSectionsData.map(s => s.AcademicYear))].sort((a, b) => {
-                    const yearA = parseInt(a.split('-')[0]);
-                    const yearB = parseInt(b.split('-')[0]);
-                    return yearB - yearA;
-                });
-                
-                populateAcademicYearDropdown();
-                currentAcademicYear = availableYears[0];
-                document.getElementById('academicYearFilter').value = currentAcademicYear;
-                
-                await displayDashboard();
-                
-                document.getElementById('loadingState').classList.add('hidden');
-                document.getElementById('dashboardContent').classList.remove('hidden');
-
-            } catch (error) {
-                console.error('Error loading dashboard:', error);
-                showNoData();
-            }
-        }
-
-        function populateAcademicYearDropdown() {
-            const dropdown = document.getElementById('academicYearFilter');
-            dropdown.innerHTML = availableYears.map(year => 
-                `<option value="${year}">${year}</option>`
-            ).join('');
-        }
-
-        async function filterByAcademicYear(academicYear) {
-            currentAcademicYear = academicYear;
-            await displayDashboard();
-        }
-
-        async function displayDashboard() {
-            const sections = allSectionsData.filter(s => s.AcademicYear === currentAcademicYear);
-            
-            if (sections.length === 0) {
+            // ── Sections ───────────────────────────────────────
+            if (!sectionsResult.success || !sectionsResult.data?.length) {
                 showNoData();
                 return;
             }
 
-            // Calculate stats
-            const totalStudents = sections.reduce((sum, s) => sum + parseInt(s.CurrentEnrollment), 0);
-            const totalCapacity = sections.reduce((sum, s) => sum + parseInt(s.Capacity), 0);
-            const avgCapacity = totalCapacity > 0 ? ((totalStudents / totalCapacity) * 100).toFixed(1) : 0;
+            allSectionsData = sectionsResult.data;
 
-            // Update stats cards
-            document.getElementById('totalSections').textContent = sections.length;
-            document.getElementById('totalStudents').textContent = totalStudents;
-            document.getElementById('avgCapacity').textContent = avgCapacity + '%';
+            // AcademicYear is now ay.YearLabel e.g. "2025-2026"
+            availableYears = [...new Set(allSectionsData.map(s => s.AcademicYear))]
+                .sort((a, b) => parseInt(b) - parseInt(a)); // newest first
 
-            // Fetch pending enrollments count
-            await loadPendingEnrollments();
+            populateAcademicYearDropdown();
+            currentAcademicYear = availableYears[0];
+            document.getElementById('academicYearFilter').value = currentAcademicYear;
 
-            // Display sections
-            displaySections(sections);
+            displayDashboard();
 
-            // Generate action items
-            generateActionItems(sections);
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('dashboardContent').classList.remove('hidden');
+
+        } catch (err) {
+            console.error('Error loading dashboard:', err);
+            showNoData();
+        }
+    }
+
+    function populateAcademicYearDropdown() {
+        document.getElementById('academicYearFilter').innerHTML =
+            availableYears.map(y => `<option value="${y}">${y}</option>`).join('');
+    }
+
+    function filterByAcademicYear(year) {
+        currentAcademicYear = year;
+        displayDashboard();
+    }
+
+    // ─── Render dashboard for the selected year ───────────────
+    function displayDashboard() {
+        const sections = allSectionsData.filter(s => s.AcademicYear === currentAcademicYear);
+
+        if (!sections.length) {
+            showNoData();
+            return;
         }
 
-        async function loadPendingEnrollments() {
-            try {
-                const user = JSON.parse(localStorage.getItem('user'));
-                const response = await fetch(`../backend/api/enrollments.php?status=Pending&processed_by=${user.UserID}`);
-                const result = await response.json();
-                
-                const count = result.success ? result.count || 0 : 0;
-                document.getElementById('pendingEnrollments').textContent = count;
-            } catch (error) {
-                console.error('Error loading pending enrollments:', error);
-                document.getElementById('pendingEnrollments').textContent = '0';
-            }
+        // CurrentEnrollment is now computed server-side via COUNT subquery
+        const totalStudents = sections.reduce((sum, s) => sum + parseInt(s.CurrentEnrollment || 0), 0);
+        const totalCapacity = sections.reduce((sum, s) => sum + parseInt(s.Capacity || 0),          0);
+        const avgFill       = totalCapacity > 0
+            ? ((totalStudents / totalCapacity) * 100).toFixed(1)
+            : '0.0';
+
+        document.getElementById('totalSections').textContent  = sections.length;
+        document.getElementById('totalStudents').textContent  = totalStudents;
+        document.getElementById('avgCapacity').textContent    = avgFill + '%';
+        // pendingEnrollments already set during load (system-wide count from stats endpoint)
+
+        displaySections(sections);
+        generateActionItems(sections);
+    }
+
+    // ─── Section cards ────────────────────────────────────────
+    function displaySections(sections) {
+        const container = document.getElementById('sectionsContainer');
+        const noSections = document.getElementById('noSections');
+
+        if (!sections.length) {
+            container.classList.add('hidden');
+            noSections.classList.remove('hidden');
+            return;
         }
 
-        function displaySections(sections) {
-            const container = document.getElementById('sectionsContainer');
-            const noSections = document.getElementById('noSections');
+        container.classList.remove('hidden');
+        noSections.classList.add('hidden');
 
-            if (sections.length === 0) {
-                container.classList.add('hidden');
-                noSections.classList.remove('hidden');
-                return;
+        container.innerHTML = sections.map(section => {
+            const enrolled  = parseInt(section.CurrentEnrollment || 0);
+            const capacity  = parseInt(section.Capacity || 1);
+            const fillRate  = (enrolled / capacity) * 100;
+
+            let statusClass, statusText, barColor;
+            if (fillRate >= 100) {
+                statusClass = 'bg-danger/20 text-danger';
+                statusText  = 'Full';
+                barColor    = 'bg-danger';
+            } else if (fillRate >= 90) {
+                statusClass = 'bg-warning/20 text-yellow-600 dark:text-yellow-400';
+                statusText  = 'Nearly Full';
+                barColor    = 'bg-warning';
+            } else {
+                statusClass = 'bg-success/20 text-green-700 dark:text-success';
+                statusText  = 'Open';
+                barColor    = 'bg-success';
             }
 
-            container.classList.remove('hidden');
-            noSections.classList.add('hidden');
+            // StrandName may be null for JHS sections
+            const subLabel = section.GradeLevelName +
+                (section.StrandName ? ' — ' + section.StrandName : '');
 
-            const html = sections.map(section => {
-                const fillRate = (parseInt(section.CurrentEnrollment) / parseInt(section.Capacity)) * 100;
-                let statusClass, statusText, barColor;
-
-                if (fillRate >= 100) {
-                    statusClass = 'bg-danger/20 text-danger';
-                    statusText = 'Full';
-                    barColor = 'bg-danger';
-                } else if (fillRate >= 90) {
-                    statusClass = 'bg-warning/20 text-yellow-600 dark:text-yellow-400';
-                    statusText = 'Nearly Full';
-                    barColor = 'bg-warning';
-                } else {
-                    statusClass = 'bg-success/20 text-green-700 dark:text-success';
-                    statusText = 'Open';
-                    barColor = 'bg-success';
-                }
-
-                return `
-                    <div class="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                        <div class="flex justify-between items-start mb-3">
-                            <div>
-                                <h3 class="font-bold text-slate-900 dark:text-white">${section.SectionName}</h3>
-                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">${section.GradeLevelName}${section.StrandName ? ' - ' + section.StrandName : ''}</p>
-                            </div>
-                            <span class="text-xs font-bold py-1 px-3 rounded-full ${statusClass}">${statusText}</span>
+            return `
+                <div class="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <h3 class="font-bold text-slate-900 dark:text-white">${section.SectionName}</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">${subLabel}</p>
                         </div>
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm text-slate-600 dark:text-slate-300">${section.CurrentEnrollment} / ${section.Capacity} Students</span>
-                            <span class="text-sm font-medium text-slate-500 dark:text-slate-400">${fillRate.toFixed(0)}%</span>
-                        </div>
-                        <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
-                            <div class="${barColor} h-2 rounded-full transition-all" style="width: ${Math.min(fillRate, 100)}%"></div>
-                        </div>
+                        <span class="text-xs font-bold py-1 px-3 rounded-full ${statusClass}">${statusText}</span>
                     </div>
-                `;
-            }).join('');
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-sm text-slate-600 dark:text-slate-300">${enrolled} / ${capacity} Students</span>
+                        <span class="text-sm font-medium text-slate-500 dark:text-slate-400">${fillRate.toFixed(0)}%</span>
+                    </div>
+                    <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                        <div class="${barColor} h-2 rounded-full transition-all" style="width: ${Math.min(fillRate, 100)}%"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
 
-            container.innerHTML = html;
-        }
+    // ─── Action items ─────────────────────────────────────────
+    function generateActionItems(sections) {
+        const container = document.getElementById('actionItems');
+        const noActions = document.getElementById('noActions');
+        const actions   = [];
 
-        function generateActionItems(sections) {
-            const container = document.getElementById('actionItems');
-            const noActions = document.getElementById('noActions');
-            const actions = [];
+        // Full sections
+        sections
+            .filter(s => parseInt(s.CurrentEnrollment || 0) >= parseInt(s.Capacity || 1))
+            .forEach(s => actions.push({
+                icon:        'block',
+                iconClass:   'bg-danger/20 text-danger',
+                title:       `${s.SectionName} is at capacity`,
+                description: 'No further enrollments possible.'
+            }));
 
-            // Check for nearly full sections
-            const nearlyFull = sections.filter(s => {
-                const fillRate = (parseInt(s.CurrentEnrollment) / parseInt(s.Capacity)) * 100;
-                return fillRate >= 90 && fillRate < 100;
-            });
-
-            nearlyFull.forEach(section => {
+        // Nearly full sections (90–99 %)
+        sections
+            .filter(s => {
+                const r = (parseInt(s.CurrentEnrollment || 0) / parseInt(s.Capacity || 1)) * 100;
+                return r >= 90 && r < 100;
+            })
+            .forEach(s => {
+                const r = ((parseInt(s.CurrentEnrollment) / parseInt(s.Capacity)) * 100).toFixed(0);
                 actions.push({
-                    icon: 'priority_high',
-                    iconClass: 'bg-warning/20 text-yellow-600 dark:text-yellow-400',
-                    title: `${section.SectionName} is ${((parseInt(section.CurrentEnrollment) / parseInt(section.Capacity)) * 100).toFixed(0)}% full`,
+                    icon:        'priority_high',
+                    iconClass:   'bg-warning/20 text-yellow-600 dark:text-yellow-400',
+                    title:       `${s.SectionName} is ${r}% full`,
                     description: 'Consider monitoring enrollment closely.'
                 });
             });
 
-            // Check for full sections
-            const full = sections.filter(s => parseInt(s.CurrentEnrollment) >= parseInt(s.Capacity));
-            
-            full.forEach(section => {
-                actions.push({
-                    icon: 'block',
-                    iconClass: 'bg-danger/20 text-danger',
-                    title: `${section.SectionName} is at capacity`,
-                    description: 'No further enrollments possible.'
-                });
+        // Pending enrollments — uses pendingCount loaded from enrollment.php?action=stats
+        if (pendingCount > 0) {
+            actions.push({
+                icon:        'rate_review',
+                iconClass:   'bg-primary/20 text-primary',
+                title:       `${pendingCount} enrollment${pendingCount !== 1 ? 's' : ''} pending review`,
+                description: 'Review and approve enrollments.',
+                link:        'review-enrollments.html'
             });
+        }
 
-            // Check pending enrollments
-            const pendingCount = parseInt(document.getElementById('pendingEnrollments').textContent);
-            if (pendingCount > 0) {
-                actions.push({
-                    icon: 'rate_review',
-                    iconClass: 'bg-primary/20 text-primary',
-                    title: `${pendingCount} enrollment${pendingCount > 1 ? 's' : ''} pending review`,
-                    description: 'Review and approve enrollments.',
-                    link: 'review-enrollments.html'
-                });
-            }
+        if (!actions.length) {
+            container.classList.add('hidden');
+            noActions.classList.remove('hidden');
+            return;
+        }
 
-            if (actions.length === 0) {
-                container.classList.add('hidden');
-                noActions.classList.remove('hidden');
-                return;
-            }
+        container.classList.remove('hidden');
+        noActions.classList.add('hidden');
 
-            container.classList.remove('hidden');
-            noActions.classList.add('hidden');
-
-            const html = actions.map(action => `
-                <div class="flex gap-3 ${action.link ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 p-2 -m-2 rounded-lg transition-colors' : ''}" ${action.link ? `onclick="window.location.href='${action.link}'"` : ''}>
-                    <div class="flex-shrink-0 size-8 rounded-full ${action.iconClass} flex items-center justify-center">
-                        <span class="material-icons-outlined text-lg">${action.icon}</span>
-                    </div>
-                    <div class="flex-1">
-                        <p class="font-medium text-sm text-slate-800 dark:text-slate-200">${action.title}</p>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">${action.description}</p>
-                    </div>
+        container.innerHTML = actions.map(a => `
+            <div class="flex gap-3 ${a.link ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 p-2 -m-2 rounded-lg transition-colors' : ''}"
+                 ${a.link ? `onclick="window.location.href='${a.link}'"` : ''}>
+                <div class="flex-shrink-0 size-8 rounded-full ${a.iconClass} flex items-center justify-center">
+                    <span class="material-icons-outlined text-lg">${a.icon}</span>
                 </div>
-            `).join('');
+                <div class="flex-1">
+                    <p class="font-medium text-sm text-slate-800 dark:text-slate-200">${a.title}</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">${a.description}</p>
+                </div>
+            </div>
+        `).join('');
+    }
 
-            container.innerHTML = html;
-        }
-
-        function showNoData() {
-            document.getElementById('loadingState').classList.add('hidden');
-            document.getElementById('noSections').classList.remove('hidden');
-            document.getElementById('totalSections').textContent = '0';
-            document.getElementById('totalStudents').textContent = '0';
-            document.getElementById('avgCapacity').textContent = '0%';
-            document.getElementById('pendingEnrollments').textContent = '0';
-        }
-    </script>
+    // ─── Empty / error state ──────────────────────────────────
+    function showNoData() {
+        document.getElementById('loadingState').classList.add('hidden');
+        document.getElementById('dashboardContent').classList.remove('hidden');
+        document.getElementById('noSections').classList.remove('hidden');
+        document.getElementById('sectionsContainer').classList.add('hidden');
+        document.getElementById('totalSections').textContent     = '0';
+        document.getElementById('totalStudents').textContent     = '0';
+        document.getElementById('avgCapacity').textContent       = '0%';
+        document.getElementById('pendingEnrollments').textContent = pendingCount;
+    }
+</script>
 </body>
 </html>

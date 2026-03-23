@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Academic Year Management | DJIHS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+    <link rel="icon" type="image/png" href="../assets/favicons/favicon-96x96.png" sizes="96x96"/>
+
+    <!-- AUTH GUARD -->
+    <script>
+        (function () {
+            const logged  = localStorage.getItem('isLoggedIn');
+            const userStr = localStorage.getItem('user');
+            if (!logged || !userStr) { window.location.href = '../login.html'; return; }
+            try {
+                const u = JSON.parse(userStr);
+                const allowed = ['ICT_Coordinator', 'Registrar', 'Admin'];
+                if (!allowed.includes(u.Role)) {
+                    alert('Access denied.');
+                    window.location.href = '../login.html';
+                }
+            } catch { window.location.href = '../login.html'; }
+        })();
+    </script>
+
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#085019',
+                        'background-light': '#F4F6F8',
+                        'background-dark':  '#101922',
+                    },
+                    fontFamily: { display: ['Inter','sans-serif'] },
+                },
+            },
+        };
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #085019;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display">
+<div class="flex min-h-screen">
+
+    <!-- ── Sidebar ────────────────────────────────────────────── -->
+    <aside class="w-72 h-screen fixed top-0 left-0 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-gray-700 flex flex-col justify-between hidden md:flex">
+        <div>
+            <div class="p-6">
+                <div class="flex items-center gap-3 mb-1">
+                    <div class="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center overflow-hidden border border-yellow-200">
+                        <img alt="Logo" class="w-full h-full object-cover" src="../assets/images/djihs-logo-small.png"/>
+                    </div>
+                </div>
+                <h1 class="text-lg font-bold text-gray-900 dark:text-white mt-3">DJIHS Registrar</h1>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Don Jose Integrated High School</p>
+            </div>
+            <nav class="px-4 space-y-1">
+                <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" href="../registrar/dashboard.html">
+                    <span class="material-icons-outlined text-[20px]">dashboard</span>
+                    <span class="text-sm font-medium">Dashboard</span>
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" href="enrollment-management.html">
+                    <span class="material-icons-outlined text-[20px]">how_to_reg</span>
+                    <span class="text-sm font-medium">New Enrollment</span>
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" href="review-enrollments.html">
+                    <span class="material-icons-outlined text-[20px]">rate_review</span>
+                    <span class="text-sm font-medium">Review Enrollments</span>
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" href="student-management.html">
+                    <span class="material-icons-outlined text-[20px]">groups</span>
+                    <span class="text-sm font-medium">Student Management</span>
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-lg shadow-sm" href="academic-year-management.html">
+                    <span class="material-icons-outlined text-[20px]">calendar_month</span>
+                    <span class="text-sm font-medium">Academic Years</span>
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" href="user-account-management.html">
+                    <span class="material-symbols-outlined">person_add</span>
+                    <span class="text-sm font-medium">Create User Accounts</span>
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" href="audit-log.html">
+                    <span class="material-symbols-outlined">fact_check</span>
+                    <span class="text-sm font-medium">Audit Log</span>
+                </a>
+            </nav>
+        </div>
+        <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+            <div class="flex items-center gap-3 mb-4 px-2">
+                <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                    <span id="userInitials">--</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-900 dark:text-white truncate" id="userName">Loading…</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate" id="userRole">--</p>
+                </div>
+            </div>
+            <button class="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg logout-btn">
+                <span class="material-icons-outlined text-[18px]">logout</span>Logout
+            </button>
+        </div>
+    </aside>
+
+    <!-- ── Main ───────────────────────────────────────────────── -->
+    <main class="flex-1 md:ml-72 p-6 lg:p-10">
+        <div class="max-w-4xl mx-auto">
+
+            <!-- Header -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+                <div>
+                    <h2 class="text-3xl font-bold text-slate-800 dark:text-white">Academic Year Management</h2>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Create, activate, and archive school years.</p>
+                </div>
+                <button id="createBtn"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition text-sm font-semibold shadow-sm">
+                    <span class="material-icons-outlined text-[18px]">add</span>
+                    New Academic Year
+                </button>
+            </div>
+
+            <!-- Toast -->
+            <div id="toast" class="hidden mb-6 p-4 rounded-lg border flex items-center gap-3 text-sm font-medium"></div>
+
+            <!-- Loading skeleton -->
+            <div id="loadingState" class="space-y-3">
+                <div class="h-20 bg-slate-200 dark:bg-slate-700 rounded-xl animate-pulse"></div>
+                <div class="h-20 bg-slate-200 dark:bg-slate-700 rounded-xl animate-pulse"></div>
+                <div class="h-20 bg-slate-200 dark:bg-slate-700 rounded-xl animate-pulse"></div>
+            </div>
+
+            <!-- Active section -->
+            <div id="contentState" class="hidden space-y-6">
+
+                <!-- Active Year Card -->
+                <section>
+                    <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3">Currently Active</h3>
+                    <div id="activeCard" class="rounded-xl border-2 border-primary bg-primary/5 dark:bg-primary/10 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <!-- populated by JS -->
+                    </div>
+                </section>
+
+                <!-- Other Years -->
+                <section>
+                    <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3">All School Years</h3>
+                    <div id="yearsList" class="space-y-3">
+                        <!-- populated by JS -->
+                    </div>
+                </section>
+
+                <!-- Archived -->
+                <section>
+                    <button id="toggleArchived"
+                        class="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 mb-3 transition">
+                        <span class="material-icons-outlined text-[18px]">expand_more</span>
+                        Archived Years
+                    </button>
+                    <div id="archivedList" class="hidden space-y-3">
+                        <!-- populated by JS -->
+                    </div>
+                </section>
+            </div>
+
+            <!-- Empty state -->
+            <div id="emptyState" class="hidden text-center py-16 text-slate-500 dark:text-slate-400">
+                <span class="material-icons-outlined text-6xl mb-3">calendar_today</span>
+                <p class="font-medium">No academic years found.</p>
+                <p class="text-sm mt-1">Click "New Academic Year" to get started.</p>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- ── Create Modal ──────────────────────────────────────────── -->
+<div id="createModal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md">
+        <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Create Academic Year</h3>
+            <button id="closeCreateModal" class="text-gray-400 hover:text-gray-600">
+                <span class="material-icons-outlined">close</span>
+            </button>
+        </div>
+        <div class="p-6 space-y-4">
+            <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Start Year</span>
+                <input id="newStartYear" type="number" min="2000" max="2100"
+                    placeholder="e.g., 2026"
+                    class="form-input rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white p-3 focus:ring-2 focus:ring-primary/50 focus:outline-none"/>
+                <span class="text-xs text-slate-400" id="yearPreview">End year will be automatically set.</span>
+            </label>
+            <p class="text-xs text-slate-500 dark:text-slate-400 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                The new year will be created as <strong>inactive</strong>. You can manually set it as active when ready.
+            </p>
+        </div>
+        <div class="flex items-center justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
+            <button id="cancelCreate" class="px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition text-sm">Cancel</button>
+            <button id="confirmCreate" class="px-5 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition text-sm font-semibold">Create</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Confirm Modal (set-active / archive) ──────────────────── -->
+<div id="confirmModal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+        <div class="flex items-start gap-3">
+            <span id="confirmIcon" class="material-icons-outlined text-3xl mt-0.5"></span>
+            <div>
+                <h3 id="confirmTitle" class="font-bold text-gray-900 dark:text-white text-base"></h3>
+                <p id="confirmBody"  class="text-sm text-slate-500 dark:text-slate-400 mt-1"></p>
+            </div>
+        </div>
+        <div class="flex justify-end gap-3 pt-2">
+            <button id="cancelConfirm" class="px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">Cancel</button>
+            <button id="okConfirm"     class="px-5 py-2 text-sm font-semibold text-white rounded-lg"></button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+// Academic Year Management — client-side controller
+// ─────────────────────────────────────────────────────────────
+const API    = '../backend/api/academic-year.php';
+const user   = JSON.parse(localStorage.getItem('user') || '{}');
+const userID = user.UserID;
+
+// ── Sidebar user info ─────────────────────────────────────────
+document.getElementById('userName')?.setText?.(user.FirstName + ' ' + user.LastName);
+const uName = document.getElementById('userName');
+const uRole = document.getElementById('userRole');
+const uInit = document.getElementById('userInitials');
+if (uName) uName.textContent = (user.FirstName || '') + ' ' + (user.LastName || '');
+if (uRole) uRole.textContent = (user.Role || '').replace(/_/g,' ');
+if (uInit) uInit.textContent = ((user.FirstName||'?')[0] + (user.LastName||'?')[0]).toUpperCase();
+
+document.querySelectorAll('.logout-btn').forEach(b => b.addEventListener('click', () => {
+    localStorage.clear();
+    window.location.href = '../login.html';
+}));
+
+// ── Toast helper ─────────────────────────────────────────────
+function showToast(message, type = 'success') {
+    const el = document.getElementById('toast');
+    const styles = {
+        success: 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700 text-green-800 dark:text-green-200',
+        error:   'bg-red-50   dark:bg-red-900/20   border-red-300   dark:border-red-700   text-red-800   dark:text-red-200',
+        info:    'bg-blue-50  dark:bg-blue-900/20  border-blue-300  dark:border-blue-700  text-blue-800  dark:text-blue-200',
+    };
+    const icons = { success:'check_circle', error:'error', info:'info' };
+    el.className = `mb-6 p-4 rounded-lg border flex items-center gap-3 text-sm font-medium ${styles[type]}`;
+    el.innerHTML = `<span class="material-icons-outlined">${icons[type]}</span><span class="flex-1">${message}</span>
+                    <button onclick="this.parentElement.classList.add('hidden')" class="opacity-60 hover:opacity-100">
+                        <span class="material-icons-outlined text-[18px]">close</span></button>`;
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 5000);
+}
+
+// ── Render helpers ────────────────────────────────────────────
+function statusBadge(ay) {
+    if (ay.IsActive == 1)   return '<span class="text-xs font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">Active</span>';
+    if (ay.IsArchived == 1) return '<span class="text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">Archived</span>';
+    return '<span class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">Inactive</span>';
+}
+
+function enrollmentCount(count) {
+    return `<span class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+        <span class="material-icons-outlined text-[14px]">people</span>
+        ${count} enrollment${count != 1 ? 's' : ''}
+    </span>`;
+}
+
+function actionButtons(ay) {
+    const btns = [];
+
+    if (ay.IsActive != 1 && ay.IsArchived != 1) {
+        btns.push(`
+            <button onclick="confirmAction('set-active',${ay.AcademicYearID},'${ay.YearLabel}')"
+                class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold
+                       bg-primary text-white rounded-lg hover:bg-primary/90 transition">
+                <span class="material-icons-outlined text-[14px]">check_circle</span>Set as Active
+            </button>`);
+    }
+
+    if (ay.IsActive != 1 && ay.IsArchived != 1) {
+        btns.push(`
+            <button onclick="confirmAction('archive',${ay.AcademicYearID},'${ay.YearLabel}')"
+                class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold
+                       border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300
+                       rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                <span class="material-icons-outlined text-[14px]">inventory_2</span>Archive
+            </button>`);
+    }
+
+    if (ay.IsArchived == 1) {
+        btns.push(`
+            <button onclick="confirmAction('unarchive',${ay.AcademicYearID},'${ay.YearLabel}')"
+                class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold
+                       border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300
+                       rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                <span class="material-icons-outlined text-[14px]">unarchive</span>Restore
+            </button>`);
+    }
+
+    return btns.join('');
+}
+
+function renderCard(ay, isActiveCard = false) {
+    return `
+    <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700
+                p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3
+                ${ay.IsActive==1 ? 'border-primary/40' : ''}">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center shrink-0">
+                <span class="material-icons-outlined text-primary text-2xl">calendar_today</span>
+            </div>
+            <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-lg font-bold text-slate-800 dark:text-white">${ay.YearLabel}</span>
+                    ${statusBadge(ay)}
+                </div>
+                <div class="mt-1">${enrollmentCount(ay.EnrollmentCount)}</div>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap sm:justify-end">
+            ${actionButtons(ay)}
+        </div>
+    </div>`;
+}
+
+// ── Load + render all years ───────────────────────────────────
+async function loadYears() {
+    try {
+        const res  = await fetch(API + '?action=list');
+        const data = await res.json();
+
+        document.getElementById('loadingState').classList.add('hidden');
+
+        if (!data.success || !data.academicYears.length) {
+            document.getElementById('emptyState').classList.remove('hidden');
+            return;
+        }
+
+        document.getElementById('contentState').classList.remove('hidden');
+
+        const all      = data.academicYears;
+        const active   = all.find(a => a.IsActive == 1);
+        const inactive = all.filter(a => a.IsActive != 1 && a.IsArchived != 1);
+        const archived = all.filter(a => a.IsArchived == 1);
+
+        // Active card
+        const ac = document.getElementById('activeCard');
+        if (active) {
+            ac.innerHTML = renderCard(active, true);
+        } else {
+            ac.innerHTML = `<p class="text-slate-500 dark:text-slate-400 text-sm italic">No active academic year. Set one below.</p>`;
+        }
+
+        // Inactive list
+        const yl = document.getElementById('yearsList');
+        if (inactive.length) {
+            yl.innerHTML = inactive.map(a => renderCard(a)).join('');
+        } else {
+            yl.innerHTML = `<p class="text-slate-400 text-sm italic">No other school years.</p>`;
+        }
+
+        // Archived list
+        const al = document.getElementById('archivedList');
+        if (archived.length) {
+            al.innerHTML = archived.map(a => renderCard(a)).join('');
+        } else {
+            al.innerHTML = `<p class="text-slate-400 text-sm italic">No archived years.</p>`;
+        }
+
+    } catch (err) {
+        console.error(err);
+        document.getElementById('loadingState').classList.add('hidden');
+        showToast('Failed to load academic years. Please refresh the page.', 'error');
+    }
+}
+
+// ── Toggle archived section ───────────────────────────────────
+document.getElementById('toggleArchived').addEventListener('click', () => {
+    const list = document.getElementById('archivedList');
+    const icon = document.querySelector('#toggleArchived .material-icons-outlined');
+    list.classList.toggle('hidden');
+    icon.textContent = list.classList.contains('hidden') ? 'expand_more' : 'expand_less';
+});
+
+// ── Create modal ──────────────────────────────────────────────
+const createModal  = document.getElementById('createModal');
+const newStartYear = document.getElementById('newStartYear');
+const yearPreview  = document.getElementById('yearPreview');
+
+document.getElementById('createBtn').addEventListener('click', () => {
+    newStartYear.value = new Date().getFullYear() + 1;
+    yearPreview.textContent = `Will create: ${newStartYear.value}-${parseInt(newStartYear.value)+1}`;
+    createModal.classList.remove('hidden');
+});
+document.getElementById('closeCreateModal').addEventListener('click', () => createModal.classList.add('hidden'));
+document.getElementById('cancelCreate').addEventListener('click',      () => createModal.classList.add('hidden'));
+
+newStartYear.addEventListener('input', () => {
+    const sy = parseInt(newStartYear.value);
+    yearPreview.textContent = sy >= 2000 && sy <= 2100
+        ? `Will create: ${sy}-${sy+1}`
+        : 'Enter a valid year (2000–2100)';
+});
+
+document.getElementById('confirmCreate').addEventListener('click', async () => {
+    const sy = parseInt(newStartYear.value);
+    if (!sy || sy < 2000 || sy > 2100) { showToast('Invalid start year.', 'error'); return; }
+
+    const btn = document.getElementById('confirmCreate');
+    btn.disabled = true; btn.textContent = 'Creating…';
+
+    try {
+        const res    = await fetch(API + '?action=create', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ startYear: sy, userID }),
+        });
+        const result = await res.json();
+        createModal.classList.add('hidden');
+        showToast(result.message, result.success ? 'success' : 'error');
+        if (result.success) loadYears();
+    } catch { showToast('Network error.', 'error'); }
+    finally  { btn.disabled = false; btn.textContent = 'Create'; }
+});
+
+// ── Confirm modal (set-active / archive / unarchive) ──────────
+let pendingAction = null;
+
+function confirmAction(action, ayID, label) {
+    pendingAction = { action, ayID, label };
+
+    const modal = document.getElementById('confirmModal');
+    const icon  = document.getElementById('confirmIcon');
+    const title = document.getElementById('confirmTitle');
+    const body  = document.getElementById('confirmBody');
+    const okBtn = document.getElementById('okConfirm');
+
+    const cfg = {
+        'set-active': {
+            icon:'check_circle', iconColor:'text-green-500',
+            title:`Set "${label}" as Active?`,
+            body:'This will deactivate the current active year. All new enrollments will use this year.',
+            btnClass:'bg-primary', btnText:'Set as Active',
+        },
+        'archive': {
+            icon:'inventory_2', iconColor:'text-amber-500',
+            title:`Archive "${label}"?`,
+            body:'Archived years are hidden from enrollment forms but their data is preserved. You can restore them later.',
+            btnClass:'bg-amber-500', btnText:'Archive',
+        },
+        'unarchive': {
+            icon:'unarchive', iconColor:'text-blue-500',
+            title:`Restore "${label}"?`,
+            body:'This year will become available again but remain inactive until you set it as active.',
+            btnClass:'bg-blue-600', btnText:'Restore',
+        },
+    };
+    const c = cfg[action];
+
+    icon.textContent  = c.icon;
+    icon.className    = `material-icons-outlined text-3xl mt-0.5 ${c.iconColor}`;
+    title.textContent = c.title;
+    body.textContent  = c.body;
+    okBtn.className   = `px-5 py-2 text-sm font-semibold text-white rounded-lg ${c.btnClass}`;
+    okBtn.textContent = c.btnText;
+
+    modal.classList.remove('hidden');
+}
+
+document.getElementById('cancelConfirm').addEventListener('click', () => {
+    document.getElementById('confirmModal').classList.add('hidden');
+    pendingAction = null;
+});
+
+document.getElementById('okConfirm').addEventListener('click', async () => {
+    if (!pendingAction) return;
+    const { action, ayID } = pendingAction;
+    const okBtn = document.getElementById('okConfirm');
+    okBtn.disabled = true; okBtn.textContent = 'Processing…';
+
+    try {
+        const res    = await fetch(`${API}?action=${action}`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ academicYearID: ayID, userID }),
+        });
+        const result = await res.json();
+        document.getElementById('confirmModal').classList.add('hidden');
+        showToast(result.message, result.success ? 'success' : 'error');
+        if (result.success) loadYears();
+    } catch { showToast('Network error.', 'error'); }
+    finally  { okBtn.disabled = false; pendingAction = null; }
+});
+
+// ── Boot ──────────────────────────────────────────────────────
+loadYears();
+</script>
+</body>
+</html>
