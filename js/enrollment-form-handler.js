@@ -153,7 +153,8 @@ class EnrollmentFormHandler {
         // Valid range: 90 (1990) up to the current year's last two digits.
         const yy        = parseInt(lrn.slice(6, 8), 10);
         const currentYY = new Date().getFullYear() % 100;
-        if (yy < 90 || yy > currentYY) {
+        const isValidYear = (yy >= 90 && yy <= 99) || (yy >= 0 && yy <= currentYY);
+        if (!isValidYear) {
             return {
                 valid: false,
                 message: `LRN enrollment year digits (${String(yy).padStart(2,'0')}) seem invalid. Expected 90–${currentYY}.`
