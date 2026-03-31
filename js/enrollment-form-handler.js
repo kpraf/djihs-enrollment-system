@@ -670,7 +670,11 @@ class EnrollmentFormHandler {
             `School Year: ${this.activeAcademicYear?.YearLabel || '—'}\n\n` +
             `Submit this enrollment form?`;
 
-        if (!confirm(confirmMsg)) return;
+        const confirmed = await confirmAuditAction(
+            'Confirm Enrollment Submission',
+            `You are about to enroll ${formData.firstName} ${formData.lastName} for ${this.activeAcademicYear?.YearLabel}. This will be recorded in the audit trail.`
+        );
+        if (!confirmed) return;
 
         this.showLoading(true);
         try {

@@ -253,6 +253,121 @@
         </div>
     </div>
 
+    <!-- ── Audit Confirmation Modal ────────────────────────────────────────── -->
+    <div id="auditConfirmModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div class="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+
+            <!-- Icon -->
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-yellow-600">policy</span>
+                </div>
+                <div>
+                    <h3 id="auditConfirmTitle" class="text-lg font-semibold text-gray-900 dark:text-white">
+                        Confirm Action
+                    </h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">This action will be recorded in the audit trail</p>
+                </div>
+            </div>
+
+            <!-- Description -->
+            <p id="auditConfirmDescription" class="text-sm text-gray-600 dark:text-gray-300 mb-5 
+            bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 
+            rounded-lg px-4 py-3">
+            </p>
+
+            <!-- Audit notice -->
+            <div class="flex items-start gap-2 mb-5 text-xs text-gray-500 dark:text-gray-400">
+                <span class="material-symbols-outlined text-[16px] mt-0.5 text-blue-500">info</span>
+                <span>
+                    Your name, role, timestamp, and IP address will be logged automatically 
+                    for accountability purposes.
+                </span>
+            </div>
+
+            <!-- Buttons -->
+            <div class="flex justify-end gap-3">
+                <button id="auditCancelBtn"
+                    class="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 
+                        text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">
+                    Cancel
+                </button>
+                <button id="auditConfirmBtn"
+                    class="px-4 py-2 text-sm rounded-lg bg-primary text-white hover:bg-primary/90 
+                        font-medium flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[16px]">check_circle</span>
+                    Confirm & Submit
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── One-Time Backup Prompt Modal ────────────────────────────────────── -->
+    <div id="backupPromptModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div class="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-lg mx-4 p-6">
+
+            <!-- Header -->
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-blue-600">database</span>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                        Database Backup Recommended
+                    </h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">One-time reminder for this session</p>
+                </div>
+            </div>
+
+            <!-- Body -->
+            <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                Before reviewing audit logs, it is recommended to create a backup of all databases. 
+                This ensures data is safely archived and can be restored if needed.
+            </p>
+
+            <!-- What gets backed up -->
+            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 
+                        rounded-lg px-4 py-3 mb-5">
+                <p class="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-2">
+                    The backup will include:
+                </p>
+                <ul class="text-xs text-blue-600 dark:text-blue-400 space-y-1">
+                    <li class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[14px]">check</span>
+                        All student and enrollment records
+                    </li>
+                    <li class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[14px]">check</span>
+                        Audit log history
+                    </li>
+                    <li class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[14px]">check</span>
+                        Document submissions and revision requests
+                    </li>
+                    <li class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[14px]">check</span>
+                        User accounts and system configurations
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Buttons -->
+            <div class="flex justify-end gap-3">
+                <button onclick="closeBackupPrompt()"
+                    class="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 
+                        text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">
+                    Skip for Now
+                </button>
+                <button id="backupNowBtn" onclick="triggerDatabaseBackup()"
+                    class="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 
+                        font-medium flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[16px]">backup</span>
+                    Backup Now
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="../js/auditlog-utils.js"></script>
 </body>
 </html>

@@ -764,7 +764,11 @@ class BulkImportHandler {
         const ay  = this.selectedAcademicYear?.YearLabel || '—';
         const msg = `Import ${this.validRecords.length} student(s) for School Year ${ay}?\n\nThis will create pending enrollments.`
             + (this.errors.length ? `\n\nNote: ${this.errors.length} records with errors will NOT be imported. Continue?` : '');
-        if (!confirm(msg)) return;
+        const confirmed = await confirmAuditAction(
+            'Confirm Bulk Import',
+            `You are about to import ${this.validRecords.length} student(s) for School Year ${ay}. This will be permanently recorded in the audit trail.`
+        );
+        if (!confirmed) return;
 
         document.getElementById('previewSection').classList.add('hidden');
         document.getElementById('processingSection').classList.remove('hidden');

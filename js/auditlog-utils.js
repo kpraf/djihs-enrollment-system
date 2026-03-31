@@ -476,3 +476,131 @@ async function exportAuditLog() {
 function getInitials(firstName, lastName) {
     return (firstName?.charAt(0) || '') + (lastName?.charAt(0) || '');
 }
+
+// ─── AUDIT CONFIRMATION MODAL ───────────────────────────────────────────────
+
+/**
+ * Show an audit-aware confirmation dialog before any submission.
+ * Returns a Promise<boolean> — true if user confirmed, false if cancelled.
+ *
+ * @param {string} actionLabel  - Human-readable action e.g. "Update Student Record"
+ * @param {string} description  - What will change e.g. "You are about to update Maria Santos's contact info."
+ */
+function confirmAuditAction(actionLabel, description = '') {
+    return new Promise((resolve) => {
+        // Set modal content
+        document.getElementById('auditConfirmTitle').textContent = actionLabel;
+        document.getElementById('auditConfirmDescription').textContent =
+            description || 'This action will be permanently recorded in the audit trail.';
+
+        // Show modal
+        const modal = document.getElementById('auditConfirmModal');
+        modal.classList.remove('hidden');
+
+        // Confirm button
+        const confirmBtn = document.getElementById('auditConfirmBtn');
+        const cancelBtn  = document.getElementById('auditCancelBtn');
+
+        // Clone to remove old listeners
+        const newConfirm = confirmBtn.cloneNode(true);
+        const newCancel  = cancelBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
+        cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+
+        newConfirm.addEventListener('click', () => {
+            modal.classList.add('hidden');
+            resolve(true);
+        });
+
+        newCancel.addEventListener('click', () => {
+            modal.classList.add('hidden');
+            resolve(false);
+        });
+    });
+}
+
+// ─── ONE-TIME BACKUP PROMPT ──────────────────────────────────────────────────
+
+/**
+ * Show the backup/archive prompt once per session.
+ * Call this at the top of initializeAuditLog().
+ */
+function showBackupPromptOnce() {
+    const key = 'auditlog_backup_prompted_' + (currentUser?.UserID || 'guest');
+    if (sessionStorage.getItem(key)) return; // already shown this session
+    sessionStorage.setItem(key, '1');
+
+    const modal = document.getElementById('backupPromptModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeBackupPrompt() {
+    document.getElementById('backupPromptModal').classList.add('hidden');
+}
+
+/**
+ * Trigger database backup via the backend API.
+ * After backup, closes the prompt and shows a success/error toast.
+ */
+async function triggerDatabaseBackup() {
+    const btn = document.getElementById('backupNowBtn');
+    btn.disabled = true;
+    btn.textContent = 'Backing up...';
+
+    try {
+        const response = await fetch('../backend/api/backup.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ requestedBy: currentUser?.UserID })
+        });
+
+        const result = await response.json();
+
+        closeBackupPrompt();
+
+        if (result.success) {
+            showToast('Database backup completed: ' + result.filename, 'success');
+        } else {
+            showToast('Backup failed: ' + result.message, 'error');
+        }
+    } catch (error) {
+        closeBackupPrompt();
+        showToast('Backup request failed. Please try manually.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Backup Now';
+    }
+}
+
+// ─── TOAST NOTIFICATION ──────────────────────────────────────────────────────
+
+function showToast(message, type = 'success') {
+    const colors = {
+        success: 'bg-green-600',
+        error:   'bg-red-600',
+        info:    'bg-blue-600'
+    };
+
+    const toast = document.createElement('div');
+    toast.className = `fixed bottom-6 right-6 z-50 px-5 py-3 rounded-lg text-white text-sm shadow-lg 
+                       ${colors[type] || colors.info} transition-all duration-300`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+// ─── UPDATE initializeAuditLog to call backup prompt ─────────────────────────
+
+function initializeAuditLog(role, user) {
+    userRole = role;
+    currentUser = user;
+
+    populateTableFilter();
+    loadStats();
+    loadLogs();
+    showBackupPromptOnce(); // ← one-time backup prompt
+}
