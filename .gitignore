@@ -1,0 +1,24 @@
+# Dependencies (rebuild with: composer install --working-dir backend)
+/backend/vendor/
+
+# Generated / temporary files
+/backend/temp/*
+!/backend/temp/.gitkeep
+
+# Archives
+*.zip
+
+# Environment / secrets
+.env
+.env.local
+*.local.php
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
