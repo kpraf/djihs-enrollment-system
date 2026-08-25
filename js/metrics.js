@@ -57,10 +57,6 @@ async function loadMetrics() {
         const data = await response.json();
 
         if (data.success) {
-            if (data.message) {
-                console.info(data.message);
-            }
-
             metricsData = data.data;
             updateMetricsDisplay();
             document.getElementById('loadingState').style.display = 'none';

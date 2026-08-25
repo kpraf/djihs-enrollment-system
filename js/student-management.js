@@ -1323,7 +1323,7 @@ class StudentManagementHandler {
         return d.innerHTML;
     }
 
-    showLoading(show) { console.log('Loading:', show); }
+    showLoading(show) {}
 }
 
 // ── Global init ────────────────────────────────────────────────────

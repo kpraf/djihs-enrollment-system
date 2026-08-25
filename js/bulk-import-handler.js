@@ -45,8 +45,6 @@ class BulkImportHandler {
     checkSheetJSAvailability() {
         if (typeof XLSX === 'undefined') {
             console.warn('SheetJS not loaded. Excel support unavailable.');
-        } else {
-            console.log('SheetJS loaded. Version:', XLSX.version);
         }
     }
 

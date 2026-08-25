@@ -270,10 +270,6 @@ class DocumentSubmissionHandler {
                 alert('Error updating document: ' + result.message);
                 // Revert checkbox
                 checkbox.checked = !checkbox.checked;
-            } else {
-                console.log('Document updated successfully');
-                // Optionally refresh the modal to show updated completion status
-                // this.showDocumentChecklist(this.currentEnrollmentId);
             }
 
         } catch (error) {
@@ -303,8 +299,6 @@ class DocumentSubmissionHandler {
 
             if (!result.success) {
                 console.error('Error updating notes:', result.message);
-            } else {
-                console.log('Notes updated successfully');
             }
 
         } catch (error) {
