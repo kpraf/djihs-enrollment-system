@@ -41,9 +41,14 @@
          ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
          ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-         /* Green branding panel: solid school green. */
+         /* Green branding panel: layered gradient emulating a photo with overlay.
+            To use a real school photo, add a background-image above the gradients. */
          .brand-panel {
-            background-color: #085019;
+            background-color: #0b3d17;
+            background-image:
+               radial-gradient(circle at 20% 15%, rgba(255,255,255,0.10), transparent 45%),
+               radial-gradient(circle at 85% 90%, rgba(0,0,0,0.35), transparent 55%),
+               linear-gradient(150deg, #0e4a1c 0%, #0b3d17 45%, #072a11 100%);
          }
 
          .spinner {
@@ -88,7 +93,7 @@
                <img alt="Don Jose Integrated High School Logo" src="./assets/images/DJIHS-Logo.png"
                     class="w-24 h-24 sm:w-28 sm:h-28 object-contain drop-shadow-md mb-6"/>
                <h1 class="font-serif font-bold text-5xl sm:text-6xl tracking-wide leading-none">DJIHS</h1>
-               <p class="mt-3 text-green-300 font-semibold tracking-[0.35em] text-xs sm:text-sm">ENROLLMENT SYSTEM</p>
+               <p class="mt-3 text-white font-semibold tracking-[0.35em] text-xs sm:text-sm">ENROLLMENT SYSTEM</p>
                <p class="mt-8 text-green-50/80 text-sm sm:text-base max-w-xs leading-relaxed">
                   A digital solution for a faster, easier, and more efficient enrollment process.
                </p>
