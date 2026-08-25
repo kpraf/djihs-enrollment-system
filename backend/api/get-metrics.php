@@ -11,8 +11,7 @@
 // ============================================================
 
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-error_reporting(E_ALL);
+header('Access-Control-Allow-Origin: http://localhost');
 ini_set('display_errors', 0);
 
 require_once '../config/database.php';

@@ -4,7 +4,6 @@
 // Purpose: Export SF1 (School Form 1) using DepEd template
 // ============================================
 
-error_reporting(E_ALL);
 ini_set('display_errors', 0);
 set_time_limit(300);
 
