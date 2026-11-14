@@ -1,5 +1,6 @@
 import { Field, InputError, SelectInput, TextInput, YesNo } from '@/components/form';
 import { Icon } from '@/components/icon';
+import { describeDate, formatWhileTyping, parseTypedDate, toTypedDate } from '@/lib/typed-date';
 import { cn } from '@/lib/utils';
 import { Link, useForm } from '@inertiajs/react';
 import { FormEventHandler, useEffect, useMemo, useRef, useState } from 'react';
@@ -40,7 +41,11 @@ export function EnrollmentForm({ mode, schoolYear, options, initial, action, can
     const { data, setData, errors, processing } = form;
     const [lookup, setLookup] = useState<LookupResult | null>(null);
     const [lookupState, setLookupState] = useState<'idle' | 'checking' | 'error'>('idle');
+    // After a save the grade and strand stay for the next learner, since
+    // registrars usually encode a batch of the same grade.
+    const [kept, setKept] = useState(false);
     const formRef = useRef<HTMLFormElement>(null);
+    const lrnRef = useRef<HTMLInputElement>(null);
 
     // Server-only error (not a form field): a learner with the same name and birthdate exists.
     const duplicateWarning = (errors as Record<string, string | undefined>).possible_duplicate;
@@ -70,10 +75,15 @@ export function EnrollmentForm({ mode, schoolYear, options, initial, action, can
         return () => controller.abort();
     }, [data.lrn, mode]);
 
-    // Scroll to the first problem after a failed save.
+    // After a failed save, bring the first problem into view and put the
+    // cursor in it, so it can be fixed without reaching for the mouse.
     useEffect(() => {
         if (Object.keys(errors).length === 0) return;
-        const first = formRef.current?.querySelector('[aria-invalid="true"], [data-error]');
+        const first = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"], [data-error]');
+        const control = first?.matches('input, select, textarea')
+            ? first
+            : first?.querySelector<HTMLElement>('input:not([disabled]), select:not([disabled]), textarea');
+        control?.focus({ preventScroll: true });
         first?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, [errors]);
 
@@ -84,10 +94,17 @@ export function EnrollmentForm({ mode, schoolYear, options, initial, action, can
             preserveScroll: true,
             onSuccess: () => {
                 if (mode === 'create') {
-                    form.setDefaults(emptyLearner);
-                    form.reset();
+                    // Set the next learner's values directly: reset() would still
+                    // use the old defaults until the next render.
+                    const next = { ...emptyLearner, grade_level: data.grade_level, strand_id: data.strand_id };
+                    form.setDefaults(next);
+                    form.setData(next);
+                    form.clearErrors();
                     setLookup(null);
+                    setKept(Boolean(data.grade_level));
                     window.scrollTo({ top: 0, behavior: 'smooth' });
+                    // Ready for the next learner's LRN.
+                    lrnRef.current?.focus({ preventScroll: true });
                 }
             },
         });
@@ -114,9 +131,21 @@ export function EnrollmentForm({ mode, schoolYear, options, initial, action, can
                     <h3 className="section-title">Enrollment Details</h3>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                         <Field label="School Year">{(p) => <TextInput {...p} value={schoolYear} disabled readOnly />}</Field>
-                        <Field label="Grade Level to Enroll" required error={errors.grade_level}>
+                        <Field
+                            label="Grade Level to Enroll"
+                            required
+                            error={errors.grade_level}
+                            hint={kept && data.grade_level ? 'Kept from the last learner' : undefined}
+                        >
                             {(p) => (
-                                <SelectInput {...p} {...text('grade_level')}>
+                                <SelectInput
+                                    {...p}
+                                    value={data.grade_level}
+                                    onChange={(e) => {
+                                        setKept(false);
+                                        setData('grade_level', e.target.value);
+                                    }}
+                                >
                                     <option value="">Select Grade Level</option>
                                     {options.grades.map((g) => (
                                         <option key={g.value} value={g.value}>
@@ -126,10 +155,11 @@ export function EnrollmentForm({ mode, schoolYear, options, initial, action, can
                                 </SelectInput>
                             )}
                         </Field>
-                        <Field label="Learner Reference No. (LRN)" required error={errors.lrn} hint="12 digits">
+                        <Field label="Learner Reference No. (LRN)" required error={errors.lrn} hint={lrnHint(data.lrn)}>
                             {(p) => (
                                 <TextInput
                                     {...p}
+                                    ref={lrnRef}
                                     {...text('lrn')}
                                     inputMode="numeric"
                                     maxLength={14}
@@ -224,8 +254,8 @@ export function EnrollmentForm({ mode, schoolYear, options, initial, action, can
                         <Field label="Suffix" error={errors.extension_name}>
                             {(p) => <TextInput {...p} {...text('extension_name')} placeholder="e.g., Jr." autoComplete="off" />}
                         </Field>
-                        <Field label="Birthdate" required error={errors.birthdate}>
-                            {(p) => <TextInput {...p} {...text('birthdate')} type="date" max={new Date().toISOString().slice(0, 10)} />}
+                        <Field label="Birthdate" required error={errors.birthdate} hint={birthdateHint(data.birthdate)}>
+                            {(p) => <BirthdateInput {...p} value={data.birthdate} onChange={(v) => setData('birthdate', v)} />}
                         </Field>
                         <Field label="Age">
                             {(p) => <TextInput {...p} value={ageFrom(data.birthdate)} readOnly disabled placeholder="Computed" />}
@@ -332,13 +362,13 @@ export function EnrollmentForm({ mode, schoolYear, options, initial, action, can
                         <div key={who} className="space-y-2">
                             <p className="field-label pb-0">{title}</p>
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                                <Field small label="Last Name" error={errors[`${who}_last_name`]}>
+                                <Field small label="Last Name" srPrefix={owner[who]} error={errors[`${who}_last_name`]}>
                                     {(p) => <TextInput {...p} {...text(`${who}_last_name`)} />}
                                 </Field>
-                                <Field small label="Given Name" error={errors[`${who}_first_name`]}>
+                                <Field small label="Given Name" srPrefix={owner[who]} error={errors[`${who}_first_name`]}>
                                     {(p) => <TextInput {...p} {...text(`${who}_first_name`)} />}
                                 </Field>
-                                <Field small label="Middle Name" error={errors[`${who}_middle_name`]}>
+                                <Field small label="Middle Name" srPrefix={owner[who]} error={errors[`${who}_middle_name`]}>
                                     {(p) => <TextInput {...p} {...text(`${who}_middle_name`)} />}
                                 </Field>
                             </div>
@@ -452,6 +482,57 @@ export function EnrollmentForm({ mode, schoolYear, options, initial, action, can
                 </button>
             </div>
         </form>
+    );
+}
+
+const owner = { father: "Father's", mother: "Mother's", guardian: "Guardian's" } as const;
+
+function lrnHint(lrn: string): string {
+    const n = lrn.replace(/\D/g, '').length;
+    return n === 0 || n === 12 ? '12 digits' : `${n} of 12 digits`;
+}
+
+function birthdateHint(value: string): string {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        const age = ageFrom(value);
+        return `${describeDate(value)}${age ? ` · ${age} years old` : ''}`;
+    }
+    return value ? 'Not a date yet. Type it as MM/DD/YYYY, for example 04/18/2010.' : 'MM/DD/YYYY';
+}
+
+/**
+ * A plain text box for the birth date, faster than a date picker when
+ * copying from a PSA certificate. Typing 04182010 shows as 04/18/2010; a
+ * pasted 2010-04-18 or "April 18, 2010" also works. The form keeps the date
+ * as YYYY-MM-DD, or the raw text if it isn't a date yet, so the server can
+ * say what's wrong.
+ */
+function BirthdateInput({
+    value,
+    onChange,
+    ...props
+}: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> & { value: string; onChange: (value: string) => void }) {
+    const [text, setText] = useState(() => toTypedDate(value));
+
+    // Follow changes made elsewhere: a reset, or details filled in from an existing record.
+    useEffect(() => {
+        if (value !== (parseTypedDate(text) ?? text)) setText(toTypedDate(value));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [value]);
+
+    return (
+        <TextInput
+            {...props}
+            value={text}
+            placeholder="MM/DD/YYYY"
+            autoComplete="off"
+            maxLength={20}
+            onChange={(e) => {
+                const typed = formatWhileTyping(e.target.value);
+                setText(typed);
+                onChange(parseTypedDate(typed) ?? typed);
+            }}
+        />
     );
 }
 

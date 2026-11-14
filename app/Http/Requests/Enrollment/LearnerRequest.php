@@ -43,6 +43,15 @@ abstract class LearnerRequest extends FormRequest
             }
         }
 
+        // Mobile numbers are often written +63 917 555 0142 or (0917) 555-0142.
+        if ($this->has('contact_number')) {
+            $phone = preg_replace('/[\s().-]/', '', (string) $this->input('contact_number'));
+            if (preg_match('/^\+?63(9\d{9})$/', $phone, $m)) {
+                $phone = '0'.$m[1];
+            }
+            $clean['contact_number'] = $phone === '' ? null : $phone;
+        }
+
         $this->merge($clean);
     }
 

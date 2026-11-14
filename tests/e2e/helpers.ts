@@ -66,9 +66,8 @@ export async function fillEnrollmentForm(page: Page, l: Learner) {
     await page.getByLabel('Barangay').fill('Don Jose');
     await page.getByLabel('Municipality/City').fill('Santa Rosa');
     await page.getByLabel('Province').fill('Laguna');
-    // Mother's maiden name: the second "Last Name" in the parent section.
-    const parentLastNames = page.locator('section', { hasText: 'Parent/Guardian Information' }).getByLabel('Last Name', { exact: true });
-    await parentLastNames.nth(1).fill('Reyes');
+    // Mother's maiden name. The parent rows are labelled for screen readers.
+    await page.getByLabel("Mother's Last Name", { exact: true }).fill('Reyes');
     await page.getByLabel('Contact Number').fill('09171234567');
     await page.getByLabel('The parent, guardian or adult learner was given the privacy notice.').check();
 }

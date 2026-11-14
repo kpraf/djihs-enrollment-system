@@ -174,6 +174,16 @@ class EnrollmentEncodingTest extends TestCase
         $this->actingAs($this->registrar)->get('/enrollments/create')->assertRedirect('/dashboard');
     }
 
+    public function test_mobile_numbers_in_international_or_spaced_form_are_accepted(): void
+    {
+        foreach (['+63 917 555 0142', '639175550142', '(0917) 555-0142', '0917.555.0142'] as $i => $typed) {
+            $this->enroll(['lrn' => '20000000000'.$i, 'last_name' => 'PHONE'.$i, 'contact_number' => $typed])->assertSessionHasNoErrors();
+        }
+
+        $this->assertSame(['09175550142'], Student::where('last_name', 'like', 'PHONE%')->distinct()->pluck('contact_number')->all());
+        $this->enroll(['lrn' => '200000000009', 'contact_number' => '+1 415 555 0142'])->assertSessionHasErrors('contact_number');
+    }
+
     public function test_only_the_required_fields_are_needed(): void
     {
         // Found by the end-to-end burst test: leaving out optional fields such

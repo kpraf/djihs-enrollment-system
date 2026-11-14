@@ -22,15 +22,18 @@ export function Field({
     hint,
     className,
     small,
+    srPrefix,
     children,
 }: {
     label: string;
     required?: boolean;
     error?: string;
-    hint?: string;
+    hint?: React.ReactNode;
     className?: string;
     small?: boolean;
-    children: (props: { id: string; 'aria-invalid': boolean; 'aria-describedby'?: string }) => React.ReactNode;
+    /** Read out before the label by screen readers, e.g. "Father's" for repeated "Last Name" fields. */
+    srPrefix?: string;
+    children: (props: { id: string; 'aria-invalid': boolean; 'aria-describedby'?: string; 'aria-required'?: boolean }) => React.ReactNode;
 }) {
     const id = useId();
     const hintId = hint ? `${id}-hint` : undefined;
@@ -38,10 +41,11 @@ export function Field({
     return (
         <div className={cn('flex min-w-0 flex-col', className)}>
             <label htmlFor={id} className={small ? 'pb-1 text-xs text-slate-600' : 'field-label'}>
+                {srPrefix && <span className="sr-only">{srPrefix} </span>}
                 {label}
                 {required && <span className="text-red-500"> *</span>}
             </label>
-            {children({ id, 'aria-invalid': Boolean(error), 'aria-describedby': hintId })}
+            {children({ id, 'aria-invalid': Boolean(error), 'aria-describedby': hintId, 'aria-required': required || undefined })}
             {hint && !error && (
                 <p id={hintId} className="mt-1.5 text-xs text-slate-500">
                     {hint}

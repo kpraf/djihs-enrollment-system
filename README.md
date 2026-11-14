@@ -166,12 +166,16 @@ npx tsc --noEmit && npx eslint resources/js && vendor/bin/pint --test
 
 ## Tests
 
-- **Feature tests** (143) cover permissions, validation, duplicate prevention, edit conflicts, the review workflow, revision requests, documents, sections, school years, teacher pages, exports, analytics, metrics, the importer and the audit log. CI runs them on both SQLite and PostgreSQL.
-- **Browser tests** (39) in [`tests/e2e`](tests/e2e) drive Chromium against a real server and PostgreSQL. They include staff submitting the same learner at the same moment, ten simultaneous submissions, two people editing one record, two reviewers deciding on one learner at once, two people racing for the last seat in a section, an adviser's change approved by the registrar, SF1 and CSV downloads, the spreadsheet import, text size and phone layouts. See [`tests/e2e/README.md`](tests/e2e/README.md).
+- **Feature tests** (144) cover permissions, validation, duplicate prevention, edit conflicts, the review workflow, revision requests, documents, sections, school years, teacher pages, exports, analytics, metrics, the importer and the audit log. CI runs them on both SQLite and PostgreSQL.
+- **Browser tests** (42) in [`tests/e2e`](tests/e2e) drive Chromium against a real server and PostgreSQL. They include staff submitting the same learner at the same moment, ten simultaneous submissions, two people editing one record, two reviewers deciding on one learner at once, two people racing for the last seat in a section, an adviser's change approved by the registrar, SF1 and CSV downloads, the spreadsheet import, text size and phone layouts. See [`tests/e2e/README.md`](tests/e2e/README.md).
 
 ```bash
 npm run test:e2e
 ```
+
+## Testing with real users
+
+[`docs/usability-test.md`](docs/usability-test.md) is a kit for watching the registrar encode about 10 learners: what to ask, an observation sheet and follow-up questions. It also lists what a simulated encoding session already found and fixed.
 
 ## Importing the school's workbook
 
