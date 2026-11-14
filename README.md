@@ -165,7 +165,7 @@ npx tsc --noEmit && npx eslint resources/js && vendor/bin/pint --test
 
 ## Tests
 
-- **Feature tests** (132) cover permissions, validation, duplicate prevention, edit conflicts, the review workflow, revision requests, documents, sections, school years, teacher pages, exports, analytics, metrics, the importer and the audit log. CI runs them on both SQLite and PostgreSQL.
+- **Feature tests** (134) cover permissions, validation, duplicate prevention, edit conflicts, the review workflow, revision requests, documents, sections, school years, teacher pages, exports, analytics, metrics, the importer and the audit log. CI runs them on both SQLite and PostgreSQL.
 - **Browser tests** (35) in [`tests/e2e`](tests/e2e) drive Chromium against a real server and PostgreSQL. They include staff submitting the same learner at the same moment, ten simultaneous submissions, two people editing one record, two reviewers deciding on one learner at once, two people racing for the last seat in a section, an adviser's change approved by the registrar, SF1 and CSV downloads, the spreadsheet import, text size and phone layouts. See [`tests/e2e/README.md`](tests/e2e/README.md).
 
 ```bash
@@ -193,15 +193,14 @@ Never commit real workbooks. `*.xlsx` is git-ignored for that reason.
 
 ## Deploying to Render
 
-1. In Render, choose **New > Blueprint** and pick this repository. [`render.yaml`](render.yaml) creates the web service and a Postgres database in the Singapore region.
-2. Fill in the three secret values when asked:
-   - **`APP_KEY`**: run `php artisan key:generate --show` locally and paste the output.
-   - **`APP_URL`**: the site's address, for example `https://djihs-enrollment.onrender.com`.
-   - **`ADMIN_PASSWORD`**: the first administrator's temporary password.
-3. Deploy. Each deploy runs migrations and the idempotent seeders, then starts Apache. See [`docker/start.sh`](docker/start.sh).
-4. Sign in as `admin` and change the password when prompted.
+Everything below can be done from a phone, in the Render website.
 
-The Blueprint uses paid plans on purpose. Render's free Postgres is temporary and has no backups, and the free web service sleeps when idle. Neither is suitable for learner records. Check Render's current pricing before deploying.
+1. Sign in to [Render](https://render.com) with GitHub, choose **New > Blueprint**, pick this repository and the branch to deploy. [`render.yaml`](render.yaml) creates the web service and a Postgres database in the Singapore region.
+2. When asked for **`ADMIN_PASSWORD`**, type a temporary password for the first administrator, or leave it blank to have one generated and shown in the deploy logs. The app key and the site address are set automatically.
+3. Deploy. The first build takes several minutes. Each deploy runs migrations and the seeders, which are safe to repeat, then starts Apache. See [`docker/start.sh`](docker/start.sh).
+4. Open the address Render shows, such as `https://djihs-enrollment.onrender.com`. Sign in as `admin` and change the password when prompted.
+
+The Blueprint starts on Render's **free** plans so you can try it at no cost. On the free plans, the site sleeps after about 15 minutes without visitors and takes up to a minute to wake. Render also deletes a free database after 30 days, and free databases have no backups. Before real learner records go in, switch the database and the web service to paid plans in the Render dashboard, or change `plan:` in `render.yaml`. Check Render's current pricing first.
 
 ## Data privacy
 

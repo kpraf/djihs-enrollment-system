@@ -5,7 +5,10 @@ databases:
     databaseName: djihs_enrollment
     user: djihs
     region: singapore
-    plan: basic-256mb
+    # Free plans for trying it out. Render deletes a free database after 30
+    # days, so switch both to paid plans (for example basic-256mb and
+    # starter) before real enrollment data goes in.
+    plan: free
     postgresMajorVersion: "16"
 
 services:
@@ -13,7 +16,7 @@ services:
     name: djihs-enrollment
     runtime: docker
     region: singapore
-    plan: starter
+    plan: free
     healthCheckPath: /up
     envVars:
       - key: APP_NAME
@@ -22,10 +25,9 @@ services:
         value: production
       - key: APP_DEBUG
         value: "false"
+      # Render generates a random key once and keeps it across deploys.
       - key: APP_KEY
-        sync: false
-      - key: APP_URL
-        sync: false
+        generateValue: true
       - key: APP_TIMEZONE
         value: Asia/Manila
       - key: DB_CONNECTION
@@ -50,5 +52,7 @@ services:
         value: warning
       - key: ADMIN_USERNAME
         value: admin
+      # Leave blank to have a password generated and printed in the deploy
+      # logs. Either way it must be changed at first sign-in.
       - key: ADMIN_PASSWORD
         sync: false
