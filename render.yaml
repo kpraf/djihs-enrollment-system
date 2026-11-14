@@ -1,0 +1,54 @@
+# Render Blueprint: creates the web app and its Postgres database together.
+# In the Render dashboard choose New > Blueprint and select this repository.
+databases:
+  - name: djihs-db
+    databaseName: djihs_enrollment
+    user: djihs
+    region: singapore
+    plan: basic-256mb
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: djihs-enrollment
+    runtime: docker
+    region: singapore
+    plan: starter
+    healthCheckPath: /up
+    envVars:
+      - key: APP_NAME
+        value: DJIHS Enrollment
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: APP_TIMEZONE
+        value: Asia/Manila
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_URL
+        fromDatabase:
+          name: djihs-db
+          property: connectionString
+      - key: SESSION_DRIVER
+        value: database
+      - key: SESSION_SECURE_COOKIE
+        value: "true"
+      - key: SESSION_LIFETIME
+        value: "120"
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: LOG_LEVEL
+        value: warning
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false
