@@ -40,7 +40,7 @@ class E2ESeeder extends Seeder
         ];
 
         foreach ($accounts as [$username, $first, $last, $role]) {
-            User::create(['username' => $username, 'first_name' => $first, 'last_name' => $last, 'role' => $role, 'password' => self::PASSWORD]);
+            User::create(['username' => $username, 'first_name' => $first, 'last_name' => $last, 'role' => $role, 'password' => self::PASSWORD, 'privacy_agreed_at' => now()]);
         }
 
         // A deliberately tiny section, so tests can race for the last seat.
@@ -52,7 +52,9 @@ class E2ESeeder extends Seeder
         ]);
         $section->teacherAssignments()->create(['user_id' => User::where('username', 'subject')->value('id'), 'subject_name' => 'General Mathematics', 'subject_code' => 'GENMATH']);
 
-        User::create(['username' => 'newhire', 'first_name' => 'Nina', 'last_name' => 'New', 'role' => Role::Adviser, 'password' => self::PASSWORD, 'must_change_password' => true]);
+        User::create(['username' => 'newhire', 'first_name' => 'Nina', 'last_name' => 'New', 'role' => Role::Adviser, 'password' => self::PASSWORD, 'must_change_password' => true, 'privacy_agreed_at' => now()]);
+        // Has not accepted the confidentiality agreement yet.
+        User::create(['username' => 'firstday', 'first_name' => 'Fe', 'last_name' => 'Firstday', 'role' => Role::Adviser, 'password' => self::PASSWORD]);
         User::create(['username' => 'retired', 'first_name' => 'Rey', 'last_name' => 'Retired', 'role' => Role::Adviser, 'password' => self::PASSWORD, 'is_active' => false]);
     }
 }

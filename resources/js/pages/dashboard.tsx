@@ -67,6 +67,7 @@ interface Props {
         active_users: number;
         roles: { label: string; count: number }[];
         activity_today: number;
+        privacy_contact_missing: boolean;
         recent: { id: number; at: string; user: string; event: string; subject_type: string; subject: string }[];
     } | null;
 }
@@ -500,6 +501,19 @@ function RoleBlocks({
                         </span>
                     }
                 >
+                    {system.privacy_contact_missing && (
+                        <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                            <Icon name="warning" className="mt-px text-amber-600" />
+                            <p>
+                                The{' '}
+                                <a href={route('privacy.notice')} target="_blank" rel="noreferrer" className="font-medium underline">
+                                    privacy notice
+                                </a>{' '}
+                                has no Data Protection Officer contact yet. Set PRIVACY_DPO_NAME, PRIVACY_DPO_EMAIL and PRIVACY_DPO_PHONE in the
+                                server settings.
+                            </p>
+                        </div>
+                    )}
                     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                         <div>
                             <h3 className="mb-2 text-sm font-semibold text-slate-700">User Role Distribution</h3>

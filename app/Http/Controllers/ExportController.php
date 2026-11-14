@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\User;
 use App\Services\Audit\AuditTrail;
 use App\Services\Exports\EncodingTemplate;
+use App\Services\Privacy\AccessLog;
 use App\Support\TableExport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,17 +24,20 @@ class ExportController extends Controller
             ->when($request->input('from'), fn ($q, $d) => $q->where('created_at', '>=', $d.' 00:00:00'))
             ->when($request->input('to'), fn ($q, $d) => $q->where('created_at', '<=', $d.' 23:59:59'))
             ->latest('id')->limit(20000)->get();
+        AccessLog::exported($request, AccessLog::AUDIT_LOG, 'Audit log (CSV)');
 
         return TableExport::csv('Audit_Log_'.now()->format('Y-m-d').'.csv', ['Timestamp', 'User', 'Action', 'Record type', 'Record', 'Changes', 'IP address'],
             collect($trail->present($logs))->map(fn ($l) => [
                 $l['at'], $l['user'], $l['event'], $l['subject_type'], $l['subject'],
-                collect($l['changes'])->map(fn ($c) => "{$c['field']}: ".($c['old'] ?? '').' -> '.($c['new'] ?? ''))->join('; '),
+                $l['detail'] ?? collect($l['changes'])->map(fn ($c) => "{$c['field']}: ".($c['old'] ?? '').' -> '.($c['new'] ?? ''))->join('; '),
                 $l['ip_address'],
             ]));
     }
 
-    public function users(): StreamedResponse
+    public function users(Request $request): StreamedResponse
     {
+        AccessLog::exported($request, AccessLog::USER_LIST, 'User accounts list (CSV)');
+
         return TableExport::csv('User_Accounts_'.now()->format('Y-m-d').'.csv', ['Name', 'Username', 'Email', 'Role', 'Status', 'Last sign-in'],
             User::orderBy('last_name')->get()->map(fn (User $u) => [
                 $u->name, $u->username, $u->email, $u->role->label(), $u->is_active ? 'Active' : 'Inactive', $u->last_login_at?->format('Y-m-d H:i'),
@@ -49,8 +53,9 @@ class ExportController extends Controller
      * Every table as a CSV inside one ZIP, so the school keeps its own copy
      * of the data. Passwords and session data are left out.
      */
-    public function backup(): BinaryFileResponse
+    public function backup(Request $request): BinaryFileResponse
     {
+        AccessLog::exported($request, AccessLog::BACKUP, 'Full backup of every table (ZIP)');
         $tables = ['school_years', 'strands', 'sections', 'students', 'enrollments', 'document_submissions', 'revision_requests', 'teacher_assignments', 'users', 'audit_logs'];
         $hidden = ['users' => ['password', 'remember_token']];
         $path = tempnam(sys_get_temp_dir(), 'bak');

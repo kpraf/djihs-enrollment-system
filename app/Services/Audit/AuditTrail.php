@@ -16,6 +16,7 @@ use App\Models\Strand;
 use App\Models\Student;
 use App\Models\TeacherAssignment;
 use App\Models\User;
+use App\Services\Privacy\AccessLog;
 use Illuminate\Support\Collection;
 
 /**
@@ -35,7 +36,13 @@ class AuditTrail
         TeacherAssignment::class => 'Subject teacher',
         Section::class => 'Section',
         SchoolYear::class => 'School year',
+        AccessLog::BACKUP => 'Full backup',
+        AccessLog::USER_LIST => 'User accounts list',
+        AccessLog::AUDIT_LOG => 'Audit log',
     ];
+
+    /** Views and downloads, as opposed to changes. */
+    public const ACCESS_EVENTS = [AccessLog::VIEWED, AccessLog::EXPORTED];
 
     /** @var array<string, string> */
     private const LABELS = [
@@ -57,6 +64,8 @@ class AuditTrail
         'justification' => 'Justification', 'review_notes' => 'Review notes', 'changes' => 'Changes',
         'encoded_on' => 'Date encoded', 'username' => 'Username', 'role' => 'Role', 'is_active' => 'Active',
         'must_change_password' => 'Must change password', 'email' => 'Email', 'text_size' => 'Text size',
+        'privacy_notice_at' => 'Privacy notice given', 'privacy_notice_by' => 'Privacy notice recorded by',
+        'privacy_agreed_at' => 'Confidentiality agreement accepted',
         'code' => 'Code', 'name' => 'Name', 'track' => 'Track', 'start_year' => 'Start year',
         'is_enrollment_open' => 'Enrollment open', 'grade_10_completers' => 'Grade 10 completers', 'capacity' => 'Capacity',
     ];
@@ -75,8 +84,30 @@ class AuditTrail
             ->where(fn ($q) => $q
                 ->where(fn ($q) => $q->where('auditable_type', Enrollment::class)->where('auditable_id', $enrollment->id))
                 ->orWhere(fn ($q) => $q->where('auditable_type', Student::class)->where('auditable_id', $enrollment->student_id)))
+            ->whereNotIn('event', self::ACCESS_EVENTS)
             ->latest('id')
             ->limit(100)
+            ->get();
+
+        return (new self)->present($logs);
+    }
+
+    /**
+     * Everything logged about one learner across all their enrollments:
+     * their changes, or who viewed and downloaded their record.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function forLearner(Student $student, bool $access): array
+    {
+        $enrollmentIds = $student->enrollments()->pluck('id');
+        $logs = AuditLog::with('user:id,first_name,last_name')
+            ->where(fn ($q) => $q
+                ->where(fn ($q) => $q->where('auditable_type', Enrollment::class)->whereIn('auditable_id', $enrollmentIds))
+                ->orWhere(fn ($q) => $q->where('auditable_type', Student::class)->where('auditable_id', $student->id)))
+            ->{$access ? 'whereIn' : 'whereNotIn'}('event', self::ACCESS_EVENTS)
+            ->latest('id')
+            ->limit(500)
             ->get();
 
         return (new self)->present($logs);
@@ -91,7 +122,8 @@ class AuditTrail
         $subjects = $this->subjectNames($logs);
 
         return $logs->map(function (AuditLog $log) use ($subjects) {
-            $changes = $this->changeList(
+            $access = in_array($log->event, self::ACCESS_EVENTS, true);
+            $changes = $access ? [] : $this->changeList(
                 $log->event === 'created' ? [] : ($log->old_values ?? []),
                 $log->event === 'deleted' ? [] : ($log->new_values ?? []),
             );
@@ -102,8 +134,9 @@ class AuditTrail
                 'user' => $log->user?->name ?? 'System',
                 'event' => $log->event,
                 'subject_type' => self::SUBJECTS[$log->auditable_type] ?? class_basename($log->auditable_type),
-                'subject' => $subjects[$log->auditable_type][$log->auditable_id] ?? '#'.$log->auditable_id,
+                'subject' => $subjects[$log->auditable_type][$log->auditable_id] ?? ($log->auditable_id ? '#'.$log->auditable_id : ''),
                 'changes' => $changes,
+                'detail' => $access ? ($log->new_values['what'] ?? null) : null,
                 'ip_address' => $log->ip_address,
             ];
         })->values()->all();
@@ -169,6 +202,13 @@ class AuditTrail
         if ($ids->has(Strand::class)) {
             $names[Strand::class] = Strand::whereIn('id', $ids[Strand::class])->pluck('code', 'id')->all();
         }
+        if ($ids->has(Section::class)) {
+            $names[Section::class] = Section::with('strand')->whereIn('id', $ids[Section::class])->get()->mapWithKeys(fn (Section $s) => [$s->id => $s->label()])->all();
+        }
+        if ($ids->has(TeacherAssignment::class)) {
+            $names[TeacherAssignment::class] = TeacherAssignment::with('section.strand')->whereIn('id', $ids[TeacherAssignment::class])->get()
+                ->mapWithKeys(fn (TeacherAssignment $t) => [$t->id => $t->subject_name.' · '.$t->section?->label()])->all();
+        }
         if ($ids->has(SchoolYear::class)) {
             $names[SchoolYear::class] = SchoolYear::whereIn('id', $ids[SchoolYear::class])->get()->pluck('name', 'id')->all();
         }
@@ -191,7 +231,8 @@ class AuditTrail
             $field === 'status' => EnrollmentStatus::tryFrom($value)?->label() ?? (string) $value,
             $field === 'learner_type' => LearnerType::tryFrom($value)?->label() ?? (string) $value,
             $field === 'document_type' => DocumentType::tryFrom($value)?->label() ?? (string) $value,
-            $field === 'adviser_id' => User::find($value)?->name ?? "#{$value}",
+            in_array($field, ['adviser_id', 'privacy_notice_by'], true) => User::find($value)?->name ?? "#{$value}",
+            in_array($field, ['privacy_notice_at', 'privacy_agreed_at'], true) => substr((string) $value, 0, 10),
             is_array($value) => count($value).' fields',
             $field === 'role' => Role::tryFrom($value)?->label() ?? (string) $value,
             $field === 'sex' => ucfirst((string) $value),

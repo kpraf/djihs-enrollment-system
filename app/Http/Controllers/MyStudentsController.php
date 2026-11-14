@@ -6,6 +6,7 @@ use App\Enums\EnrollmentStatus;
 use App\Models\Enrollment;
 use App\Models\SchoolYear;
 use App\Models\TeacherAssignment;
+use App\Services\Privacy\AccessLog;
 use App\Support\TableExport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -49,6 +50,7 @@ class MyStudentsController extends Controller
     {
         abort_unless($assignment->user_id === $request->user()->id, 403);
         $assignment->load('section.strand');
+        AccessLog::exported($request, $assignment, 'Class list (CSV)');
 
         return TableExport::csv(
             preg_replace('/[^A-Za-z0-9_-]+/', '_', "{$assignment->subject_name}_{$assignment->section->label()}").'.csv',

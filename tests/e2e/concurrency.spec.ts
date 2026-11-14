@@ -62,6 +62,7 @@ test('ten identical submissions at once (double clicks, slow network) still save
         province: 'Laguna',
         mother_last_name: 'Reyes',
         contact_number: '09171234567',
+        privacy_notice_given: true,
     };
 
     const responses = await Promise.all(Array.from({ length: 10 }, () => postAs(context, context.request, '/enrollments', body)));

@@ -70,6 +70,7 @@ export async function fillEnrollmentForm(page: Page, l: Learner) {
     const parentLastNames = page.locator('section', { hasText: 'Parent/Guardian Information' }).getByLabel('Last Name', { exact: true });
     await parentLastNames.nth(1).fill('Reyes');
     await page.getByLabel('Contact Number').fill('09171234567');
+    await page.getByLabel('The parent, guardian or adult learner was given the privacy notice.').check();
 }
 
 /**

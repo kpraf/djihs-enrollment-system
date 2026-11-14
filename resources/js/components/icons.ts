@@ -58,6 +58,7 @@ import PersonRemoveIcon from '@material-symbols/svg-400/outlined/person_remove.s
 import PieChartIcon from '@material-symbols/svg-400/outlined/pie_chart.svg?raw';
 import PostAddIcon from '@material-symbols/svg-400/outlined/post_add.svg?raw';
 import PrintIcon from '@material-symbols/svg-400/outlined/print.svg?raw';
+import PrivacyTipIcon from '@material-symbols/svg-400/outlined/privacy_tip.svg?raw';
 import RateReviewIcon from '@material-symbols/svg-400/outlined/rate_review.svg?raw';
 import RefreshIcon from '@material-symbols/svg-400/outlined/refresh.svg?raw';
 import SaveIcon from '@material-symbols/svg-400/outlined/save.svg?raw';
@@ -65,6 +66,7 @@ import SchoolIcon from '@material-symbols/svg-400/outlined/school.svg?raw';
 import SearchIcon from '@material-symbols/svg-400/outlined/search.svg?raw';
 import SettingsIcon from '@material-symbols/svg-400/outlined/settings.svg?raw';
 import RestoreIcon from '@material-symbols/svg-400/outlined/settings_backup_restore.svg?raw';
+import ShieldIcon from '@material-symbols/svg-400/outlined/shield.svg?raw';
 import SpeedIcon from '@material-symbols/svg-400/outlined/speed.svg?raw';
 import TableViewIcon from '@material-symbols/svg-400/outlined/table_view.svg?raw';
 import TaskAltIcon from '@material-symbols/svg-400/outlined/task_alt.svg?raw';
@@ -80,6 +82,8 @@ import VisibilityOffIcon from '@material-symbols/svg-400/outlined/visibility_off
 import WarningIcon from '@material-symbols/svg-400/outlined/warning.svg?raw';
 
 export const icons = {
+    shield: ShieldIcon,
+    privacy_tip: PrivacyTipIcon,
     account_circle: AccountCircleIcon,
     add: AddIcon,
     analytics: AnalyticsIcon,

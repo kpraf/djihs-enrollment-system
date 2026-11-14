@@ -55,6 +55,7 @@ class LearnerPayload
             'guardian_relationship' => '',
             'contact_number' => '0917 123 4567',
             'remarks' => '',
+            'privacy_notice_given' => true,
             ...$overrides,
         ];
     }

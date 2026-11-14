@@ -24,6 +24,7 @@ class Enrollment extends Model
         'learner_type', 'is_irregular', 'status', 'weight_kg', 'height_m',
         'encoded_on', 'encoded_by', 'remarks',
         'reviewed_at', 'reviewed_by', 'status_changed_at', 'status_changed_by', 'status_reason',
+        'privacy_notice_at', 'privacy_notice_by',
     ];
 
     /** @var array<string, mixed> */
@@ -45,6 +46,7 @@ class Enrollment extends Model
             'encoded_on' => 'date:Y-m-d',
             'reviewed_at' => 'datetime',
             'status_changed_at' => 'datetime',
+            'privacy_notice_at' => 'datetime',
             'lock_version' => 'integer',
         ];
     }
@@ -88,6 +90,11 @@ class Enrollment extends Model
             ->whereDoesntHave('documents', $submitted(['psa_birth_cert', 'local_birth_cert']))
             ->orWhereDoesntHave('documents', $submitted(['report_card']))
             ->orWhere(fn (Builder $t) => $t->where('learner_type', 'transferee')->whereDoesntHave('documents', $submitted(['form_137']))));
+    }
+
+    public function privacyNoticeGiver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'privacy_notice_by');
     }
 
     public function student(): BelongsTo

@@ -9,6 +9,7 @@ use App\Models\SchoolYear;
 use App\Models\Section;
 use App\Models\User;
 use App\Services\Exports\Sf1Exporter;
+use App\Services\Privacy\AccessLog;
 use App\Support\TableExport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -64,6 +65,7 @@ class MySectionController extends Controller
         ]);
         $headers = ['#', 'LRN', 'Student Name', 'Sex', 'Contact Number', 'Status'];
         $name = preg_replace('/[^A-Za-z0-9_-]+/', '_', $section->label());
+        AccessLog::exported($request, $section, 'Class list ('.($format === 'xlsx' ? 'Excel' : 'CSV').')');
 
         return $format === 'xlsx'
             ? TableExport::xlsx("{$name}.xlsx", [$section->name => [$headers, $rows]])
@@ -73,6 +75,7 @@ class MySectionController extends Controller
     public function sf1(Request $request, Section $section, Sf1Exporter $exporter): HttpResponse
     {
         $this->authorizeSection($request->user(), $section);
+        AccessLog::exported($request, $section, 'School Form 1 (SF1)');
 
         return $exporter->download($section);
     }
@@ -81,6 +84,7 @@ class MySectionController extends Controller
     {
         $this->authorizeSection($request->user(), $section);
         $section->load(['schoolYear', 'adviser']);
+        AccessLog::exported($request, $section, 'Printable class list');
 
         return Inertia::render('print/class-list', [
             'title' => $section->label(),

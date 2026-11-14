@@ -29,6 +29,15 @@ test('create an account, hand over the temporary password, and the new user sign
     const p2 = await theirs.newPage();
     await login(p2, username, temporary);
     await expect(p2).toHaveURL(/\/settings\/password/);
+    await p2.getByLabel('Temporary Password').fill(temporary);
+    await p2.getByLabel('New Password', { exact: false }).first().fill('Lorna-new-pass1');
+    await p2.getByLabel('Confirm New Password').fill('Lorna-new-pass1');
+    await p2.getByRole('button', { name: 'Save Password' }).click();
+    // Then the confidentiality agreement, once.
+    await expect(p2.getByRole('heading', { name: 'Confidentiality Agreement' })).toBeVisible();
+    await p2.getByLabel("I have read and agree to keep learners' information confidential.").check();
+    await p2.getByRole('button', { name: 'Accept and Continue' }).click();
+    await expect(p2).toHaveURL(/\/dashboard$/);
     await theirs.close();
 
     // Deactivate them; they can no longer sign in.
@@ -38,7 +47,7 @@ test('create an account, hand over the temporary password, and the new user sign
 
     const again = await browser.newContext();
     const p3 = await again.newPage();
-    await login(p3, username, temporary);
+    await login(p3, username, 'Lorna-new-pass1');
     await expect(p3.getByText('This account has been deactivated')).toBeVisible();
     await again.close();
 });

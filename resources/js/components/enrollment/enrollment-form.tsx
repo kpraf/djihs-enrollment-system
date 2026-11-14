@@ -381,6 +381,34 @@ export function EnrollmentForm({ mode, schoolYear, options, initial, action, can
                     </section>
                 )}
 
+                {mode === 'create' && (
+                    <section
+                        className="rounded-lg border border-green-200 bg-green-50 p-4"
+                        data-error={errors.privacy_notice_given ? true : undefined}
+                    >
+                        <h3 className="flex items-center gap-2 text-sm font-semibold text-green-900">
+                            <Icon name="shield" className="text-green-700" /> Data Privacy
+                        </h3>
+                        <p className="mt-1 text-sm text-green-900">
+                            Before encoding, give the parent, guardian or learner (if 18 or older) the school's{' '}
+                            <a href={route('privacy.notice')} target="_blank" rel="noreferrer" className="font-medium underline">
+                                privacy notice
+                            </a>
+                            . It explains why this information is collected and their rights under the Data Privacy Act (RA 10173).
+                        </p>
+                        <label className="mt-3 flex items-start gap-2 text-sm text-green-950">
+                            <input
+                                type="checkbox"
+                                className="checkbox mt-0.5"
+                                checked={data.privacy_notice_given}
+                                onChange={(e) => setData('privacy_notice_given', e.target.checked)}
+                            />
+                            The parent, guardian or adult learner was given the privacy notice.
+                        </label>
+                        {errors.privacy_notice_given && <p className="mt-2 text-sm text-red-600">{errors.privacy_notice_given}</p>}
+                    </section>
+                )}
+
                 {duplicateWarning && (
                     <div className="rounded-lg border border-amber-300 bg-amber-50 p-4" data-error>
                         <p className="flex items-start gap-2 text-sm font-medium text-amber-900">

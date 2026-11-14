@@ -30,6 +30,8 @@ export interface EnrollmentRecord {
     status_changed_at: string | null;
     status_changer: string | null;
     status_reason: string | null;
+    privacy_notice_at: string | null;
+    privacy_notice_by: string | null;
     documents_complete: boolean;
     enrollment_version: number;
     student_version: number;
@@ -40,10 +42,12 @@ export interface HistoryEntry {
     id: number;
     at: string;
     user: string;
-    event: 'created' | 'updated' | 'deleted';
+    event: 'created' | 'updated' | 'deleted' | 'viewed' | 'exported';
     subject_type: string;
     subject: string;
     changes: { field: string; old: string | null; new: string | null }[];
+    /** For views and downloads: what was seen, such as "Learner record". */
+    detail: string | null;
 }
 
 interface DocumentRow {
@@ -106,6 +110,9 @@ export default function ShowEnrollment({ enrollment: e, documents, revisions, hi
                         <Link href={route('enrollments.index')} className="btn-outline">
                             <Icon name="chevron_left" /> Back to list
                         </Link>
+                        <a href={route('enrollments.data-record', e.id)} target="_blank" rel="noreferrer" className="btn-outline">
+                            <Icon name="privacy_tip" /> Learner Data Record
+                        </a>
                         {(can.edit || can.requestRevision) && (
                             <Link href={route('enrollments.edit', e.id)} className="btn-primary">
                                 <Icon name="edit" /> {can.edit ? 'Edit' : 'Request Changes'}
@@ -151,6 +158,17 @@ export default function ShowEnrollment({ enrollment: e, documents, revisions, hi
                             <Item
                                 label="Reviewed"
                                 value={e.reviewed_at ? joinName(when.format(new Date(e.reviewed_at)), e.reviewer ? `by ${e.reviewer}` : null) : null}
+                            />
+                            <Item
+                                label="Privacy notice"
+                                value={
+                                    e.privacy_notice_at
+                                        ? joinName(
+                                              when.format(new Date(e.privacy_notice_at)),
+                                              e.privacy_notice_by ? `recorded by ${e.privacy_notice_by}` : null,
+                                          )
+                                        : 'Not recorded'
+                                }
                             />
                             <Item label="Remarks" value={e.remarks} />
                         </dl>

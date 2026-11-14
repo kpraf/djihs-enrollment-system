@@ -41,7 +41,7 @@ services:
       - key: SESSION_SECURE_COOKIE
         value: "true"
       - key: SESSION_LIFETIME
-        value: "120"
+        value: "30"
       - key: CACHE_STORE
         value: database
       - key: QUEUE_CONNECTION
@@ -52,6 +52,13 @@ services:
         value: warning
       - key: ADMIN_USERNAME
         value: admin
+      # The school's Data Protection Officer, shown on the privacy notice.
+      - key: PRIVACY_DPO_NAME
+        sync: false
+      - key: PRIVACY_DPO_EMAIL
+        sync: false
+      - key: PRIVACY_DPO_PHONE
+        sync: false
       # Leave blank to have a password generated and printed in the deploy
       # logs. Either way it must be changed at first sign-in.
       - key: ADMIN_PASSWORD

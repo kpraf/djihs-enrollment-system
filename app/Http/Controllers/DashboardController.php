@@ -121,8 +121,10 @@ class DashboardController extends Controller
             'users' => User::count(),
             'active_users' => User::where('is_active', true)->count(),
             'roles' => array_map(fn (Role $r) => ['label' => $r->label(), 'count' => (int) ($byRole[$r->value] ?? 0)], Role::cases()),
-            'activity_today' => AuditLog::where('created_at', '>=', now()->startOfDay())->count(),
-            'recent' => (new AuditTrail)->present(AuditLog::with('user:id,first_name,last_name')->latest('id')->limit(8)->get()),
+            'activity_today' => AuditLog::where('created_at', '>=', now()->startOfDay())->whereNotIn('event', AuditTrail::ACCESS_EVENTS)->count(),
+            'recent' => (new AuditTrail)->present(AuditLog::with('user:id,first_name,last_name')->whereNotIn('event', AuditTrail::ACCESS_EVENTS)->latest('id')->limit(8)->get()),
+            // The privacy notice needs the school's Data Protection Officer.
+            'privacy_contact_missing' => ! config('privacy.dpo_name') && ! config('privacy.dpo_email') && ! config('privacy.dpo_phone'),
         ];
     }
 }

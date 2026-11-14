@@ -29,6 +29,7 @@ class User extends Authenticatable
         'password',
         'must_change_password',
         'text_size',
+        'privacy_agreed_at',
     ];
 
     protected $hidden = [
@@ -53,6 +54,7 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'must_change_password' => 'boolean',
             'last_login_at' => 'datetime',
+            'privacy_agreed_at' => 'datetime',
             'password' => 'hashed',
         ];
     }

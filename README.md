@@ -37,6 +37,7 @@ The interface keeps the look of the original DJIHS pages: the green sidebar, the
 - **My Section and My Students.** Advisers see their class list with SF1, CSV and Excel downloads and a printable list. Subject teachers see the learners in the classes they teach.
 - **Analytics and Metrics.** Charts of enrollment by grade, strand, sex and learner type, year-on-year trends, and transition, promotion, retention and dropout rates, with CSV and Excel downloads.
 - **Role dashboards.** Each role sees its own summary: pending reviews, its sections, section fill, classes taught, or system status.
+- **Data privacy.** A privacy notice for parents, a staff confidentiality agreement, logging of who viewed or downloaded personal data, and a printable record of everything held about a learner. See [Data privacy](#data-privacy).
 - **User accounts, audit log and backup.** Create, edit, deactivate and reset accounts, and download the list. Every change is recorded with who made it and shown in readable form. Download the audit log, a blank encoding template, or a full backup as a ZIP of CSV files. Passwords are never logged or backed up.
 
 ## Data model
@@ -165,8 +166,8 @@ npx tsc --noEmit && npx eslint resources/js && vendor/bin/pint --test
 
 ## Tests
 
-- **Feature tests** (134) cover permissions, validation, duplicate prevention, edit conflicts, the review workflow, revision requests, documents, sections, school years, teacher pages, exports, analytics, metrics, the importer and the audit log. CI runs them on both SQLite and PostgreSQL.
-- **Browser tests** (35) in [`tests/e2e`](tests/e2e) drive Chromium against a real server and PostgreSQL. They include staff submitting the same learner at the same moment, ten simultaneous submissions, two people editing one record, two reviewers deciding on one learner at once, two people racing for the last seat in a section, an adviser's change approved by the registrar, SF1 and CSV downloads, the spreadsheet import, text size and phone layouts. See [`tests/e2e/README.md`](tests/e2e/README.md).
+- **Feature tests** (143) cover permissions, validation, duplicate prevention, edit conflicts, the review workflow, revision requests, documents, sections, school years, teacher pages, exports, analytics, metrics, the importer and the audit log. CI runs them on both SQLite and PostgreSQL.
+- **Browser tests** (39) in [`tests/e2e`](tests/e2e) drive Chromium against a real server and PostgreSQL. They include staff submitting the same learner at the same moment, ten simultaneous submissions, two people editing one record, two reviewers deciding on one learner at once, two people racing for the last seat in a section, an adviser's change approved by the registrar, SF1 and CSV downloads, the spreadsheet import, text size and phone layouts. See [`tests/e2e/README.md`](tests/e2e/README.md).
 
 ```bash
 npm run test:e2e
@@ -204,10 +205,14 @@ The Blueprint starts on Render's **free** plans so you can try it at no cost. On
 
 ## Data privacy
 
-The system stores personal data of minors, including LRN, birth date, address, Indigenous Peoples membership and 4Ps status. It falls under the Data Privacy Act of 2012.
-- Give each staff member their own account and deactivate accounts when people leave.
-- Keep `APP_DEBUG=false` in production.
-- Use the database's backups, and restrict who can download exports.
+The system stores personal data of minors, some of it sensitive, so it falls under the Data Privacy Act of 2012 (RA 10173). It includes:
+- A privacy notice for parents at `/privacy`, which must be confirmed as given before each enrollment is submitted.
+- A confidentiality agreement every staff member accepts at first sign-in.
+- An audit log of every change, every view of a learner's record and every download of personal data.
+- A printable **Learner Data Record** for requests under the right of access.
+- Automatic sign-out after 30 idle minutes.
+
+[`docs/data-privacy.md`](docs/data-privacy.md) explains what the system covers and what the school still has to do, starting with naming a Data Protection Officer and setting `PRIVACY_DPO_NAME`, `PRIVACY_DPO_EMAIL` and `PRIVACY_DPO_PHONE`.
 
 ## Project layout
 

@@ -6,6 +6,7 @@ test('every main page fits a phone screen and the menu opens as a drawer', async
     await expect(page).toHaveURL(/\/dashboard/);
 
     for (const url of [
+        '/privacy',
         '/dashboard',
         '/enrollments',
         '/enrollments/create',

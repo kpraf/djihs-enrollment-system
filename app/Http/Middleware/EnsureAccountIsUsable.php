@@ -9,7 +9,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Signs out anyone whose account was deactivated mid-session, and sends
- * users with an admin-issued password to change it before doing anything else.
+ * users with an admin-issued password to change it before doing anything else,
+ * then has new staff accept the confidentiality agreement.
  */
 class EnsureAccountIsUsable
 {
@@ -31,8 +32,17 @@ class EnsureAccountIsUsable
             ]);
         }
 
-        if ($user->must_change_password && ! $request->routeIs('password.edit', 'password.update', 'logout', 'text-size.update')) {
-            return redirect()->route('password.edit');
+        if ($user->must_change_password) {
+            return $request->routeIs('password.edit', 'password.update', 'logout', 'text-size.update')
+                ? $next($request)
+                : redirect()->route('password.edit');
+        }
+
+        // Then staff accept the confidentiality agreement once, before they
+        // can see any learner's personal data. Checked only after the
+        // password step, so the two never send each other back and forth.
+        if ($user->privacy_agreed_at === null && ! $request->routeIs('privacy.*', 'logout', 'text-size.update')) {
+            return redirect()->route('privacy.agreement');
         }
 
         return $next($request);

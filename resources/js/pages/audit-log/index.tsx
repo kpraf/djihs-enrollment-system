@@ -12,15 +12,21 @@ import { useState } from 'react';
 
 interface Props {
     logs: Paginated<HistoryEntry & { ip_address: string | null }>;
-    filters: { type?: string; user?: string; from?: string; to?: string };
+    filters: { type?: string; activity?: string; user?: string; from?: string; to?: string };
     stats: { total: number; today: number; week: number; month: number };
     users: { id: number; name: string }[];
     types: Option[];
 }
 
 const when = new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeStyle: 'short' });
-const verbs = { created: 'Created', updated: 'Updated', deleted: 'Deleted' };
-const tones = { created: 'bg-green-100 text-green-800', updated: 'bg-blue-100 text-blue-800', deleted: 'bg-red-100 text-red-800' };
+const verbs = { created: 'Created', updated: 'Updated', deleted: 'Deleted', viewed: 'Viewed', exported: 'Downloaded' };
+const tones = {
+    created: 'bg-green-100 text-green-800',
+    updated: 'bg-blue-100 text-blue-800',
+    deleted: 'bg-red-100 text-red-800',
+    viewed: 'bg-slate-100 text-slate-700',
+    exported: 'bg-amber-100 text-amber-800',
+};
 
 export default function AuditLog({ logs, filters, stats, users, types }: Props) {
     const [draft, setDraft] = useState(filters);
@@ -37,7 +43,7 @@ export default function AuditLog({ logs, filters, stats, users, types }: Props) 
             <Head title="Audit Log" />
             <PageHeader
                 title="System Audit Log"
-                description="Track all system activities and changes made by users."
+                description="Every change, and every time someone viewed or downloaded personal data."
                 actions={
                     <>
                         <a
@@ -67,7 +73,19 @@ export default function AuditLog({ logs, filters, stats, users, types }: Props) 
 
             <div className="panel mb-6 p-4">
                 <h2 className="mb-3 font-semibold text-slate-900">Filters</h2>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                    <label className="flex flex-col text-xs text-slate-600">
+                        Activity
+                        <select
+                            className="field-input-sm mt-1"
+                            value={draft.activity ?? ''}
+                            onChange={(e) => setDraft({ ...draft, activity: e.target.value })}
+                        >
+                            <option value="">Everything</option>
+                            <option value="changes">Changes only</option>
+                            <option value="access">Views and downloads only</option>
+                        </select>
+                    </label>
                     <label className="flex flex-col text-xs text-slate-600">
                         Record type
                         <select
@@ -84,7 +102,7 @@ export default function AuditLog({ logs, filters, stats, users, types }: Props) 
                         </select>
                     </label>
                     <label className="flex flex-col text-xs text-slate-600">
-                        Changed by
+                        By
                         <select
                             className="field-input-sm mt-1"
                             value={draft.user ?? ''}
@@ -170,6 +188,8 @@ export default function AuditLog({ logs, filters, stats, users, types }: Props) 
                                                     </li>
                                                 ))}
                                             </ul>
+                                        ) : l.detail ? (
+                                            <span>{l.detail}</span>
                                         ) : (
                                             <span>{l.changes.length} fields</span>
                                         )}

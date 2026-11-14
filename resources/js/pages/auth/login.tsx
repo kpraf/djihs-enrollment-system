@@ -96,7 +96,10 @@ export default function Login() {
                 </button>
 
                 <p className="pt-2 text-center text-xs text-slate-400">
-                    © {new Date().getFullYear()} Don Jose Integrated High School. All rights reserved.
+                    © {new Date().getFullYear()} Don Jose Integrated High School. All rights reserved. ·{' '}
+                    <a href={route('privacy.notice')} className="underline hover:text-slate-600">
+                        Privacy Notice
+                    </a>
                 </p>
             </form>
         </GuestLayout>

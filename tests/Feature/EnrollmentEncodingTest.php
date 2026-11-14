@@ -192,6 +192,7 @@ class EnrollmentEncodingTest extends TestCase
             'province' => 'Laguna',
             'mother_last_name' => 'Reyes',
             'contact_number' => '09171234567',
+            'privacy_notice_given' => true,
         ])->assertSessionHasNoErrors()->assertRedirect('/enrollments/create');
 
         $this->assertSame('Philippines', Student::sole()->country);

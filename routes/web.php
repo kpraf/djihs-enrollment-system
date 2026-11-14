@@ -10,6 +10,7 @@ use App\Http\Controllers\ImportController;
 use App\Http\Controllers\MetricsController;
 use App\Http\Controllers\MySectionController;
 use App\Http\Controllers\MyStudentsController;
+use App\Http\Controllers\PrivacyController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\SchoolYearController;
 use App\Http\Controllers\SectionAssignmentController;
@@ -20,6 +21,13 @@ use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard')->name('home');
+
+// Data Privacy Act: the notice is public so parents can read it anywhere.
+Route::get('privacy', [PrivacyController::class, 'notice'])->name('privacy.notice');
+Route::middleware('auth')->group(function () {
+    Route::get('privacy/agreement', [PrivacyController::class, 'agreement'])->name('privacy.agreement');
+    Route::post('privacy/agreement', [PrivacyController::class, 'agree'])->name('privacy.agree');
+});
 
 Route::middleware('auth')->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
@@ -52,6 +60,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('can:view-enrollments')->group(function () {
         Route::get('enrollments', [EnrollmentController::class, 'index'])->name('enrollments.index');
         Route::get('enrollments/{enrollment}', [EnrollmentController::class, 'show'])->whereNumber('enrollment')->name('enrollments.show');
+        Route::get('enrollments/{enrollment}/data-record', [PrivacyController::class, 'record'])->name('enrollments.data-record');
     });
 
     // Review Enrollments

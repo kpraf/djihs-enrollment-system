@@ -19,6 +19,7 @@ use App\Services\Audit\AuditTrail;
 use App\Services\Enrollment\EnrollLearner;
 use App\Services\Enrollment\EnrollmentWorkflow;
 use App\Services\Enrollment\RevisionService;
+use App\Services\Privacy\AccessLog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
@@ -132,8 +133,9 @@ class EnrollmentController extends Controller
 
     public function show(Request $request, Enrollment $enrollment): Response
     {
-        $enrollment->load(['student', 'strand', 'section', 'schoolYear', 'encoder:id,first_name,last_name', 'reviewer:id,first_name,last_name', 'statusChanger:id,first_name,last_name', 'documents.updater:id,first_name,last_name']);
+        $enrollment->load(['student', 'strand', 'section', 'schoolYear', 'encoder:id,first_name,last_name', 'reviewer:id,first_name,last_name', 'statusChanger:id,first_name,last_name', 'documents.updater:id,first_name,last_name', 'privacyNoticeGiver:id,first_name,last_name']);
         $user = $request->user();
+        AccessLog::viewed($request, $enrollment, 'Learner record');
 
         return Inertia::render('enrollments/show', [
             'enrollment' => $this->present($enrollment),
@@ -302,6 +304,8 @@ class EnrollmentController extends Controller
             'status_changed_at' => $e->status_changed_at?->toIso8601String(),
             'status_changer' => $e->relationLoaded('statusChanger') ? $e->statusChanger?->name : null,
             'status_reason' => $e->status_reason,
+            'privacy_notice_at' => $e->privacy_notice_at?->toIso8601String(),
+            'privacy_notice_by' => $e->relationLoaded('privacyNoticeGiver') ? $e->privacyNoticeGiver?->name : null,
             'documents_complete' => DocumentType::isComplete($submitted, $e->learner_type),
             'enrollment_version' => $e->lock_version,
             'student_version' => $s->lock_version,

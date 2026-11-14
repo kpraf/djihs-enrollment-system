@@ -26,7 +26,14 @@ class UserFactory extends Factory
             'is_active' => true,
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            'privacy_agreed_at' => now(),
         ];
+    }
+
+    /** A new staff member who hasn't accepted the confidentiality agreement yet. */
+    public function privacyNotAgreed(): static
+    {
+        return $this->state(fn () => ['privacy_agreed_at' => null]);
     }
 
     public function role(Role $role): static

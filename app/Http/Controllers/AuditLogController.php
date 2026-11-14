@@ -28,6 +28,7 @@ class AuditLogController extends Controller
     {
         $filters = $request->validate([
             'type' => ['nullable', 'in:'.implode(',', array_keys(self::TYPES))],
+            'activity' => ['nullable', 'in:changes,access'],
             'user' => ['nullable', 'integer'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
@@ -35,6 +36,9 @@ class AuditLogController extends Controller
 
         $page = AuditLog::with('user:id,first_name,last_name')
             ->when($filters['type'] ?? null, fn ($q, $t) => $q->where('auditable_type', self::TYPES[$t]))
+            ->when($filters['activity'] ?? null, fn ($q, $a) => $a === 'access'
+                ? $q->whereIn('event', AuditTrail::ACCESS_EVENTS)
+                : $q->whereNotIn('event', AuditTrail::ACCESS_EVENTS))
             ->when($filters['user'] ?? null, fn ($q, $u) => $q->where('user_id', $u))
             ->when($filters['from'] ?? null, fn ($q, $d) => $q->where('created_at', '>=', $d.' 00:00:00'))
             ->when($filters['to'] ?? null, fn ($q, $d) => $q->where('created_at', '<=', $d.' 23:59:59'))
