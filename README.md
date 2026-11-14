@@ -18,15 +18,19 @@ This is a full rewrite of the original HTML/PHP course project from Mapúa Malay
 
 ## What works today
 
-- **Sign-in with a username.** Staff accounts are created by an administrator. There is no public sign-up. New and reset accounts get a temporary password that must be changed at first sign-in.
-- **Permissions enforced on the server.** Every page and action checks the user's role on the server, not just in the browser.
-- **Dashboard.** Rebuilds the workbook's MONITORING and DAILY_MONITORING tabs: counts per grade and strand by sex, learner type, Indigenous Peoples and 4Ps, track subtotals, Grade 10 retention, and learners encoded per day.
-- **Enrollment list.** Search by name or LRN, and filter by school year, grade, strand and status.
-- **Spreadsheet import.** Upload the school's workbook, review problems row by row, then import. Re-importing updates learners instead of duplicating them.
-- **User accounts.** Create, edit, deactivate and reset passwords.
-- **Audit log.** Every change to users, learners, enrollments, sections, strands and school years is recorded with who made it. Passwords are never logged.
+The interface keeps the look of the original DJIHS pages: the green sidebar, the sign-in card, the enrollment form layout and the tables.
 
-Next up: the encoding form, editing and cancelling enrollments, sections and sectioning, and SF1 export.
+- **Sign-in with a username.** Staff accounts are created by an administrator. There is no public sign-up. New and reset accounts get a temporary password, shown once, that must be changed at first sign-in.
+- **Permissions enforced on the server.** Every page and action checks the user's role on the server, not just in the browser.
+- **New Enrollment.** The legacy enrollment form. Typing a 12-digit LRN immediately says whether the learner is new, already in the system, or already enrolled this year.
+- **Safe with many encoders at once.** The same learner cannot be enrolled twice, even when two staff press Submit at the same moment. A learner with the same name and birth date under another LRN must be confirmed as a different person. Two people editing one record cannot overwrite each other: the later save is refused and shows the latest version.
+- **Student Management.** Search by any part of the name or LRN, filter, view a learner with their full change history, edit, cancel and restore.
+- **Larger text.** Three text sizes for staff who find small text hard to read, available on every page and the sign-in page, and saved to each account.
+- **Dashboard.** Rebuilds the workbook's MONITORING and DAILY_MONITORING tabs: counts per grade and strand by sex, learner type, Indigenous Peoples and 4Ps, track subtotals, Grade 10 retention, and learners encoded per day.
+- **Spreadsheet import.** Upload the school's workbook, review problems row by row, then import. Re-importing updates learners instead of duplicating them.
+- **User accounts and audit log.** Create, edit, deactivate and reset accounts. Every change is recorded with who made it and shown in readable form. Passwords are never logged.
+
+Next up: sections and sectioning, school-year management, and SF1 export.
 
 ## Data model
 
@@ -38,7 +42,7 @@ Seven tables replace the legacy system's twelve.
 | `school_years` | For example 2024-2025, which one is active, and the Grade 10 completer count for retention |
 | `strands` | ABM, HUMSS, ICT-CSS, HE-COOKERY, IA-EIM, each tagged Academic or TVL |
 | `sections` | Sections per school year and grade, with an adviser |
-| `students` | Permanent learner facts: LRN, name, birth date, sex, IP, 4Ps, address, legal guardian |
+| `students` | Permanent learner facts: LRN, name, birth date, sex, religion, IP, disability, 4Ps, address, parents and guardian |
 | `enrollments` | One row per learner per school year: grade, strand, section, learner type, status, weight and height for SF8 |
 | `audit_logs` | Who changed what, written automatically |
 
@@ -102,6 +106,15 @@ php artisan test
 npx tsc --noEmit && npx eslint resources/js && vendor/bin/pint --test
 ```
 
+## Tests
+
+- **Feature tests** cover permissions, validation, duplicate prevention, edit conflicts, the importer, reports and the audit log. CI runs them on both SQLite and PostgreSQL.
+- **Browser tests** in [`tests/e2e`](tests/e2e) drive Chromium against a real server and PostgreSQL. They include staff submitting the same learner at the same moment, ten simultaneous submissions, two people editing one record, the spreadsheet import, text size and phone layouts. See [`tests/e2e/README.md`](tests/e2e/README.md).
+
+```bash
+npm run test:e2e
+```
+
 ## Importing the school's workbook
 
 In the app, open **Import spreadsheet**, choose the `.xlsx` file and school year, and click **Check file**. Nothing is saved until you confirm.
@@ -147,11 +160,12 @@ app/
   Enums/            Roles, abilities, grade levels, learner types, statuses
   Http/Controllers/ One controller per feature, not per role
   Models/           Eloquent models; Concerns/Auditable writes the audit log
+  Services/Enrollment/  Enrolling learners safely and finding duplicates
   Services/Import/  Encoding workbook importer
   Services/Reports/ Monitoring and daily reports
 database/           Migrations, factories, seeders
 resources/js/       React pages, components and layouts
-tests/              Feature tests, plus a fake-workbook builder
+tests/              Feature tests, a fake-workbook builder, and browser tests in tests/e2e
 docker/             Apache, PHP and start-up script for the Docker image
 legacy/             The original HTML/PHP project, kept for reference
 ```

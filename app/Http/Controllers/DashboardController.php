@@ -14,9 +14,9 @@ class DashboardController extends Controller
     public function __invoke(Request $request, EnrollmentSummary $summary): Response
     {
         $years = SchoolYear::orderByDesc('start_year')->get();
-        $year = $request->integer('school_year')
-            ? $years->firstWhere('id', $request->integer('school_year'))
-            : ($years->firstWhere('is_active', true) ?? $years->first());
+        $year = $years->firstWhere('id', $request->integer('school_year'))
+            ?? $years->firstWhere('is_active', true)
+            ?? $years->first();
 
         $canViewReports = $request->user()->hasAbility(Ability::ViewReports);
 

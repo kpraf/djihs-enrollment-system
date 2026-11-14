@@ -6,6 +6,7 @@ use App\Enums\EnrollmentStatus;
 use App\Enums\GradeLevel;
 use App\Enums\LearnerType;
 use App\Models\Concerns\Auditable;
+use App\Models\Concerns\HasLockVersion;
 use Database\Factories\EnrollmentFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Enrollment extends Model
 {
     /** @use HasFactory<EnrollmentFactory> */
-    use Auditable, HasFactory;
+    use Auditable, HasFactory, HasLockVersion;
 
     protected $fillable = [
         'student_id', 'school_year_id', 'grade_level', 'strand_id', 'section_id',
@@ -28,6 +29,7 @@ class Enrollment extends Model
     protected $attributes = [
         'is_irregular' => false,
         'status' => 'enrolled',
+        'lock_version' => 1,
     ];
 
     protected function casts(): array
@@ -41,6 +43,7 @@ class Enrollment extends Model
             'height_m' => 'decimal:2',
             'encoded_on' => 'date:Y-m-d',
             'cancelled_at' => 'datetime',
+            'lock_version' => 'integer',
         ];
     }
 
@@ -75,5 +78,10 @@ class Enrollment extends Model
     public function encoder(): BelongsTo
     {
         return $this->belongsTo(User::class, 'encoded_by');
+    }
+
+    public function canceller(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
     }
 }

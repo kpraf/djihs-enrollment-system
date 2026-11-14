@@ -1,5 +1,3 @@
-import { LucideIcon } from 'lucide-react';
-
 export type Ability =
     | 'manage-users'
     | 'manage-school-setup'
@@ -22,26 +20,8 @@ export interface User {
 }
 
 export interface Auth {
-    user: User;
+    user: User | null;
     abilities: Ability[];
-}
-
-export interface BreadcrumbItem {
-    title: string;
-    href: string;
-}
-
-export interface NavGroup {
-    title: string;
-    items: NavItem[];
-}
-
-export interface NavItem {
-    title: string;
-    url: string;
-    icon?: LucideIcon | null;
-    isActive?: boolean;
-    ability?: Ability;
 }
 
 export interface Option<T = string> {
@@ -57,13 +37,31 @@ export interface Paginated<T> {
     from: number | null;
     to: number | null;
     total: number;
-    links: { url: string | null; label: string; active: boolean }[];
+    prev_page_url: string | null;
+    next_page_url: string | null;
+}
+
+export interface TextSizeState {
+    value: string;
+    percent: number;
+    options: { value: string; label: string; percent: number }[];
 }
 
 export interface SharedData {
     name: string;
     auth: Auth;
+    textSize: TextSizeState;
     activeSchoolYear: { id: number; name: string; is_enrollment_open: boolean } | null;
-    flash: { success: string | null; error: string | null };
+    flash: {
+        success: string | null;
+        error: string | null;
+        credential: { username: string; password: string; reason: 'created' | 'reset' } | null;
+    };
+    errors: Record<string, string>;
     [key: string]: unknown;
+}
+
+/** The signed-in user, on pages that require one. */
+export interface AuthedData extends SharedData {
+    auth: Auth & { user: User };
 }

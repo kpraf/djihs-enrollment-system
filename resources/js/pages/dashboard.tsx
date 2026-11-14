@@ -1,9 +1,12 @@
-import { NativeSelect } from '@/components/native-select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Icon } from '@/components/icon';
+import { type IconName } from '@/components/icons';
+import { PageHeader } from '@/components/page-header';
+import { StatCard } from '@/components/stat-card';
+import { useCan } from '@/hooks/use-can';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
-import { type BreadcrumbItem, type Option, type SharedData } from '@/types';
-import { Head, router, usePage } from '@inertiajs/react';
+import { type Ability, type AuthedData, type Option } from '@/types';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 
 interface Tally {
     male: number;
@@ -46,30 +49,37 @@ interface Props {
     daily: DailyRow[];
 }
 
-const breadcrumbs: BreadcrumbItem[] = [{ title: 'Dashboard', href: '/dashboard' }];
-
 const number = new Intl.NumberFormat('en-PH');
 const dateFormat = new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', year: 'numeric', weekday: 'short' });
 
+const quickActions: { label: string; href: string; icon: IconName; ability: Ability }[] = [
+    { label: 'New Enrollment', href: '/enrollments/create', icon: 'person_add', ability: 'encode-enrollments' },
+    { label: 'Search Students', href: '/enrollments', icon: 'search', ability: 'view-enrollments' },
+    { label: 'Import Spreadsheet', href: '/imports', icon: 'upload_file', ability: 'import-enrollments' },
+];
+
 export default function Dashboard({ schoolYears, selectedYear, monitoring, daily }: Props) {
-    const { auth } = usePage<SharedData>().props;
+    const { auth } = usePage<AuthedData>().props;
+    const can = useCan();
+    const actions = quickActions.filter((a) => can(a.ability));
 
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
+        <AppLayout>
             <Head title="Dashboard" />
-            <div className="flex flex-1 flex-col gap-6 p-4">
-                <div className="flex flex-wrap items-end justify-between gap-4">
-                    <div>
-                        <h1 className="text-2xl font-semibold tracking-tight">Welcome, {auth.user.first_name}</h1>
-                        <p className="text-muted-foreground text-sm">
-                            {selectedYear ? `Enrollment summary for school year ${selectedYear.name}` : 'No school year has been set up yet.'}
-                        </p>
-                    </div>
-                    {schoolYears.length > 1 && (
-                        <label className="grid gap-1 text-sm">
-                            <span className="text-muted-foreground">School year</span>
-                            <NativeSelect
-                                className="w-52"
+
+            <PageHeader
+                title={`Welcome, ${auth.user.first_name}!`}
+                description={
+                    selectedYear
+                        ? `Here's an overview of the enrollment status for school year ${selectedYear.name}.`
+                        : 'No school year has been set up yet.'
+                }
+                actions={
+                    schoolYears.length > 0 && (
+                        <label className="flex items-center gap-3">
+                            <span className="text-sm font-medium whitespace-nowrap text-slate-700">School Year:</span>
+                            <select
+                                className="field-input-sm h-10 min-w-[11rem] font-medium"
                                 value={selectedYear?.id ?? ''}
                                 onChange={(e) => router.get('/dashboard', { school_year: e.target.value }, { preserveState: true })}
                             >
@@ -79,78 +89,87 @@ export default function Dashboard({ schoolYears, selectedYear, monitoring, daily
                                         {y.is_active ? ' (current)' : ''}
                                     </option>
                                 ))}
-                            </NativeSelect>
+                            </select>
                         </label>
-                    )}
+                    )
+                }
+            />
+
+            {monitoring && (
+                <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                    <StatCard
+                        label="Total Enrolled"
+                        value={number.format(monitoring.total.total)}
+                        hint={`${monitoring.total.male} male · ${monitoring.total.female} female`}
+                    />
+                    {monitoring.grades.slice(0, 2).map((g) => (
+                        <StatCard
+                            key={g.grade_level}
+                            label={g.label}
+                            value={number.format(g.total.total)}
+                            hint={`Academic ${g.tracks.academic.total} · TVL ${g.tracks.tvl.total}`}
+                            tone="indigo"
+                        />
+                    ))}
+                    <StatCard label="Cancelled" value={number.format(monitoring.cancelled)} hint="Not counted as enrolled" tone="orange" />
                 </div>
+            )}
 
-                {monitoring && <Overview monitoring={monitoring} />}
+            {monitoring && monitoring.grade_11_retention !== null && (
+                <div className="panel mb-8 flex flex-wrap items-center gap-4 p-6">
+                    <div className="text-primary flex size-12 items-center justify-center rounded-lg bg-green-50">
+                        <Icon name="school" />
+                    </div>
+                    <div>
+                        <p className="text-base font-medium text-slate-700">Grade 10 completers who stayed for Grade 11</p>
+                        <p className="text-sm text-slate-500">
+                            <span className="text-2xl font-bold text-slate-900">{(monitoring.grade_11_retention * 100).toFixed(1)}%</span> of{' '}
+                            {monitoring.grade_10_completers} completers enrolled as old students
+                        </p>
+                    </div>
+                </div>
+            )}
 
-                {monitoring?.grades.map((grade) => <GradeTable key={grade.grade_level} grade={grade} types={monitoring.learner_types} />)}
+            {monitoring?.grades.map((grade) => <GradeTable key={grade.grade_level} grade={grade} types={monitoring.learner_types} />)}
 
-                {monitoring && monitoring.grades.length === 0 && (
-                    <Card>
-                        <CardContent className="text-muted-foreground py-10 text-center text-sm">
-                            No learners have been encoded for this school year yet.
-                        </CardContent>
-                    </Card>
-                )}
+            {monitoring && monitoring.grades.length === 0 && (
+                <div className="panel mb-8 px-6 py-12 text-center text-slate-500">No learners have been encoded for this school year yet.</div>
+            )}
 
-                {daily.length > 0 && <DailyTable rows={daily} grades={monitoring?.grades.map((g) => g.grade_level) ?? []} />}
-            </div>
+            {daily.length > 0 && <DailyTable rows={daily} grades={monitoring?.grades.map((g) => g.grade_level) ?? []} />}
+
+            {actions.length > 0 && (
+                <section>
+                    <h2 className="mb-4 text-xl font-bold tracking-tight text-slate-900">Quick Actions</h2>
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+                        {actions.map((a) => (
+                            <Link
+                                key={a.href}
+                                href={a.href}
+                                className="panel hover:border-primary flex flex-col items-center justify-center gap-2 p-6 transition-colors hover:bg-green-50/40"
+                            >
+                                <Icon name={a.icon} className="text-primary" />
+                                <span className="text-base font-bold text-slate-900">{a.label}</span>
+                            </Link>
+                        ))}
+                    </div>
+                </section>
+            )}
         </AppLayout>
     );
 }
 
-function Overview({ monitoring }: { monitoring: Monitoring }) {
-    const stats: { label: string; value: number | string; hint: string }[] = [
-        {
-            label: 'Enrolled',
-            value: monitoring.total.total,
-            hint: `${number.format(monitoring.total.male)} male · ${number.format(monitoring.total.female)} female`,
-        },
-        ...monitoring.grades.map((g) => ({
-            label: g.label,
-            value: g.total.total,
-            hint: `Academic ${g.tracks.academic.total} · TVL ${g.tracks.tvl.total}`,
-        })),
-        { label: 'Cancelled', value: monitoring.cancelled, hint: 'Not counted as enrolled' },
-    ];
-
-    if (monitoring.grade_11_retention !== null) {
-        stats.push({
-            label: 'Grade 10 completers who stayed',
-            value: `${(monitoring.grade_11_retention * 100).toFixed(1)}%`,
-            hint: `Grade 11 old students out of ${monitoring.grade_10_completers} completers`,
-        });
-    }
-
-    return (
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
-            {stats.map((s) => (
-                <Card key={s.label} className="p-4">
-                    <p className="text-muted-foreground text-sm">{s.label}</p>
-                    <p className="mt-1 text-2xl font-semibold tabular-nums sm:text-3xl">
-                        {typeof s.value === 'number' ? number.format(s.value) : s.value}
-                    </p>
-                    <p className="text-muted-foreground mt-1 text-xs">{s.hint}</p>
-                </Card>
-            ))}
-        </div>
-    );
-}
-
-const th = 'px-3 py-2 text-right font-medium whitespace-nowrap';
-const td = 'px-3 py-2 text-right tabular-nums';
+const th = 'px-4 py-3 text-right font-medium whitespace-nowrap';
+const td = 'px-4 py-3 text-right tabular-nums';
 
 function TallyCells({ tally, types }: { tally: Tally; types: Option[] }) {
     return (
         <>
             <td className={td}>{tally.male}</td>
             <td className={td}>{tally.female}</td>
-            <td className={cn(td, 'font-semibold')}>{tally.total}</td>
+            <td className={cn(td, 'font-bold text-slate-900')}>{tally.total}</td>
             {types.map((t) => (
-                <td key={t.value} className={cn(td, 'text-muted-foreground', tally.learner_types[t.value] > 0 && 'text-foreground')}>
+                <td key={t.value} className={cn(td, tally.learner_types[t.value] === 0 && 'text-slate-300')}>
                     {tally.learner_types[t.value]}
                 </td>
             ))}
@@ -162,104 +181,104 @@ function TallyCells({ tally, types }: { tally: Tally; types: Option[] }) {
 
 function GradeTable({ grade, types }: { grade: GradeSummary; types: Option[] }) {
     return (
-        <Card className="gap-0 overflow-hidden py-0">
-            <CardHeader className="border-b px-4 py-3">
-                <CardTitle className="text-base">{grade.label}</CardTitle>
-            </CardHeader>
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                    <thead className="bg-muted/50 text-muted-foreground">
-                        <tr>
-                            <th className="px-3 py-2 text-left font-medium">Strand</th>
-                            <th className={th}>Male</th>
-                            <th className={th}>Female</th>
-                            <th className={th}>Total</th>
-                            {types.map((t) => (
-                                <th key={t.value} className={th}>
-                                    {t.label}
+        <section className="mb-8">
+            <h2 className="mb-4 text-xl font-bold tracking-tight text-slate-900">{grade.label}</h2>
+            <div className="panel overflow-hidden">
+                <div className="relative overflow-x-auto">
+                    <table className="w-full text-left text-sm text-slate-500">
+                        <thead className="table-head">
+                            <tr>
+                                <th className="px-4 py-3 font-medium">Strand</th>
+                                <th className={th}>Male</th>
+                                <th className={th}>Female</th>
+                                <th className={th}>Total</th>
+                                {types.map((t) => (
+                                    <th key={t.value} className={th}>
+                                        {t.label}
+                                    </th>
+                                ))}
+                                <th className={th} title="Indigenous Peoples">
+                                    IP
                                 </th>
-                            ))}
-                            <th className={th} title="Indigenous Peoples">
-                                IP
-                            </th>
-                            <th className={th}>4Ps</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                        {grade.strands.map((s) => (
-                            <tr key={s.code}>
-                                <td className="px-3 py-2 font-medium whitespace-nowrap" title={s.name}>
-                                    {s.code}
-                                </td>
-                                <TallyCells tally={s} types={types} />
+                                <th className={th}>4Ps</th>
                             </tr>
-                        ))}
-                    </tbody>
-                    <tfoot className="divide-y border-t">
-                        <tr className="bg-muted/30">
-                            <td className="px-3 py-2 whitespace-nowrap">Academic track</td>
-                            <TallyCells tally={grade.tracks.academic} types={types} />
-                        </tr>
-                        <tr className="bg-muted/30">
-                            <td className="px-3 py-2 whitespace-nowrap">TVL track</td>
-                            <TallyCells tally={grade.tracks.tvl} types={types} />
-                        </tr>
-                        <tr className="bg-muted/60 font-semibold">
-                            <td className="px-3 py-2">Total</td>
-                            <TallyCells tally={grade.total} types={types} />
-                        </tr>
-                    </tfoot>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {grade.strands.map((s) => (
+                                <tr key={s.code} className="hover:bg-slate-50">
+                                    <td className="px-4 py-3 font-medium whitespace-nowrap text-slate-900" title={s.name}>
+                                        {s.code}
+                                    </td>
+                                    <TallyCells tally={s} types={types} />
+                                </tr>
+                            ))}
+                        </tbody>
+                        <tfoot className="divide-y divide-slate-100 border-t border-slate-200">
+                            <tr className="bg-slate-50/60">
+                                <td className="px-4 py-3 whitespace-nowrap text-slate-700">Academic track</td>
+                                <TallyCells tally={grade.tracks.academic} types={types} />
+                            </tr>
+                            <tr className="bg-slate-50/60">
+                                <td className="px-4 py-3 whitespace-nowrap text-slate-700">TVL track</td>
+                                <TallyCells tally={grade.tracks.tvl} types={types} />
+                            </tr>
+                            <tr className="bg-slate-100 font-semibold text-slate-900">
+                                <td className="px-4 py-3">Total</td>
+                                <TallyCells tally={grade.total} types={types} />
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
             </div>
-        </Card>
+        </section>
     );
 }
 
 function DailyTable({ rows, grades }: { rows: DailyRow[]; grades: number[] }) {
     return (
-        <Card className="gap-0 overflow-hidden py-0">
-            <CardHeader className="border-b px-4 py-3">
-                <CardTitle className="text-base">Daily encoding</CardTitle>
-                <p className="text-muted-foreground text-sm">Learners encoded each day, including ones later cancelled.</p>
-            </CardHeader>
-            <div className="max-h-[28rem] overflow-auto">
-                <table className="w-full text-sm">
-                    <thead className="bg-muted text-muted-foreground sticky top-0">
-                        <tr>
-                            <th className="px-3 py-2 text-left font-medium">Date</th>
-                            {grades.map((g) => (
-                                <th key={g} className={th}>
-                                    Grade {g}
-                                </th>
-                            ))}
-                            <th className={th}>Male</th>
-                            <th className={th}>Female</th>
-                            <th className={th}>Total</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                        {rows.map((r) => (
-                            <tr key={r.date ?? 'none'}>
-                                <td className="px-3 py-2 whitespace-nowrap">
-                                    {r.date ? (
-                                        dateFormat.format(new Date(r.date + 'T00:00:00'))
-                                    ) : (
-                                        <span className="text-muted-foreground">No date recorded</span>
-                                    )}
-                                </td>
+        <section className="mb-8">
+            <h2 className="text-xl font-bold tracking-tight text-slate-900">Daily Encoding</h2>
+            <p className="mb-4 text-sm text-slate-500">Learners encoded each day, including ones later cancelled.</p>
+            <div className="panel overflow-hidden">
+                <div className="relative max-h-[28rem] overflow-auto">
+                    <table className="w-full text-left text-sm text-slate-500">
+                        <thead className="table-head sticky top-0">
+                            <tr>
+                                <th className="px-4 py-3 font-medium">Date</th>
                                 {grades.map((g) => (
-                                    <td key={g} className={td}>
-                                        {r.grades[g]?.total ?? 0}
-                                    </td>
+                                    <th key={g} className={th}>
+                                        Grade {g}
+                                    </th>
                                 ))}
-                                <td className={td}>{r.male}</td>
-                                <td className={td}>{r.female}</td>
-                                <td className={cn(td, 'font-semibold')}>{r.total}</td>
+                                <th className={th}>Male</th>
+                                <th className={th}>Female</th>
+                                <th className={th}>Total</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {rows.map((r) => (
+                                <tr key={r.date ?? 'none'} className="hover:bg-slate-50">
+                                    <td className="px-4 py-3 whitespace-nowrap text-slate-900">
+                                        {r.date ? (
+                                            dateFormat.format(new Date(r.date + 'T00:00:00'))
+                                        ) : (
+                                            <span className="text-slate-500 italic">No date recorded</span>
+                                        )}
+                                    </td>
+                                    {grades.map((g) => (
+                                        <td key={g} className={td}>
+                                            {r.grades[g]?.total ?? 0}
+                                        </td>
+                                    ))}
+                                    <td className={td}>{r.male}</td>
+                                    <td className={td}>{r.female}</td>
+                                    <td className={cn(td, 'font-bold text-slate-900')}>{r.total}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </Card>
+        </section>
     );
 }

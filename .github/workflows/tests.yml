@@ -5,41 +5,99 @@ on:
   pull_request:
 
 jobs:
-  ci:
+  phpunit:
+    name: PHPUnit (${{ matrix.database }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [sqlite, pgsql]
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: djihs
+          POSTGRES_PASSWORD: djihs
+          POSTGRES_DB: djihs_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U djihs" --health-interval 5s --health-timeout 5s --health-retries 10
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@v2
         with:
           # Matches the php:8.3 image used in the Dockerfile.
           php-version: '8.3'
+          extensions: pdo_pgsql, zip, gd
           tools: composer:v2
           coverage: none
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
 
-      - name: Install Node Dependencies
-        run: npm ci
-
-      - name: Install PHP Dependencies
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
-
-      - name: Build Assets
-        run: npm run build
-
-      - name: Copy Environment File
-        run: cp .env.example .env
-
-      - name: Generate Application Key
-        run: php artisan key:generate
+      - run: npm ci
+      - run: composer install --no-interaction --prefer-dist --optimize-autoloader
+      - run: npm run build
+      - run: cp .env.example .env && php artisan key:generate
 
       - name: Tests
         run: php artisan test
+        env:
+          DB_CONNECTION: ${{ matrix.database }}
+          DB_URL: ${{ matrix.database == 'pgsql' && 'postgresql://djihs:djihs@127.0.0.1:5432/djihs_test' || '' }}
+          DB_DATABASE: ${{ matrix.database == 'pgsql' && 'djihs_test' || ':memory:' }}
+
+  e2e:
+    name: Browser tests (Playwright + PostgreSQL)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: djihs
+          POSTGRES_PASSWORD: djihs
+          POSTGRES_DB: djihs_e2e
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U djihs" --health-interval 5s --health-timeout 5s --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_pgsql, zip, gd
+          tools: composer:v2
+          coverage: none
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+      - run: composer install --no-interaction --prefer-dist --optimize-autoloader
+      - run: npm run build
+      - run: cp .env.example .env && php artisan key:generate
+      - run: npx playwright install --with-deps chromium
+
+      - name: Browser tests
+        run: npx playwright test --trace off
+        env:
+          E2E_DB_URL: postgresql://djihs:djihs@127.0.0.1:5432/djihs_e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

@@ -31,7 +31,7 @@ class EnsureAccountIsUsable
             ]);
         }
 
-        if ($user->must_change_password && ! $request->routeIs('password.edit', 'password.update', 'logout')) {
+        if ($user->must_change_password && ! $request->routeIs('password.edit', 'password.update', 'logout', 'text-size.update')) {
             return redirect()->route('password.edit');
         }
 

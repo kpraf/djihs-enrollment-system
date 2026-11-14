@@ -248,7 +248,7 @@ class EncodingSheetImporter
             'guardian_last_name' => $this->name($v['guardian_last_name']),
             'guardian_first_name' => $this->name($v['guardian_first_name']),
             'guardian_middle_name' => $this->name($v['guardian_middle_name']),
-            'guardian_contact_number' => $this->contact($v['guardian_contact'], $row, $result),
+            'contact_number' => $this->contact($v['guardian_contact'], $row, $result),
         ];
 
         if (AddressNormalizer::looksLikeProvince($studentData['municipality'])) {
@@ -326,8 +326,18 @@ class EncodingSheetImporter
         if ($data['lrn'] !== null) {
             $byLrn = Student::where('lrn', $data['lrn'])->first();
 
-            if ($byLrn === null || $this->samePerson($byLrn, $data)) {
+            if ($byLrn !== null && $this->samePerson($byLrn, $data)) {
                 return $byLrn;
+            }
+
+            if ($byLrn === null) {
+                // A learner first imported without an LRN (because it was
+                // missing or clashed) gets it once the sheet is corrected.
+                return Student::whereNull('lrn')
+                    ->where('last_name', $data['last_name'])
+                    ->where('first_name', $data['first_name'])
+                    ->where('birthdate', $data['birthdate'])
+                    ->first();
             }
 
             $owner = isset($this->seenLrns[$data['lrn']]) ? 'row '.$this->seenLrns[$data['lrn']] : 'an existing learner';

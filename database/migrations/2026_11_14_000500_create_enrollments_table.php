@@ -38,6 +38,7 @@ return new class extends Migration
             $table->foreignId('cancelled_by')->nullable()->constrained('users')->nullOnDelete();
             $table->string('cancellation_reason')->nullable();
 
+            $table->unsignedInteger('lock_version')->default(1);
             $table->timestamps();
 
             $table->unique(['student_id', 'school_year_id']);

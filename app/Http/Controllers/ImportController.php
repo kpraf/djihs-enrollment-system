@@ -4,13 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Models\SchoolYear;
 use App\Services\Import\EncodingSheetImporter;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use InvalidArgumentException;
+use PhpOffice\PhpSpreadsheet\Exception as SpreadsheetException;
 
 /**
  * Two-step upload of the encoding workbook: check first, then import.
@@ -49,6 +52,10 @@ class ImportController extends Controller
             Storage::delete($path);
 
             return back()->withErrors(['file' => $e->getMessage()]);
+        } catch (SpreadsheetException) {
+            Storage::delete($path);
+
+            return back()->withErrors(['file' => 'This file could not be read. Save it again from Excel as .xlsx and retry.']);
         }
 
         $request->session()->put('import', [
@@ -73,7 +80,21 @@ class ImportController extends Controller
             return to_route('imports.create')->with('error', 'That upload expired. Please upload the file again.');
         }
 
-        $result = $importer->import(Storage::path($pending['path']), SchoolYear::findOrFail($pending['school_year_id']), $request->user());
+        // One import at a time. Two imports of overlapping sheets would race
+        // each other for the same learners.
+        $lock = Cache::lock('enrollment-import', 300);
+        if (! $lock->get()) {
+            return to_route('imports.create')->with('error', 'Another import is running right now. Wait a minute and click Import again.');
+        }
+
+        try {
+            $result = $importer->import(Storage::path($pending['path']), SchoolYear::findOrFail($pending['school_year_id']), $request->user());
+        } catch (UniqueConstraintViolationException) {
+            return to_route('imports.create')->with('error', 'Someone saved one of these learners while the import ran, so nothing was imported. Click Import again.');
+        } finally {
+            $lock->release();
+        }
+
         $this->discardPending($request);
 
         return to_route('imports.create')

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\Sex;
 use App\Models\Concerns\Auditable;
+use App\Models\Concerns\HasLockVersion;
 use Database\Factories\StudentFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,20 +14,26 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Student extends Model
 {
     /** @use HasFactory<StudentFactory> */
-    use Auditable, HasFactory;
+    use Auditable, HasFactory, HasLockVersion;
 
     protected $fillable = [
         'lrn', 'last_name', 'first_name', 'middle_name', 'extension_name', 'birthdate', 'sex',
-        'is_indigenous', 'indigenous_group', 'is_4ps_beneficiary',
+        'religion', 'mother_tongue',
+        'is_indigenous', 'indigenous_group', 'is_4ps_beneficiary', 'is_pwd', 'disability',
         'house_number', 'street', 'barangay', 'municipality', 'province', 'zip_code', 'country',
-        'guardian_last_name', 'guardian_first_name', 'guardian_middle_name', 'guardian_contact_number',
+        'father_last_name', 'father_first_name', 'father_middle_name',
+        'mother_last_name', 'mother_first_name', 'mother_middle_name',
+        'guardian_last_name', 'guardian_first_name', 'guardian_middle_name', 'guardian_relationship',
+        'contact_number',
     ];
 
     /** @var array<string, mixed> */
     protected $attributes = [
         'is_indigenous' => false,
         'is_4ps_beneficiary' => false,
+        'is_pwd' => false,
         'country' => 'Philippines',
+        'lock_version' => 1,
     ];
 
     /** @var list<string> */
@@ -39,6 +46,8 @@ class Student extends Model
             'sex' => Sex::class,
             'is_indigenous' => 'boolean',
             'is_4ps_beneficiary' => 'boolean',
+            'is_pwd' => 'boolean',
+            'lock_version' => 'integer',
         ];
     }
 

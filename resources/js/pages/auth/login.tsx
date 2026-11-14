@@ -1,13 +1,8 @@
+import { InputError } from '@/components/form';
+import { Icon } from '@/components/icon';
+import GuestLayout from '@/layouts/guest-layout';
 import { Head, useForm } from '@inertiajs/react';
-import { LoaderCircle } from 'lucide-react';
-import { FormEventHandler } from 'react';
-
-import InputError from '@/components/input-error';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import AuthLayout from '@/layouts/auth-layout';
+import { FormEventHandler, useState } from 'react';
 
 type LoginForm = {
     username: string;
@@ -15,7 +10,8 @@ type LoginForm = {
     remember: boolean;
 };
 
-export default function Login({ status }: { status?: string }) {
+export default function Login() {
+    const [showPassword, setShowPassword] = useState(false);
     const { data, setData, post, processing, errors, reset } = useForm<LoginForm>({
         username: '',
         password: '',
@@ -24,57 +20,85 @@ export default function Login({ status }: { status?: string }) {
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        post(route('login'), {
-            onFinish: () => reset('password'),
-        });
+        post(route('login'), { onFinish: () => reset('password') });
     };
 
     return (
-        <AuthLayout title="Sign in" description="Use the account given to you by the ICT Coordinator.">
+        <GuestLayout>
             <Head title="Sign in" />
 
-            <form className="flex flex-col gap-6" onSubmit={submit}>
-                <div className="grid gap-2">
-                    <Label htmlFor="username">Username</Label>
-                    <Input
-                        id="username"
-                        required
-                        autoFocus
-                        autoCapitalize="none"
-                        autoComplete="username"
-                        value={data.username}
-                        onChange={(e) => setData('username', e.target.value)}
-                    />
+            <div className="mb-7">
+                <h2 className="text-primary text-3xl font-bold">Welcome Back!</h2>
+                <p className="mt-1.5 text-sm text-slate-500">Sign in to continue to the DJIHS Enrollment System</p>
+            </div>
+
+            <form className="space-y-5" onSubmit={submit} noValidate>
+                <div>
+                    <label htmlFor="username" className="mb-2 block text-sm font-semibold text-slate-700">
+                        Username
+                    </label>
+                    <div className="relative">
+                        <Icon name="person" className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-400" />
+                        <input
+                            id="username"
+                            className="field-input pl-11"
+                            placeholder="Enter your username"
+                            autoComplete="username"
+                            autoCapitalize="none"
+                            autoFocus
+                            required
+                            aria-invalid={Boolean(errors.username)}
+                            value={data.username}
+                            onChange={(e) => setData('username', e.target.value)}
+                        />
+                    </div>
                     <InputError message={errors.username} />
                 </div>
 
-                <div className="grid gap-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                        id="password"
-                        type="password"
-                        required
-                        autoComplete="current-password"
-                        value={data.password}
-                        onChange={(e) => setData('password', e.target.value)}
-                    />
+                <div>
+                    <label htmlFor="password" className="mb-2 block text-sm font-semibold text-slate-700">
+                        Password
+                    </label>
+                    <div className="relative">
+                        <Icon name="lock" className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-400" />
+                        <input
+                            id="password"
+                            type={showPassword ? 'text' : 'password'}
+                            className="field-input pr-12 pl-11"
+                            placeholder="Enter your password"
+                            autoComplete="current-password"
+                            required
+                            aria-invalid={Boolean(errors.password)}
+                            value={data.password}
+                            onChange={(e) => setData('password', e.target.value)}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword((v) => !v)}
+                            className="absolute top-1/2 right-3 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                            <Icon name={showPassword ? 'visibility_off' : 'visibility'} />
+                        </button>
+                    </div>
                     <InputError message={errors.password} />
+                    <p className="mt-2 text-right text-sm text-slate-500">Forgot password? Ask the ICT Coordinator to reset it.</p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <Checkbox id="remember" checked={data.remember} onCheckedChange={(checked) => setData('remember', checked === true)} />
-                    <Label htmlFor="remember">Keep me signed in on this device</Label>
-                </div>
+                <label className="flex items-center gap-2.5 text-sm text-slate-700">
+                    <input type="checkbox" className="checkbox" checked={data.remember} onChange={(e) => setData('remember', e.target.checked)} />
+                    Remember me
+                </label>
 
-                <Button type="submit" className="w-full bg-green-700 hover:bg-green-800" disabled={processing}>
-                    {processing && <LoaderCircle className="h-4 w-4 animate-spin" />}
-                    Sign in
-                </Button>
+                <button type="submit" disabled={processing} className="btn-primary w-full py-3.5 text-base">
+                    {processing ? 'Signing in…' : 'Sign In'}
+                    {!processing && <Icon name="arrow_forward" />}
+                </button>
 
-                <p className="text-muted-foreground text-center text-sm">Forgot your password? Ask the ICT Coordinator to reset it.</p>
+                <p className="pt-2 text-center text-xs text-slate-400">
+                    © {new Date().getFullYear()} Don Jose Integrated High School. All rights reserved.
+                </p>
             </form>
-
-            {status && <div className="text-center text-sm font-medium text-green-600">{status}</div>}
-        </AuthLayout>
+        </GuestLayout>
     );
 }

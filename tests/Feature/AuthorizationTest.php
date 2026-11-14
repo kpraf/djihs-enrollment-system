@@ -27,6 +27,8 @@ class AuthorizationTest extends TestCase
             'enrollment list' => ['/enrollments', Ability::ViewEnrollments],
             'import page' => ['/imports', Ability::ImportEnrollments],
             'user accounts' => ['/users', Ability::ManageUsers],
+            'new enrollment form' => ['/enrollments/create', Ability::EncodeEnrollments],
+            'audit log' => ['/audit-log', Ability::ViewAuditLog],
         ];
     }
 
@@ -49,13 +51,13 @@ class AuthorizationTest extends TestCase
         $target = User::factory()->create();
 
         $this->actingAs($adviser)->post('/users', ['username' => 'x'])->assertForbidden();
-        $this->actingAs($adviser)->post("/users/{$target->id}/toggle-active")->assertForbidden();
+        $this->actingAs($adviser)->put("/users/{$target->id}/active", ['active' => false])->assertForbidden();
         $this->actingAs($adviser)->post("/users/{$target->id}/reset-password")->assertForbidden();
     }
 
     public function test_guests_are_sent_to_login(): void
     {
-        foreach (['/dashboard', '/enrollments', '/imports', '/users'] as $url) {
+        foreach (['/dashboard', '/enrollments', '/enrollments/create', '/imports', '/users', '/audit-log', '/students/lookup?lrn=123456789012'] as $url) {
             $this->get($url)->assertRedirect('/login');
         }
     }

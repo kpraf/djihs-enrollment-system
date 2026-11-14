@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Auth;
 trait Auditable
 {
     /** @var list<string> */
-    protected static array $auditIgnored = ['created_at', 'updated_at', 'password', 'remember_token'];
+    protected static array $auditIgnored = ['created_at', 'updated_at', 'password', 'remember_token', 'lock_version', 'last_login_at'];
 
     public static function bootAuditable(): void
     {

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\Ability;
 use App\Enums\Role;
+use App\Enums\TextSize;
 use App\Models\Concerns\Auditable;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -26,6 +27,7 @@ class User extends Authenticatable
         'is_active',
         'password',
         'must_change_password',
+        'text_size',
     ];
 
     protected $hidden = [
@@ -46,6 +48,7 @@ class User extends Authenticatable
     {
         return [
             'role' => Role::class,
+            'text_size' => TextSize::class,
             'is_active' => 'boolean',
             'must_change_password' => 'boolean',
             'last_login_at' => 'datetime',

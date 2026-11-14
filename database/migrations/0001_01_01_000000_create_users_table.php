@@ -22,6 +22,8 @@ return new class extends Migration
             $table->string('password');
             $table->boolean('must_change_password')->default(false);
             $table->timestamp('last_login_at')->nullable();
+            // Null until the user picks a size; until then the device's choice applies.
+            $table->string('text_size', 10)->nullable();
             $table->rememberToken();
             $table->timestamps();
         });

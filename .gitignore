@@ -28,3 +28,6 @@ yarn-error.log
 *.xlsx
 !tests/**/*.xlsx
 /storage/app/private/imports/*
+/tests/e2e/.tmp/
+/test-results/
+/playwright-report/

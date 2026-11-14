@@ -3,7 +3,9 @@
 namespace App\Http\Middleware;
 
 use App\Enums\Ability;
+use App\Enums\TextSize;
 use App\Models\SchoolYear;
+use App\Providers\AppServiceProvider;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -46,10 +48,17 @@ class HandleInertiaRequests extends Middleware
                     )))
                     : [],
             ],
+            'textSize' => fn () => [
+                'value' => AppServiceProvider::textSize()->value,
+                'percent' => AppServiceProvider::textSize()->percent(),
+                'options' => TextSize::options(),
+            ],
             'activeSchoolYear' => fn () => $user ? SchoolYear::active()?->only(['id', 'name', 'is_enrollment_open']) : null,
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
+                // A temporary password, shown once in a dialog with a copy button.
+                'credential' => fn () => $request->session()->get('credential'),
             ],
         ];
     }

@@ -33,7 +33,7 @@ class StudentFactory extends Factory
             'country' => 'Philippines',
             'guardian_last_name' => mb_strtoupper(fake()->lastName()),
             'guardian_first_name' => mb_strtoupper(fake()->firstName()),
-            'guardian_contact_number' => fake()->numerify('09#########'),
+            'contact_number' => fake()->numerify('09#########'),
         ];
     }
 }

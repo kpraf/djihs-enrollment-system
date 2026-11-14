@@ -1,16 +1,14 @@
-import InputError from '@/components/input-error';
-import { NativeSelect } from '@/components/native-select';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { ConfirmDialog } from '@/components/confirm-dialog';
+import { Field, SelectInput, TextInput } from '@/components/form';
+import { Icon } from '@/components/icon';
+import { Modal } from '@/components/modal';
+import { PageHeader } from '@/components/page-header';
+import { StatCard } from '@/components/stat-card';
+import { StatusBadge } from '@/components/status-badge';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem, type Option, type SharedData } from '@/types';
+import { type AuthedData, type Option } from '@/types';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { KeyRound, Pencil, Plus, Power } from 'lucide-react';
-import { FormEventHandler, useState } from 'react';
+import { FormEventHandler, useMemo, useState } from 'react';
 
 interface UserRow {
     id: number;
@@ -25,103 +23,190 @@ interface UserRow {
     last_login_at: string | null;
 }
 
-const breadcrumbs: BreadcrumbItem[] = [{ title: 'User accounts', href: '/users' }];
+type Pending = { kind: 'active'; user: UserRow } | { kind: 'reset'; user: UserRow } | null;
+
 const lastLogin = new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeStyle: 'short' });
 
 export default function UsersIndex({ users, roles }: { users: UserRow[]; roles: Option[] }) {
-    const { auth } = usePage<SharedData>().props;
+    const { auth } = usePage<AuthedData>().props;
     const [editing, setEditing] = useState<UserRow | 'new' | null>(null);
+    const [pending, setPending] = useState<Pending>(null);
+    const [busy, setBusy] = useState(false);
+    const [search, setSearch] = useState('');
+    const [role, setRole] = useState('');
+    const [status, setStatus] = useState('');
 
-    const toggle = (user: UserRow) => {
-        const verb = user.is_active ? 'Deactivate' : 'Activate';
-        if (confirm(`${verb} ${user.name}'s account?`)) {
-            router.post(route('users.toggle-active', user.id), {}, { preserveScroll: true });
+    const shown = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        return users.filter(
+            (u) =>
+                (!q || `${u.name} ${u.username} ${u.role_label}`.toLowerCase().includes(q)) &&
+                (!role || u.role === role) &&
+                (!status || (status === 'active') === u.is_active),
+        );
+    }, [users, search, role, status]);
+
+    const runPending = () => {
+        if (!pending) return;
+        setBusy(true);
+        const done = { preserveScroll: true, onFinish: () => (setBusy(false), setPending(null)) };
+        if (pending.kind === 'active') {
+            router.put(route('users.set-active', pending.user.id), { active: !pending.user.is_active }, done);
+        } else {
+            router.post(route('users.reset-password', pending.user.id), {}, done);
         }
     };
 
-    const resetPassword = (user: UserRow) => {
-        if (confirm(`Reset ${user.name}'s password? They will get a temporary password and must change it when they sign in.`)) {
-            router.post(route('users.reset-password', user.id), {}, { preserveScroll: true });
-        }
-    };
+    const roleOptions = [...new Map([...roles, ...users.map((u) => ({ value: u.role, label: u.role_label }))].map((r) => [r.value, r])).values()];
 
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="User accounts" />
-            <div className="flex flex-1 flex-col gap-4 p-4">
-                <div className="flex flex-wrap items-end justify-between gap-4">
-                    <div>
-                        <h1 className="text-2xl font-semibold tracking-tight">User accounts</h1>
-                        <p className="text-muted-foreground text-sm">
-                            Staff sign in with a username. New accounts get a temporary password shown once.
-                        </p>
-                    </div>
-                    <Button onClick={() => setEditing('new')}>
-                        <Plus className="size-4" /> New account
-                    </Button>
-                </div>
+        <AppLayout>
+            <Head title="User Accounts" />
+            <PageHeader
+                title="User Account Management"
+                description="Create and manage system user accounts for staff members."
+                actions={
+                    <button type="button" className="btn-primary" onClick={() => setEditing('new')}>
+                        <Icon name="add" /> Create New Account
+                    </button>
+                }
+            />
 
-                <Card className="gap-0 overflow-hidden py-0">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead className="bg-muted/50 text-muted-foreground">
-                                <tr className="text-left">
-                                    <th className="px-3 py-2 font-medium">Name</th>
-                                    <th className="px-3 py-2 font-medium">Username</th>
-                                    <th className="px-3 py-2 font-medium">Role</th>
-                                    <th className="px-3 py-2 font-medium">Status</th>
-                                    <th className="px-3 py-2 font-medium">Last sign-in</th>
-                                    <th className="px-3 py-2" />
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                                {users.map((u) => {
-                                    const locked = u.role === 'admin' && auth.user.role !== 'admin';
-                                    return (
-                                        <tr key={u.id} className={u.is_active ? '' : 'text-muted-foreground'}>
-                                            <td className="px-3 py-2 font-medium">{u.name}</td>
-                                            <td className="px-3 py-2 font-mono text-xs">{u.username}</td>
-                                            <td className="px-3 py-2 whitespace-nowrap">{u.role_label}</td>
-                                            <td className="px-3 py-2">
-                                                <Badge variant={u.is_active ? 'outline' : 'secondary'}>
-                                                    {u.is_active ? 'Active' : 'Deactivated'}
-                                                </Badge>
-                                            </td>
-                                            <td className="px-3 py-2 whitespace-nowrap">
-                                                {u.last_login_at ? lastLogin.format(new Date(u.last_login_at)) : 'Never'}
-                                            </td>
-                                            <td className="px-3 py-2">
-                                                {!locked && (
-                                                    <div className="flex justify-end gap-1">
-                                                        <Button variant="ghost" size="icon" title="Edit" onClick={() => setEditing(u)}>
-                                                            <Pencil className="size-4" />
-                                                        </Button>
-                                                        <Button variant="ghost" size="icon" title="Reset password" onClick={() => resetPassword(u)}>
-                                                            <KeyRound className="size-4" />
-                                                        </Button>
-                                                        {u.id !== auth.user.id && (
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                title={u.is_active ? 'Deactivate' : 'Activate'}
-                                                                onClick={() => toggle(u)}
-                                                            >
-                                                                <Power className="size-4" />
-                                                            </Button>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                </Card>
+            <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <StatCard compact label="Total Accounts" value={users.length} tone="primary" />
+                <StatCard compact label="Active" value={users.filter((u) => u.is_active).length} tone="green" />
+                <StatCard compact label="Inactive" value={users.filter((u) => !u.is_active).length} tone="red" />
             </div>
 
-            <UserDialog key={editing === 'new' ? 'new' : editing?.id} user={editing} roles={roles} onClose={() => setEditing(null)} />
+            <div className="mb-6 flex flex-col gap-4 sm:flex-row">
+                <label className="relative flex-1">
+                    <Icon name="search" className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                        type="search"
+                        className="field-input py-2.5 pl-12"
+                        placeholder="Search by name, username, or role…"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        aria-label="Search accounts"
+                    />
+                </label>
+                <select className="field-input-sm h-auto sm:w-48" value={role} onChange={(e) => setRole(e.target.value)} aria-label="Filter by role">
+                    <option value="">All Roles</option>
+                    {roleOptions.map((r) => (
+                        <option key={r.value} value={r.value}>
+                            {r.label}
+                        </option>
+                    ))}
+                </select>
+                <select
+                    className="field-input-sm h-auto sm:w-40"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    aria-label="Filter by status"
+                >
+                    <option value="">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+            </div>
+
+            <div className="panel overflow-hidden">
+                <div className="relative overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                        <thead className="table-head">
+                            <tr>
+                                <th className="px-6 py-3 font-medium">Name</th>
+                                <th className="px-6 py-3 font-medium">Username</th>
+                                <th className="px-6 py-3 font-medium">Role</th>
+                                <th className="px-6 py-3 font-medium">Status</th>
+                                <th className="px-6 py-3 font-medium">Last Sign-in</th>
+                                <th className="px-6 py-3 text-right font-medium">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {shown.map((u) => {
+                                const locked = u.role === 'admin' && auth.user.role !== 'admin';
+                                return (
+                                    <tr key={u.id} className="hover:bg-slate-50">
+                                        <td className="px-6 py-4 font-medium text-slate-900">{u.name}</td>
+                                        <td className="px-6 py-4 font-mono text-slate-600">{u.username}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-slate-600">{u.role_label}</td>
+                                        <td className="px-6 py-4">
+                                            <StatusBadge status={u.is_active ? 'active' : 'inactive'} />
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-slate-600">
+                                            {u.last_login_at ? lastLogin.format(new Date(u.last_login_at)) : 'Never'}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {!locked && (
+                                                <div className="flex justify-end gap-1">
+                                                    <button
+                                                        type="button"
+                                                        className="hover:text-primary rounded-lg p-2 text-slate-400 hover:bg-slate-100"
+                                                        onClick={() => setEditing(u)}
+                                                    >
+                                                        <Icon name="edit" label={`Edit ${u.name}`} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="hover:text-primary rounded-lg p-2 text-slate-400 hover:bg-slate-100"
+                                                        onClick={() => setPending({ kind: 'reset', user: u })}
+                                                    >
+                                                        <Icon name="lock_reset" label={`Reset password for ${u.name}`} />
+                                                    </button>
+                                                    {u.id !== auth.user.id && (
+                                                        <button
+                                                            type="button"
+                                                            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-red-600"
+                                                            onClick={() => setPending({ kind: 'active', user: u })}
+                                                        >
+                                                            <Icon
+                                                                name={u.is_active ? 'person_off' : 'person_check'}
+                                                                label={`${u.is_active ? 'Deactivate' : 'Activate'} ${u.name}`}
+                                                            />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                            {shown.length === 0 && (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                                        No accounts match.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <UserDialog key={editing === 'new' ? 'new' : (editing?.id ?? 'none')} user={editing} roles={roles} onClose={() => setEditing(null)} />
+
+            <ConfirmDialog
+                open={pending !== null}
+                onClose={() => setPending(null)}
+                onConfirm={runPending}
+                processing={busy}
+                icon={pending?.kind === 'reset' ? 'lock_reset' : pending?.user.is_active ? 'person_off' : 'person_check'}
+                tone={pending?.kind === 'active' && pending.user.is_active ? 'danger' : 'primary'}
+                title={
+                    pending?.kind === 'reset'
+                        ? `Reset ${pending.user.name}'s password?`
+                        : `${pending?.user.is_active ? 'Deactivate' : 'Activate'} ${pending?.user.name ?? ''}'s account?`
+                }
+                message={
+                    pending?.kind === 'reset'
+                        ? 'They will get a temporary password and must choose a new one when they sign in.'
+                        : pending?.user.is_active
+                          ? 'They will be signed out and will not be able to sign in until the account is activated again.'
+                          : 'They will be able to sign in again.'
+                }
+                confirmLabel={pending?.kind === 'reset' ? 'Reset Password' : pending?.user.is_active ? 'Deactivate' : 'Activate'}
+            />
         </AppLayout>
     );
 }
@@ -135,88 +220,68 @@ function UserDialog({ user, roles, onClose }: { user: UserRow | 'new' | null; ro
         first_name: existing?.first_name ?? '',
         last_name: existing?.last_name ?? '',
         email: existing?.email ?? '',
-        role: existing?.role ?? roles.find((r) => r.value === 'registrar')?.value ?? roles[0]?.value ?? '',
+        role: existing?.role ?? '',
     });
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         const options = { preserveScroll: true, onSuccess: onClose };
-        if (isNew) {
-            post(route('users.store'), options);
-        } else if (existing) {
-            put(route('users.update', existing.id), options);
-        }
+        if (isNew) post(route('users.store'), options);
+        else if (existing) put(route('users.update', existing.id), options);
     };
 
     return (
-        <Dialog open={user !== null} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent>
-                <form onSubmit={submit} className="grid gap-4">
-                    <DialogHeader>
-                        <DialogTitle>{isNew ? 'New account' : `Edit ${existing?.name}`}</DialogTitle>
-                        <DialogDescription>
-                            {isNew ? 'A temporary password will be shown after saving.' : `Username: ${existing?.username}`}
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    {isNew && (
-                        <div className="grid gap-2">
-                            <Label htmlFor="username">Username</Label>
-                            <Input
-                                id="username"
+        <Modal open={user !== null} onClose={onClose} title={isNew ? 'Create User Account' : 'Edit User Account'} size="sm">
+            <form onSubmit={submit} className="space-y-4" noValidate>
+                {isNew ? (
+                    <Field label="Username" required error={errors.username} hint="Letters, numbers, dots, dashes and underscores.">
+                        {(p) => (
+                            <TextInput
+                                {...p}
                                 value={data.username}
                                 onChange={(e) => setData('username', e.target.value)}
                                 autoCapitalize="none"
-                                required
+                                placeholder="e.g., juan.delacruz"
+                                data-autofocus
                             />
-                            <p className="text-muted-foreground text-xs">
-                                Letters, numbers, dots, dashes and underscores. For example juan.delacruz.
-                            </p>
-                            <InputError message={errors.username} />
-                        </div>
-                    )}
-
-                    <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="grid gap-2">
-                            <Label htmlFor="first_name">First name</Label>
-                            <Input id="first_name" value={data.first_name} onChange={(e) => setData('first_name', e.target.value)} required />
-                            <InputError message={errors.first_name} />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="last_name">Last name</Label>
-                            <Input id="last_name" value={data.last_name} onChange={(e) => setData('last_name', e.target.value)} required />
-                            <InputError message={errors.last_name} />
-                        </div>
-                    </div>
-
-                    <div className="grid gap-2">
-                        <Label htmlFor="role">Role</Label>
-                        <NativeSelect id="role" value={data.role} onChange={(e) => setData('role', e.target.value)}>
+                        )}
+                    </Field>
+                ) : (
+                    <p className="text-sm text-slate-600">
+                        Username: <span className="font-mono font-semibold">{existing?.username}</span>
+                    </p>
+                )}
+                <Field label="First Name" required error={errors.first_name}>
+                    {(p) => <TextInput {...p} value={data.first_name} onChange={(e) => setData('first_name', e.target.value)} />}
+                </Field>
+                <Field label="Last Name" required error={errors.last_name}>
+                    {(p) => <TextInput {...p} value={data.last_name} onChange={(e) => setData('last_name', e.target.value)} />}
+                </Field>
+                <Field label="Role" required error={errors.role}>
+                    {(p) => (
+                        <SelectInput {...p} value={data.role} onChange={(e) => setData('role', e.target.value)}>
+                            <option value="">Select Role</option>
                             {roles.map((r) => (
                                 <option key={r.value} value={r.value}>
                                     {r.label}
                                 </option>
                             ))}
-                        </NativeSelect>
-                        <InputError message={errors.role} />
-                    </div>
-
-                    <div className="grid gap-2">
-                        <Label htmlFor="email">Email (optional)</Label>
-                        <Input id="email" type="email" value={data.email} onChange={(e) => setData('email', e.target.value)} />
-                        <InputError message={errors.email} />
-                    </div>
-
-                    <DialogFooter>
-                        <Button type="button" variant="outline" onClick={onClose}>
-                            Cancel
-                        </Button>
-                        <Button type="submit" disabled={processing}>
-                            {isNew ? 'Create account' : 'Save changes'}
-                        </Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
+                        </SelectInput>
+                    )}
+                </Field>
+                <Field label="Email (optional)" error={errors.email}>
+                    {(p) => <TextInput {...p} type="email" value={data.email} onChange={(e) => setData('email', e.target.value)} />}
+                </Field>
+                {isNew && <p className="text-sm text-slate-500">A temporary password is created for you and shown after saving.</p>}
+                <div className="flex gap-3 pt-2">
+                    <button type="button" className="btn-outline flex-1 py-3" onClick={onClose}>
+                        Cancel
+                    </button>
+                    <button type="submit" className="btn-primary flex-1 py-3" disabled={processing}>
+                        {isNew ? 'Create Account' : 'Save Changes'}
+                    </button>
+                </div>
+            </form>
+        </Modal>
     );
 }

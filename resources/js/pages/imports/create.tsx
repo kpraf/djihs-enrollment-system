@@ -1,14 +1,9 @@
-import InputError from '@/components/input-error';
-import { NativeSelect } from '@/components/native-select';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { InputError } from '@/components/form';
+import { Icon } from '@/components/icon';
+import { PageHeader } from '@/components/page-header';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
-import { Head, router, useForm } from '@inertiajs/react';
-import { FileSpreadsheet, LoaderCircle, TriangleAlert } from 'lucide-react';
-import { FormEventHandler } from 'react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
+import { FormEventHandler, useRef, useState } from 'react';
 
 interface RowNote {
     row: number;
@@ -32,135 +27,166 @@ interface Props {
     result: ImportSummary | null;
 }
 
-const breadcrumbs: BreadcrumbItem[] = [{ title: 'Import spreadsheet', href: '/imports' }];
-
 export default function ImportCreate({ schoolYears, preview, result }: Props) {
     const upload = useForm<{ file: File | null; school_year_id: number | string }>({
         file: null,
         school_year_id: schoolYears.find((y) => y.is_active)?.id ?? schoolYears[0]?.id ?? '',
     });
-    const confirm = useForm({ token: preview?.token ?? '' });
+    const [importing, setImporting] = useState(false);
+    const [dragging, setDragging] = useState(false);
+    const fileInput = useRef<HTMLInputElement>(null);
 
     const check: FormEventHandler = (e) => {
         e.preventDefault();
-        upload.post(route('imports.preview'), { forceFormData: true });
+        upload.post(route('imports.preview'), { forceFormData: true, onSuccess: () => upload.reset('file') });
+    };
+
+    // Send the token from the preview on screen now. A form object created
+    // before the preview existed would still hold an empty token.
+    const confirmImport = () => {
+        if (!preview) return;
+        setImporting(true);
+        router.post(route('imports.store'), { token: preview.token }, { onFinish: () => setImporting(false) });
     };
 
     const yearName = (id: number) => schoolYears.find((y) => y.id === id)?.name;
 
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Import spreadsheet" />
-            <div className="flex max-w-4xl flex-1 flex-col gap-6 p-4">
-                <div>
-                    <h1 className="text-2xl font-semibold tracking-tight">Import encoding spreadsheet</h1>
-                    <p className="text-muted-foreground text-sm">
-                        Upload the school's ENROLLMENT_ENCODING workbook. The system reads the MAIN_ENCODING_SHEET tab. Importing the same file again
-                        updates learners instead of adding duplicates.
-                    </p>
-                </div>
+        <AppLayout>
+            <Head title="Bulk Import" />
+            <PageHeader
+                title="Bulk Import Students"
+                description="Upload the school's ENROLLMENT_ENCODING workbook. Importing the same file again updates learners instead of adding duplicates."
+                actions={
+                    <Link href="/enrollments/create" className="btn-outline">
+                        <Icon name="chevron_left" /> Back to enrollment
+                    </Link>
+                }
+            />
 
+            <div className="max-w-4xl space-y-6">
                 {!preview && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base">1. Check the file</CardTitle>
-                            <CardDescription>Nothing is saved yet. You will see what will change first.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <form onSubmit={check} className="grid gap-4 sm:grid-cols-[1fr_12rem_auto] sm:items-end">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="file">Workbook (.xlsx)</Label>
-                                    <Input
-                                        id="file"
-                                        type="file"
-                                        accept=".xlsx"
-                                        onChange={(e) => upload.setData('file', e.target.files?.[0] ?? null)}
-                                        required
-                                    />
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="school_year_id">School year</Label>
-                                    <NativeSelect
-                                        id="school_year_id"
-                                        value={upload.data.school_year_id}
-                                        onChange={(e) => upload.setData('school_year_id', e.target.value)}
-                                    >
-                                        {schoolYears.map((y) => (
-                                            <option key={y.id} value={y.id}>
-                                                {y.name}
-                                            </option>
-                                        ))}
-                                    </NativeSelect>
-                                </div>
-                                <Button type="submit" disabled={upload.processing || !upload.data.file}>
-                                    {upload.processing ? <LoaderCircle className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}
-                                    Check file
-                                </Button>
-                            </form>
-                            <InputError className="mt-2" message={upload.errors.file ?? upload.errors.school_year_id} />
-                        </CardContent>
-                    </Card>
+                    <form onSubmit={check} className="panel space-y-6 p-6">
+                        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                            <label htmlFor="school_year_id" className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800">
+                                <Icon name="calendar_month" className="text-primary" /> School Year for Import <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                                id="school_year_id"
+                                className="field-input-sm h-11 max-w-xs bg-white"
+                                value={upload.data.school_year_id}
+                                onChange={(e) => upload.setData('school_year_id', e.target.value)}
+                            >
+                                {schoolYears.map((y) => (
+                                    <option key={y.id} value={y.id}>
+                                        {y.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <p className="mt-2 text-xs text-slate-600">
+                                All imported learners will be enrolled for this school year. The sheet named MAIN_ENCODING_SHEET is read.
+                            </p>
+                        </div>
+
+                        <div
+                            className={`rounded-lg border-2 border-dashed p-8 text-center transition-colors ${dragging ? 'border-primary bg-green-50' : 'border-slate-300'}`}
+                            onDragOver={(e) => {
+                                e.preventDefault();
+                                setDragging(true);
+                            }}
+                            onDragLeave={() => setDragging(false)}
+                            onDrop={(e) => {
+                                e.preventDefault();
+                                setDragging(false);
+                                const f = e.dataTransfer.files?.[0];
+                                if (f) upload.setData('file', f);
+                            }}
+                        >
+                            <Icon name="cloud_upload" className="mb-2 text-4xl text-slate-400" />
+                            <p className="mb-3 text-base text-slate-700">
+                                {upload.data.file ? upload.data.file.name : 'Drag and drop your file here, or'}
+                            </p>
+                            <input
+                                ref={fileInput}
+                                id="file"
+                                type="file"
+                                accept=".xlsx"
+                                className="sr-only"
+                                onChange={(e) => upload.setData('file', e.target.files?.[0] ?? null)}
+                            />
+                            <button type="button" className="btn-primary" onClick={() => fileInput.current?.click()}>
+                                {upload.data.file ? 'Choose a different file' : 'Browse Files'}
+                            </button>
+                            <p className="mt-3 text-xs text-slate-500">Supported format: Excel (.xlsx) • Max size: 20MB</p>
+                            <InputError message={upload.errors.file ?? upload.errors.school_year_id} />
+                        </div>
+
+                        <div className="flex justify-end">
+                            <button type="submit" className="btn-primary" disabled={upload.processing || !upload.data.file}>
+                                <Icon name="fact_check" /> {upload.processing ? 'Checking…' : 'Check File'}
+                            </button>
+                        </div>
+                    </form>
                 )}
 
                 {preview && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base">2. Review and import</CardTitle>
-                            <CardDescription>
-                                {preview.filename} into school year {yearName(preview.school_year_id)}
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid gap-4">
-                            <SummaryGrid summary={preview} />
-                            <Notes summary={preview} />
-                            <div className="flex flex-wrap gap-2">
-                                <Button
-                                    disabled={confirm.processing}
-                                    onClick={() => confirm.post(route('imports.store'))}
-                                    className="bg-green-700 hover:bg-green-800"
-                                >
-                                    {confirm.processing && <LoaderCircle className="size-4 animate-spin" />}
-                                    Import {preview.rows_read - preview.skipped.length} learners
-                                </Button>
-                                <Button variant="outline" disabled={confirm.processing} onClick={() => router.delete(route('imports.destroy'))}>
-                                    Cancel
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <div className="panel space-y-6 p-6">
+                        <div>
+                            <h2 className="text-xl font-bold text-slate-900">Review before importing</h2>
+                            <p className="text-sm text-slate-500">
+                                {preview.filename} → school year {yearName(preview.school_year_id)}. Nothing has been saved yet.
+                            </p>
+                        </div>
+                        <Summary summary={preview} />
+                        <Notes summary={preview} />
+                        <div className="flex flex-wrap justify-end gap-3 border-t border-slate-200 pt-4">
+                            <button
+                                type="button"
+                                className="btn-secondary"
+                                disabled={importing}
+                                onClick={() => router.delete(route('imports.destroy'))}
+                            >
+                                Cancel
+                            </button>
+                            <button type="button" className="btn-primary" disabled={importing} onClick={confirmImport}>
+                                {importing ? 'Importing…' : `Import ${preview.rows_read - preview.skipped.length} learners`}
+                            </button>
+                        </div>
+                    </div>
                 )}
 
                 {result && !preview && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base">Import finished</CardTitle>
-                        </CardHeader>
-                        <CardContent className="grid gap-4">
-                            <SummaryGrid summary={result} />
-                            <Notes summary={result} />
-                        </CardContent>
-                    </Card>
+                    <div className="panel space-y-6 p-6">
+                        <h2 className="flex items-center gap-2 text-xl font-bold text-slate-900">
+                            <Icon name="task_alt" className="text-primary" /> Import finished
+                        </h2>
+                        <Summary summary={result} />
+                        <Notes summary={result} />
+                        <Link href="/enrollments" className="btn-primary">
+                            View Student Management
+                        </Link>
+                    </div>
                 )}
             </div>
         </AppLayout>
     );
 }
 
-function SummaryGrid({ summary }: { summary: ImportSummary }) {
-    const verb = summary.dry_run ? 'will be' : '';
+function Summary({ summary }: { summary: ImportSummary }) {
+    const future = summary.dry_run;
     const items = [
         ['Rows read', summary.rows_read],
-        [`New learners ${verb}`.trim(), summary.students_created],
-        [`Existing learners ${verb ? 'to update' : 'updated'}`, summary.students_updated],
+        [future ? 'New learners to add' : 'New learners added', summary.students_created],
+        [future ? 'Existing learners to update' : 'Existing learners updated', summary.students_updated],
         ['Rows skipped', summary.skipped.length],
     ] as const;
 
     return (
-        <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             {items.map(([label, value]) => (
-                <div key={label} className="rounded-lg border p-3">
-                    <dt className="text-muted-foreground text-xs">{label}</dt>
-                    <dd className="text-2xl font-semibold tabular-nums">{value}</dd>
+                <div key={label} className="rounded-xl border border-slate-200 p-4">
+                    <dt className="text-xs text-slate-500">{label}</dt>
+                    <dd className="text-2xl font-bold text-slate-900 tabular-nums">{value}</dd>
                 </div>
             ))}
         </dl>
@@ -169,19 +195,23 @@ function SummaryGrid({ summary }: { summary: ImportSummary }) {
 
 function Notes({ summary }: { summary: ImportSummary }) {
     if (summary.skipped.length === 0 && summary.warnings.length === 0) {
-        return <p className="text-sm text-green-700">No problems found.</p>;
+        return (
+            <p className="flex items-center gap-2 text-sm text-emerald-700">
+                <Icon name="check_circle" /> No problems found.
+            </p>
+        );
     }
 
     return (
-        <div className="grid gap-3">
+        <div className="space-y-4">
             {summary.skipped.length > 0 && (
-                <NoteList title="These rows will not be imported. Fix them in the sheet and upload again." notes={summary.skipped} tone="error" />
+                <NoteList tone="error" title="These rows will not be imported. Fix them in the sheet and upload again." notes={summary.skipped} />
             )}
             {summary.warnings.length > 0 && (
                 <NoteList
+                    tone="warning"
                     title="These rows will be imported, but please check them. Row numbers match the spreadsheet."
                     notes={summary.warnings}
-                    tone="warning"
                 />
             )}
         </div>
@@ -190,19 +220,15 @@ function Notes({ summary }: { summary: ImportSummary }) {
 
 function NoteList({ title, notes, tone }: { title: string; notes: RowNote[]; tone: 'error' | 'warning' }) {
     return (
-        <div
-            className={
-                tone === 'error' ? 'border-destructive/40 rounded-lg border p-3' : 'rounded-lg border border-amber-300 p-3 dark:border-amber-800'
-            }
-        >
-            <p className="mb-2 flex items-center gap-2 text-sm font-medium">
-                <TriangleAlert className={tone === 'error' ? 'text-destructive size-4' : 'size-4 text-amber-600'} />
+        <div className={tone === 'error' ? 'rounded-lg border border-red-200 bg-red-50 p-4' : 'rounded-lg border border-amber-200 bg-amber-50 p-4'}>
+            <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <Icon name={tone === 'error' ? 'error' : 'warning'} className={tone === 'error' ? 'text-red-600' : 'text-amber-600'} />
                 {title}
             </p>
-            <ul className="max-h-64 space-y-1 overflow-auto text-sm">
+            <ul className="max-h-72 space-y-1 overflow-auto text-sm text-slate-700">
                 {notes.map((n, i) => (
                     <li key={i}>
-                        <span className="text-muted-foreground tabular-nums">Row {n.row}:</span> {n.message}
+                        <span className="font-medium text-slate-500 tabular-nums">Row {n.row}:</span> {n.message}
                     </li>
                 ))}
             </ul>

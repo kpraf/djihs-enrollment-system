@@ -61,7 +61,7 @@ class EncodingSheetImportTest extends TestCase
         $result = $this->import($path);
         $student = Student::first();
 
-        $this->assertSame('09171234567', $student->guardian_contact_number);
+        $this->assertSame('09171234567', $student->contact_number);
         $this->assertSame('SANTA ROSA', $student->municipality);
         $this->assertSame('LAGUNA', $student->province);
         $this->assertSame('Philippines', $student->country);
@@ -137,5 +137,26 @@ class EncodingSheetImportTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         $this->import(EncodingWorkbook::make()->learner()->save(sheetName: 'Sheet1'));
+    }
+
+    public function test_correcting_a_clashing_lrn_later_does_not_create_a_second_learner(): void
+    {
+        $first = EncodingWorkbook::make()
+            ->learner(['first' => 'JUAN', 'birthdate' => '2008-03-15'])
+            ->learner(['first' => 'PEDRO', 'last' => 'GARCIA', 'birthdate' => '2007-01-01'])
+            ->save();
+        $this->import($first);
+        $this->assertNull(Student::where('first_name', 'PEDRO')->value('lrn'));
+
+        // The school fixes Pedro's LRN in the sheet and imports again.
+        $fixed = EncodingWorkbook::make()
+            ->learner(['first' => 'JUAN', 'birthdate' => '2008-03-15'])
+            ->learner(['first' => 'PEDRO', 'last' => 'GARCIA', 'birthdate' => '2007-01-01', 'lrn' => 123456789077])
+            ->save();
+        $this->import($fixed);
+
+        $this->assertSame(2, Student::count());
+        $this->assertSame(2, Enrollment::count());
+        $this->assertSame('123456789077', Student::where('first_name', 'PEDRO')->value('lrn'));
     }
 }

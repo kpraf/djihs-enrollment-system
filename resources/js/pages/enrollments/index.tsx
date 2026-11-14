@@ -1,12 +1,11 @@
-import { NativeSelect } from '@/components/native-select';
+import { Icon } from '@/components/icon';
+import { PageHeader } from '@/components/page-header';
 import { Pagination } from '@/components/pagination';
-import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { StatusBadge } from '@/components/status-badge';
+import { useCan } from '@/hooks/use-can';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem, type Option, type Paginated } from '@/types';
-import { Head, router } from '@inertiajs/react';
-import { Search } from 'lucide-react';
+import { type Option, type Paginated } from '@/types';
+import { Head, Link, router } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
 interface EnrollmentRow {
@@ -24,7 +23,7 @@ interface EnrollmentRow {
 }
 
 interface Filters {
-    school_year?: number;
+    school_year?: number | string;
     search?: string;
     grade?: string;
     strand?: string;
@@ -44,133 +43,177 @@ interface Props {
     };
 }
 
-const breadcrumbs: BreadcrumbItem[] = [{ title: 'Enrollments', href: '/enrollments' }];
-
 export default function EnrollmentsIndex({ enrollments, filters, options }: Props) {
+    const can = useCan();
     const [search, setSearch] = useState(filters.search ?? '');
-    const firstRender = useRef(true);
+    const skipFirst = useRef(true);
 
     const apply = (changes: Partial<Filters>) => {
         const next = Object.fromEntries(Object.entries({ ...filters, ...changes }).filter(([, v]) => v !== '' && v !== undefined && v !== null));
-        router.get('/enrollments', next, { preserveState: true, replace: true });
+        router.get('/enrollments', next, { preserveState: true, preserveScroll: true, replace: true });
     };
 
-    // Search as the user types, but wait until they pause.
+    // Search as the user types, after a short pause.
     useEffect(() => {
-        if (firstRender.current) {
-            firstRender.current = false;
+        if (skipFirst.current) {
+            skipFirst.current = false;
             return;
         }
-        const timer = setTimeout(() => apply({ search }), 350);
+        const timer = setTimeout(() => apply({ search }), 400);
         return () => clearTimeout(timer);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search]);
 
+    const select = (label: string, key: keyof Filters, items: { value: string | number; label: string }[], all: string) => (
+        <label className="flex flex-col">
+            <span className="field-label">{label}</span>
+            <select className="field-input-sm h-10" value={filters[key] ?? ''} onChange={(e) => apply({ [key]: e.target.value })}>
+                {all && <option value="">{all}</option>}
+                {items.map((i) => (
+                    <option key={i.value} value={i.value}>
+                        {i.label}
+                    </option>
+                ))}
+            </select>
+        </label>
+    );
+
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Enrollments" />
-            <div className="flex flex-1 flex-col gap-4 p-4">
-                <div>
-                    <h1 className="text-2xl font-semibold tracking-tight">Enrollments</h1>
-                    <p className="text-muted-foreground text-sm">{enrollments.total} learners match the current filters.</p>
-                </div>
+        <AppLayout>
+            <Head title="Student Management" />
+            <PageHeader
+                title="Student Management"
+                description="Search, filter, and manage all student records."
+                actions={
+                    can('encode-enrollments') && (
+                        <Link href="/enrollments/create" className="btn-primary">
+                            <Icon name="add" /> Add New Student
+                        </Link>
+                    )
+                }
+            />
 
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-                    <div className="relative sm:col-span-2">
-                        <Search className="text-muted-foreground pointer-events-none absolute top-2.5 left-3 size-4" />
-                        <Input className="pl-9" placeholder="Search name or LRN" value={search} onChange={(e) => setSearch(e.target.value)} />
-                    </div>
-                    <NativeSelect
-                        value={filters.school_year ?? ''}
-                        onChange={(e) => apply({ school_year: Number(e.target.value) })}
-                        aria-label="School year"
+            <div className="panel mb-6 p-6">
+                <h2 className="mb-4 text-lg font-semibold text-slate-900">Filters</h2>
+                <label className="mb-4 flex flex-col">
+                    <span className="field-label">Search Student</span>
+                    <span className="relative">
+                        <Icon name="search" className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-400" />
+                        <input
+                            type="search"
+                            className="field-input-sm h-10 bg-slate-50 pl-10"
+                            placeholder="Name or LRN…"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            aria-label="Search by name or LRN"
+                        />
+                    </span>
+                </label>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                    {select(
+                        'Academic Year',
+                        'school_year',
+                        options.schoolYears.map((y) => ({ value: y.id, label: y.name })),
+                        '',
+                    )}
+                    {select('Grade Level', 'grade', options.grades, 'All Grades')}
+                    {select(
+                        'Strand',
+                        'strand',
+                        options.strands.map((s) => ({ value: s.id, label: s.code })),
+                        'All Strands',
+                    )}
+                    {select('Type of Learner', 'learner_type', options.learnerTypes, 'All Types')}
+                    {select('Enrollment Status', 'status', options.statuses, 'All Statuses')}
+                </div>
+                <div className="mt-4">
+                    <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={() => {
+                            setSearch('');
+                            router.get('/enrollments', { school_year: filters.school_year }, { replace: true });
+                        }}
                     >
-                        {options.schoolYears.map((y) => (
-                            <option key={y.id} value={y.id}>
-                                SY {y.name}
-                            </option>
-                        ))}
-                    </NativeSelect>
-                    <NativeSelect value={filters.grade ?? ''} onChange={(e) => apply({ grade: e.target.value })} aria-label="Grade level">
-                        <option value="">All grades</option>
-                        {options.grades.map((g) => (
-                            <option key={g.value} value={g.value}>
-                                {g.label}
-                            </option>
-                        ))}
-                    </NativeSelect>
-                    <NativeSelect value={filters.strand ?? ''} onChange={(e) => apply({ strand: e.target.value })} aria-label="Strand">
-                        <option value="">All strands</option>
-                        {options.strands.map((s) => (
-                            <option key={s.id} value={s.id}>
-                                {s.code}
-                            </option>
-                        ))}
-                    </NativeSelect>
-                    <NativeSelect value={filters.status ?? ''} onChange={(e) => apply({ status: e.target.value })} aria-label="Status">
-                        <option value="">Any status</option>
-                        {options.statuses.map((s) => (
-                            <option key={s.value} value={s.value}>
-                                {s.label}
-                            </option>
-                        ))}
-                    </NativeSelect>
+                        Clear All
+                    </button>
                 </div>
+            </div>
 
-                <Card className="gap-0 overflow-hidden py-0">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead className="bg-muted/50 text-muted-foreground">
-                                <tr className="text-left">
-                                    <th className="px-3 py-2 font-medium">Learner</th>
-                                    <th className="px-3 py-2 font-medium">LRN</th>
-                                    <th className="px-3 py-2 font-medium">Grade</th>
-                                    <th className="px-3 py-2 font-medium">Strand</th>
-                                    <th className="px-3 py-2 font-medium">Type</th>
-                                    <th className="px-3 py-2 font-medium">Status</th>
-                                    <th className="px-3 py-2 font-medium">Encoded</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                                {enrollments.data.map((e) => (
-                                    <tr key={e.id} className="align-top">
-                                        <td className="px-3 py-2">
-                                            <p className="font-medium">{e.name}</p>
-                                            <p className="text-muted-foreground text-xs">{e.sex}</p>
-                                            {e.remarks && <p className="text-muted-foreground mt-1 text-xs italic">{e.remarks}</p>}
-                                        </td>
-                                        <td className="px-3 py-2 font-mono text-xs whitespace-nowrap">
-                                            {e.lrn ?? <span className="text-destructive font-sans">Missing</span>}
-                                        </td>
-                                        <td className="px-3 py-2">{e.grade_level}</td>
-                                        <td className="px-3 py-2 whitespace-nowrap">{e.strand ?? '—'}</td>
-                                        <td className="px-3 py-2 whitespace-nowrap">
-                                            {e.learner_type}
-                                            {e.is_irregular && <span className="text-muted-foreground"> · Irregular</span>}
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            <Badge
-                                                variant={e.status === 'enrolled' ? 'default' : 'secondary'}
-                                                className={e.status === 'enrolled' ? 'bg-green-700' : ''}
+            <div className="panel overflow-hidden">
+                <div className="relative overflow-x-auto">
+                    <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+                        <thead className="bg-slate-50 text-sm font-semibold text-slate-900">
+                            <tr>
+                                <th className="py-3.5 pr-3 pl-4 sm:pl-6">LRN</th>
+                                <th className="px-3 py-3.5">Full Name</th>
+                                <th className="px-3 py-3.5">Grade</th>
+                                <th className="px-3 py-3.5">Strand</th>
+                                <th className="px-3 py-3.5">Type</th>
+                                <th className="px-3 py-3.5">Status</th>
+                                <th className="py-3.5 pr-4 pl-3 text-right sm:pr-6">
+                                    <span className="sr-only">Actions</span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 bg-white">
+                            {enrollments.data.map((e) => (
+                                <tr key={e.id} className="transition-colors hover:bg-slate-50">
+                                    <td className="py-4 pr-3 pl-4 font-mono text-sm whitespace-nowrap text-slate-500 sm:pl-6">
+                                        {e.lrn ?? <span className="font-sans text-red-600">Missing</span>}
+                                    </td>
+                                    <td className="px-3 py-4 text-sm">
+                                        <Link
+                                            href={route('enrollments.show', e.id)}
+                                            className="hover:text-primary font-medium text-slate-900 hover:underline"
+                                        >
+                                            {e.name}
+                                        </Link>
+                                        {e.remarks && <p className="mt-0.5 max-w-xs truncate text-xs text-slate-500 italic">{e.remarks}</p>}
+                                    </td>
+                                    <td className="px-3 py-4 whitespace-nowrap text-slate-500">{e.grade_level}</td>
+                                    <td className="px-3 py-4 whitespace-nowrap text-slate-500">{e.strand ?? '—'}</td>
+                                    <td className="px-3 py-4 whitespace-nowrap text-slate-500">
+                                        {e.learner_type}
+                                        {e.is_irregular && <span className="text-xs"> (Irregular)</span>}
+                                    </td>
+                                    <td className="px-3 py-4 whitespace-nowrap">
+                                        <StatusBadge status={e.status} />
+                                    </td>
+                                    <td className="py-4 pr-4 pl-3 text-right whitespace-nowrap sm:pr-6">
+                                        <div className="flex items-center justify-end gap-2">
+                                            <Link
+                                                href={route('enrollments.show', e.id)}
+                                                className="hover:text-primary text-slate-400 transition-colors"
+                                                title="View details"
                                             >
-                                                {e.status === 'enrolled' ? 'Enrolled' : 'Cancelled'}
-                                            </Badge>
-                                        </td>
-                                        <td className="px-3 py-2 whitespace-nowrap tabular-nums">{e.encoded_on ?? '—'}</td>
-                                    </tr>
-                                ))}
-                                {enrollments.data.length === 0 && (
-                                    <tr>
-                                        <td colSpan={7} className="text-muted-foreground px-3 py-10 text-center">
-                                            No learners match these filters.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </Card>
-
+                                                <Icon name="visibility" label={`View ${e.name}`} />
+                                            </Link>
+                                            {can('encode-enrollments') && (
+                                                <Link
+                                                    href={route('enrollments.edit', e.id)}
+                                                    className="hover:text-primary text-slate-400 transition-colors"
+                                                    title="Edit"
+                                                >
+                                                    <Icon name="edit" label={`Edit ${e.name}`} />
+                                                </Link>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                            {enrollments.data.length === 0 && (
+                                <tr>
+                                    <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
+                                        <Icon name="search" className="mb-2 text-4xl text-slate-300" />
+                                        <p className="text-lg font-medium">No students found</p>
+                                        <p className="text-sm">Try adjusting your search or filters</p>
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
                 <Pagination page={enrollments} />
             </div>
         </AppLayout>

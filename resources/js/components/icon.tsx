@@ -1,10 +1,20 @@
 import { cn } from '@/lib/utils';
-import { type LucideProps } from 'lucide-react';
+import { icons, type IconName } from './icons';
 
-interface IconProps extends Omit<LucideProps, 'ref'> {
-    iconNode: React.ComponentType<LucideProps>;
-}
+/**
+ * A Material Symbol drawn inline. Sized in em, so it follows the text size
+ * around it and the user's text-size setting.
+ */
+export function Icon({ name, className, label }: { name: IconName; className?: string; label?: string }) {
+    const svg = icons[name].replace('<svg ', '<svg fill="currentColor" width="1em" height="1em" ');
 
-export function Icon({ iconNode: IconComponent, className, ...props }: IconProps) {
-    return <IconComponent className={cn('h-4 w-4', className)} {...props} />;
+    return (
+        <span
+            className={cn('inline-flex shrink-0 items-center justify-center text-[1.25em] leading-none', className)}
+            role={label ? 'img' : undefined}
+            aria-label={label}
+            aria-hidden={label ? undefined : true}
+            dangerouslySetInnerHTML={{ __html: svg }}
+        />
+    );
 }
