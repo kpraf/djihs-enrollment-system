@@ -15,12 +15,13 @@ class SchoolYear extends Model
     /** @use HasFactory<SchoolYearFactory> */
     use Auditable, HasFactory;
 
-    protected $fillable = ['start_year', 'is_active', 'is_enrollment_open', 'grade_10_completers'];
+    protected $fillable = ['start_year', 'is_active', 'is_enrollment_open', 'is_archived', 'grade_10_completers'];
 
     /** @var array<string, mixed> */
     protected $attributes = [
         'is_active' => false,
         'is_enrollment_open' => false,
+        'is_archived' => false,
     ];
 
     /** @var list<string> */
@@ -32,6 +33,7 @@ class SchoolYear extends Model
             'start_year' => 'integer',
             'is_active' => 'boolean',
             'is_enrollment_open' => 'boolean',
+            'is_archived' => 'boolean',
             'grade_10_completers' => 'integer',
         ];
     }
@@ -77,7 +79,10 @@ class SchoolYear extends Model
     public function activate(): void
     {
         DB::transaction(function () {
-            static::whereKeyNot($this->getKey())->where('is_active', true)->get()
+            // Lock every year so two people activating different years at the
+            // same moment cannot leave both active.
+            static::query()->lockForUpdate()->get()
+                ->filter(fn (self $year) => $year->is_active && ! $year->is($this))
                 ->each(fn (self $year) => $year->update(['is_active' => false]));
             $this->update(['is_active' => true]);
         });

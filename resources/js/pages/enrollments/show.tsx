@@ -2,10 +2,11 @@ import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Field } from '@/components/form';
 import { Icon } from '@/components/icon';
 import { PageHeader } from '@/components/page-header';
+import { RevisionCard, type Revision } from '@/components/revision-card';
 import { StatusBadge } from '@/components/status-badge';
 import AppLayout from '@/layouts/app-layout';
-import { Head, Link, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 
 export interface EnrollmentRecord {
     id: number;
@@ -13,18 +14,23 @@ export interface EnrollmentRecord {
     grade_level: number;
     strand_id: number | null;
     strand: { code: string; name: string } | null;
+    section: string | null;
     learner_type: string;
     learner_type_label: string;
     is_irregular: boolean;
-    status: 'enrolled' | 'cancelled';
+    status: string;
+    status_label: string;
     weight_kg: string | null;
     height_m: string | null;
     remarks: string | null;
     encoded_on: string | null;
     encoder: string | null;
-    cancelled_at: string | null;
-    canceller: string | null;
-    cancellation_reason: string | null;
+    reviewer: string | null;
+    reviewed_at: string | null;
+    status_changed_at: string | null;
+    status_changer: string | null;
+    status_reason: string | null;
+    documents_complete: boolean;
     enrollment_version: number;
     student_version: number;
     student: Record<string, string | boolean | null> & { full_name: string; lrn: string | null; age: number | null };
@@ -38,6 +44,24 @@ export interface HistoryEntry {
     subject_type: string;
     subject: string;
     changes: { field: string; old: string | null; new: string | null }[];
+}
+
+interface DocumentRow {
+    type: string;
+    label: string;
+    is_submitted: boolean;
+    is_verified: boolean;
+    notes: string | null;
+    updated_by: string | null;
+}
+
+interface Props {
+    enrollment: EnrollmentRecord;
+    documents: DocumentRow[];
+    revisions: Revision[];
+    history: HistoryEntry[];
+    can: { edit: boolean; requestRevision: boolean; review: boolean; documents: boolean; approveRevisions: boolean };
+    leavingStatuses: { value: string; label: string }[];
 }
 
 const when = new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeStyle: 'short' });
@@ -57,20 +81,13 @@ function joinName(...parts: (string | boolean | null | undefined)[]) {
     return parts.filter((p) => typeof p === 'string' && p).join(' ') || null;
 }
 
-export default function ShowEnrollment({
-    enrollment: e,
-    history,
-    canEdit,
-}: {
-    enrollment: EnrollmentRecord;
-    history: HistoryEntry[];
-    canEdit: boolean;
-}) {
+export default function ShowEnrollment({ enrollment: e, documents, revisions, history, can, leavingStatuses }: Props) {
     const s = e.student;
-    const [cancelOpen, setCancelOpen] = useState(false);
+    const [leaveOpen, setLeaveOpen] = useState(false);
     const [restoreOpen, setRestoreOpen] = useState(false);
-    const cancel = useForm({ reason: '' });
+    const leave = useForm({ status: 'cancelled', reason: '' });
     const restore = useForm({});
+    const isLeft = ['cancelled', 'dropped', 'transferred_out', 'rejected'].includes(e.status);
 
     return (
         <AppLayout>
@@ -81,6 +98,7 @@ export default function ShowEnrollment({
                     <span className="flex flex-wrap items-center gap-3">
                         <span className="font-mono">LRN {s.lrn ?? 'missing'}</span>
                         <StatusBadge status={e.status} />
+                        {!e.documents_complete && <span className="text-sm text-amber-700">Documents incomplete</span>}
                     </span>
                 }
                 actions={
@@ -88,20 +106,32 @@ export default function ShowEnrollment({
                         <Link href={route('enrollments.index')} className="btn-outline">
                             <Icon name="chevron_left" /> Back to list
                         </Link>
-                        {canEdit && (
+                        {(can.edit || can.requestRevision) && (
                             <Link href={route('enrollments.edit', e.id)} className="btn-primary">
-                                <Icon name="edit" /> Edit
+                                <Icon name="edit" /> {can.edit ? 'Edit' : 'Request Changes'}
                             </Link>
                         )}
                     </>
                 }
             />
 
-            {e.status === 'cancelled' && (
+            {e.status === 'pending' && (
+                <div className="mb-6 flex flex-wrap items-center gap-3 rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-900">
+                    <Icon name="pending" /> Waiting for review.
+                    {can.review && (
+                        <Link href={route('reviews.index')} className="font-semibold underline">
+                            Go to Review Enrollments
+                        </Link>
+                    )}
+                </div>
+            )}
+
+            {isLeft && (
                 <div className="mb-6 rounded-lg border border-slate-300 bg-slate-100 p-4 text-sm text-slate-700">
-                    Cancelled{e.canceller ? ` by ${e.canceller}` : ''}
-                    {e.cancelled_at ? ` on ${when.format(new Date(e.cancelled_at))}` : ''}
-                    {e.cancellation_reason ? `: ${e.cancellation_reason}` : '.'}
+                    {e.status_label}
+                    {e.status_changer ? ` by ${e.status_changer}` : ''}
+                    {e.status_changed_at ? ` on ${when.format(new Date(e.status_changed_at))}` : ''}
+                    {e.status_reason ? `: ${e.status_reason}` : '.'}
                 </div>
             )}
 
@@ -112,11 +142,16 @@ export default function ShowEnrollment({
                         <dl className="grid grid-cols-2 gap-4 md:grid-cols-3">
                             <Item label="School year" value={e.school_year} />
                             <Item label="Grade" value={`Grade ${e.grade_level}`} />
-                            <Item label="Strand" value={e.strand ? `${e.strand.code}` : null} />
+                            <Item label="Strand" value={e.strand?.code} />
+                            <Item label="Section" value={e.section} />
                             <Item label="Type of learner" value={`${e.is_irregular ? 'Irregular' : 'Regular'} · ${e.learner_type_label}`} />
                             <Item label="Weight" value={e.weight_kg ? `${e.weight_kg} kg` : null} />
                             <Item label="Height" value={e.height_m ? `${e.height_m} m` : null} />
                             <Item label="Encoded" value={joinName(e.encoded_on, e.encoder ? `by ${e.encoder}` : null)} />
+                            <Item
+                                label="Reviewed"
+                                value={e.reviewed_at ? joinName(when.format(new Date(e.reviewed_at)), e.reviewer ? `by ${e.reviewer}` : null) : null}
+                            />
                             <Item label="Remarks" value={e.remarks} />
                         </dl>
                     </section>
@@ -154,25 +189,36 @@ export default function ShowEnrollment({
                         </dl>
                     </section>
 
-                    {canEdit && (
+                    <DocumentChecklist enrollmentId={e.id} documents={documents} editable={can.documents} complete={e.documents_complete} />
+
+                    {revisions.length > 0 && (
+                        <section className="space-y-3">
+                            <h3 className="text-lg font-semibold text-slate-800">Revision Requests</h3>
+                            {revisions.map((r) => (
+                                <RevisionCard key={r.id} revision={r} canDecide={can.approveRevisions} />
+                            ))}
+                        </section>
+                    )}
+
+                    {can.edit && (
                         <section className="panel flex flex-wrap items-center justify-between gap-4 p-6">
                             <div>
-                                <h3 className="font-semibold text-slate-900">
-                                    {e.status === 'enrolled' ? 'Cancel this enrollment' : 'Restore this enrollment'}
-                                </h3>
+                                <h3 className="font-semibold text-slate-900">{isLeft ? 'Restore this learner' : 'Learner leaving the school'}</h3>
                                 <p className="text-sm text-slate-500">
-                                    {e.status === 'enrolled'
-                                        ? 'The learner stays on record but is no longer counted as enrolled.'
-                                        : 'Count this learner as enrolled again.'}
+                                    {isLeft
+                                        ? e.status === 'rejected'
+                                            ? 'Send this enrollment back for review.'
+                                            : 'Count this learner as enrolled again.'
+                                        : 'Cancel the enrollment, or mark the learner as dropped out or transferred out. Their section seat is freed.'}
                                 </p>
                             </div>
-                            {e.status === 'enrolled' ? (
-                                <button type="button" className="btn-danger" onClick={() => setCancelOpen(true)}>
-                                    <Icon name="cancel" /> Cancel Enrollment
+                            {isLeft ? (
+                                <button type="button" className="btn-outline" onClick={() => setRestoreOpen(true)}>
+                                    <Icon name="restore" /> Restore
                                 </button>
                             ) : (
-                                <button type="button" className="btn-outline" onClick={() => setRestoreOpen(true)}>
-                                    <Icon name="restore" /> Restore Enrollment
+                                <button type="button" className="btn-danger" onClick={() => setLeaveOpen(true)}>
+                                    <Icon name="person_off" /> Change Status
                                 </button>
                             )}
                         </section>
@@ -209,29 +255,44 @@ export default function ShowEnrollment({
             </div>
 
             <ConfirmDialog
-                open={cancelOpen}
-                onClose={() => setCancelOpen(false)}
+                open={leaveOpen}
+                onClose={() => setLeaveOpen(false)}
                 onConfirm={() => {
-                    // Always send the version on screen now. The form's own copy
-                    // can be stale after an earlier save on this page.
-                    cancel.transform((d) => ({ ...d, enrollment_version: e.enrollment_version }));
-                    cancel.post(route('enrollments.cancel', e.id), { onSuccess: () => setCancelOpen(false), preserveScroll: true });
+                    // Always send the version on screen now; the form's copy can be stale.
+                    leave.transform((d) => ({ ...d, enrollment_version: e.enrollment_version }));
+                    leave.post(route('enrollments.leave', e.id), { onSuccess: () => setLeaveOpen(false), preserveScroll: true });
                 }}
-                title="Cancel this enrollment?"
-                message={`${s.full_name} will no longer be counted as enrolled. You can restore it later.`}
-                confirmLabel="Cancel Enrollment"
-                icon="cancel"
-                processing={cancel.processing}
+                title="Change this learner's status?"
+                message={`${s.full_name} will no longer be counted as enrolled. You can restore this later.`}
+                confirmLabel="Change Status"
+                icon="person_off"
+                processing={leave.processing}
             >
-                <div className="mt-6 text-left">
-                    <Field label="Reason" required error={cancel.errors.reason}>
+                <div className="mt-6 space-y-4 text-left">
+                    <Field label="New status" required error={leave.errors.status}>
+                        {(p) => (
+                            <select
+                                {...p}
+                                className="field-input"
+                                value={leave.data.status}
+                                onChange={(ev) => leave.setData('status', ev.target.value)}
+                            >
+                                {leavingStatuses.map((o) => (
+                                    <option key={o.value} value={o.value}>
+                                        {o.label}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                    </Field>
+                    <Field label="Reason" required error={leave.errors.reason}>
                         {(p) => (
                             <input
                                 {...p}
                                 className="field-input"
-                                value={cancel.data.reason}
-                                onChange={(ev) => cancel.setData('reason', ev.target.value)}
-                                placeholder="e.g., Transferred to another school"
+                                value={leave.data.reason}
+                                onChange={(ev) => leave.setData('reason', ev.target.value)}
+                                placeholder="e.g., Moved to another school"
                             />
                         )}
                     </Field>
@@ -245,13 +306,92 @@ export default function ShowEnrollment({
                     restore.transform(() => ({ enrollment_version: e.enrollment_version }));
                     restore.post(route('enrollments.restore', e.id), { onSuccess: () => setRestoreOpen(false), preserveScroll: true });
                 }}
-                title="Restore this enrollment?"
-                message={`${s.full_name} will be counted as enrolled again.`}
+                title="Restore this learner?"
+                message={
+                    e.status === 'rejected' ? 'The enrollment goes back to Review Enrollments.' : `${s.full_name} will be counted as enrolled again.`
+                }
                 confirmLabel="Restore"
                 icon="restore"
                 tone="primary"
                 processing={restore.processing}
             />
         </AppLayout>
+    );
+}
+
+function DocumentChecklist({
+    enrollmentId,
+    documents,
+    editable,
+    complete,
+}: {
+    enrollmentId: number;
+    documents: DocumentRow[];
+    editable: boolean;
+    complete: boolean;
+}) {
+    // Ticks show at once and are saved in the background.
+    const [rows, setRows] = useState(documents);
+    useEffect(() => setRows(documents), [documents]);
+
+    const save = (d: DocumentRow, changes: Partial<DocumentRow>) => {
+        const next = { ...d, ...changes };
+        next.is_verified = next.is_submitted && next.is_verified;
+        setRows((current) => current.map((r) => (r.type === d.type ? next : r)));
+        router.put(
+            route('enrollments.documents', enrollmentId),
+            { document_type: d.type, is_submitted: next.is_submitted, is_verified: next.is_verified, notes: next.notes ?? '' },
+            { preserveScroll: true, onError: () => setRows(documents) },
+        );
+    };
+
+    return (
+        <section className="panel p-6">
+            <div className="mb-4 flex items-center justify-between border-b border-slate-200 pb-2">
+                <h3 className="text-lg font-semibold text-slate-800">Document Checklist</h3>
+                {complete ? <StatusBadge status="approved" /> : <span className="text-sm font-medium text-amber-700">Incomplete</span>}
+            </div>
+            <p className="mb-4 text-sm text-slate-500">
+                Required: a birth certificate (PSA or local) and the report card. Transferees also need Form 137.
+            </p>
+            <div className="divide-y divide-slate-100">
+                {rows.map((d) => (
+                    <div key={d.type} className="flex flex-wrap items-center gap-x-6 gap-y-2 py-3">
+                        <span className="min-w-[14rem] flex-1 text-sm font-medium text-slate-900">{d.label}</span>
+                        <label className="flex items-center gap-2 text-sm text-slate-700">
+                            <input
+                                type="checkbox"
+                                className="checkbox"
+                                checked={d.is_submitted}
+                                disabled={!editable}
+                                onChange={(ev) => save(d, { is_submitted: ev.target.checked })}
+                            />
+                            Submitted
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-slate-700">
+                            <input
+                                type="checkbox"
+                                className="checkbox"
+                                checked={d.is_verified}
+                                disabled={!editable || !d.is_submitted}
+                                onChange={(ev) => save(d, { is_verified: ev.target.checked })}
+                            />
+                            Verified
+                        </label>
+                        {editable ? (
+                            <input
+                                className="field-input-sm w-full sm:w-56"
+                                defaultValue={d.notes ?? ''}
+                                placeholder="Notes"
+                                aria-label={`Notes for ${d.label}`}
+                                onBlur={(ev) => ev.target.value !== (d.notes ?? '') && save(d, { notes: ev.target.value })}
+                            />
+                        ) : (
+                            d.notes && <span className="text-sm text-slate-500">{d.notes}</span>
+                        )}
+                    </div>
+                ))}
+            </div>
+        </section>
     );
 }

@@ -91,3 +91,23 @@ export async function countInList(page: Page, search: string): Promise<number> {
     const text = await page.locator('text=/Showing \\d+ to \\d+ of \\d+ results/').innerText();
     return Number(text.match(/of (\d+) results/)![1]);
 }
+
+/** Encodes a learner on the New Enrollment form and waits for it to save. */
+export async function encode(page: Page, l: Learner) {
+    await page.goto('/enrollments/create');
+    await fillEnrollmentForm(page, l);
+    await page.getByRole('button', { name: 'Submit Enrollment' }).click();
+    await expect(page.getByLabel('Learner Reference No. (LRN)')).toHaveValue('');
+}
+
+/** Approves one pending learner from Review Enrollments. */
+export async function approve(page: Page, lrn: string) {
+    await page.goto(`/reviews?search=${lrn}`);
+    // The button in this learner's row, not the page's "Approve All".
+    await page
+        .getByRole('row')
+        .filter({ hasText: lrn })
+        .getByRole('button', { name: /^Approve/ })
+        .click();
+    await expect(page.getByRole('status').filter({ hasText: 'Approved' })).toBeVisible();
+}

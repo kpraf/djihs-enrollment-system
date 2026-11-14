@@ -14,7 +14,7 @@ class Strand extends Model
     /** @use HasFactory<StrandFactory> */
     use Auditable, HasFactory;
 
-    protected $fillable = ['code', 'name', 'track', 'is_active', 'sort_order'];
+    protected $fillable = ['code', 'name', 'track', 'description', 'is_active', 'sort_order'];
 
     /** @var array<string, mixed> */
     protected $attributes = [
@@ -29,6 +29,11 @@ class Strand extends Model
             'is_active' => 'boolean',
             'sort_order' => 'integer',
         ];
+    }
+
+    public function sections(): HasMany
+    {
+        return $this->hasMany(Section::class);
     }
 
     public function enrollments(): HasMany

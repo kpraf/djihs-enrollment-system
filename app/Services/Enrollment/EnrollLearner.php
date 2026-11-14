@@ -41,32 +41,48 @@ class EnrollLearner
             return DB::transaction(function () use ($studentData, $enrollmentData, $year, $actor) {
                 $student = Student::where('lrn', $studentData['lrn'])->lockForUpdate()->first();
 
+                $rejected = null;
+
                 if ($student) {
-                    $this->guardExistingStudent($student, $studentData, $year);
+                    $rejected = $this->guardExistingStudent($student, $studentData, $year);
                     $student->update($studentData);
                 } else {
                     $student = Student::create($studentData);
                 }
 
-                return Enrollment::create([
+                $values = [
                     ...$enrollmentData,
                     'student_id' => $student->id,
                     'school_year_id' => $year->id,
-                    'status' => EnrollmentStatus::Enrolled,
+                    'status' => EnrollmentStatus::Pending,
                     'encoded_on' => now()->toDateString(),
                     'encoded_by' => $actor->id,
-                ]);
+                ];
+
+                // A rejected enrollment is corrected and sent for review again.
+                if ($rejected) {
+                    $rejected->fill([...$values, 'reviewed_by' => null, 'reviewed_at' => null, 'status_reason' => null])->save();
+
+                    return $rejected;
+                }
+
+                return Enrollment::create($values);
             });
         } catch (UniqueConstraintViolationException) {
             throw $this->lostRace($studentData['lrn'], $year);
         }
     }
 
-    private function guardExistingStudent(Student $student, array $data, SchoolYear $year): void
+    /**
+     * Returns this year's rejected enrollment, if any, so it can be resubmitted.
+     */
+    private function guardExistingStudent(Student $student, array $data, SchoolYear $year): ?Enrollment
     {
-        if ($existing = $this->duplicates->enrollmentFor($student, $year)) {
+        $existing = $this->duplicates->enrollmentFor($student, $year);
+
+        if ($existing && $existing->status !== EnrollmentStatus::Rejected) {
             throw ValidationException::withMessages([
-                'lrn' => "This learner is already enrolled for school year {$year->name}: ".DuplicateFinder::describe($existing).'.',
+                'lrn' => "This learner is already encoded for school year {$year->name}: ".DuplicateFinder::describe($existing).'.',
             ]);
         }
 
@@ -75,6 +91,8 @@ class EnrollLearner
                 'lrn' => "This LRN already belongs to {$student->full_name}, born {$student->birthdate?->format('M j, Y')}. Check the LRN.",
             ]);
         }
+
+        return $existing;
     }
 
     private function guardAgainstLookalikes(array $data): void

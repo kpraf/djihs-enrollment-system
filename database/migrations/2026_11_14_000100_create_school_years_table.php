@@ -13,6 +13,7 @@ return new class extends Migration
             $table->unsignedSmallInteger('start_year')->unique();
             $table->boolean('is_active')->default(false);
             $table->boolean('is_enrollment_open')->default(false);
+            $table->boolean('is_archived')->default(false);
             $table->unsignedSmallInteger('grade_10_completers')->nullable();
             $table->timestamps();
         });

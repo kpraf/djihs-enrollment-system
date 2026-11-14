@@ -101,7 +101,7 @@ class EncodingSheetImportTest extends TestCase
 
         $enrollment = Enrollment::first();
         $this->assertSame(EnrollmentStatus::Cancelled, $enrollment->status);
-        $this->assertNotNull($enrollment->cancelled_at);
+        $this->assertNotNull($enrollment->status_changed_at);
     }
 
     public function test_rows_with_unknown_values_are_skipped_with_a_reason(): void

@@ -1,6 +1,9 @@
+import { Icon } from '@/components/icon';
+import { Modal } from '@/components/modal';
 import { PageHeader } from '@/components/page-header';
 import { Pagination } from '@/components/pagination';
 import { StatCard } from '@/components/stat-card';
+import { useCan } from '@/hooks/use-can';
 import AppLayout from '@/layouts/app-layout';
 import { type HistoryEntry } from '@/pages/enrollments/show';
 import { type Option, type Paginated } from '@/types';
@@ -21,6 +24,8 @@ const tones = { created: 'bg-green-100 text-green-800', updated: 'bg-blue-100 te
 
 export default function AuditLog({ logs, filters, stats, users, types }: Props) {
     const [draft, setDraft] = useState(filters);
+    const [backupOpen, setBackupOpen] = useState(false);
+    const can = useCan();
 
     const apply = () => {
         const clean = Object.fromEntries(Object.entries(draft).filter(([, v]) => v));
@@ -34,9 +39,22 @@ export default function AuditLog({ logs, filters, stats, users, types }: Props) 
                 title="System Audit Log"
                 description="Track all system activities and changes made by users."
                 actions={
-                    <button type="button" className="btn-primary" onClick={() => router.reload()}>
-                        Refresh
-                    </button>
+                    <>
+                        <a
+                            href={route('audit-log.export', { from: filters.from, to: filters.to })}
+                            className="btn bg-blue-600 text-white hover:bg-blue-700"
+                        >
+                            <Icon name="download" /> Export Logs
+                        </a>
+                        {can('backup-data') && (
+                            <button type="button" className="btn-outline" onClick={() => setBackupOpen(true)}>
+                                <Icon name="backup" /> Backup Now
+                            </button>
+                        )}
+                        <button type="button" className="btn-primary" onClick={() => router.reload()}>
+                            <Icon name="refresh" /> Refresh
+                        </button>
+                    </>
                 }
             />
 
@@ -170,6 +188,41 @@ export default function AuditLog({ logs, filters, stats, users, types }: Props) 
                 </div>
                 <Pagination page={logs} />
             </div>
+            <Modal open={backupOpen} onClose={() => setBackupOpen(false)} size="sm" bare>
+                <div className="flex items-start gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                        <Icon name="backup" />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-semibold text-slate-900">Download a Data Backup</h3>
+                        <p className="text-xs text-slate-500">A ZIP file of spreadsheets you can keep offline</p>
+                    </div>
+                </div>
+                <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
+                    <p className="mb-2 font-semibold">The backup includes:</p>
+                    <ul className="space-y-1">
+                        {[
+                            'All student and enrollment records',
+                            'Document checklists and revision requests',
+                            'Sections, strands and school years',
+                            'User accounts (without passwords) and the audit log',
+                        ].map((t) => (
+                            <li key={t} className="flex items-center gap-2">
+                                <Icon name="check" /> {t}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+                <p className="mt-3 text-xs text-slate-500">It contains learners' personal data. Store it securely.</p>
+                <div className="mt-6 flex justify-end gap-3">
+                    <button type="button" className="btn-outline" onClick={() => setBackupOpen(false)}>
+                        Cancel
+                    </button>
+                    <a href={route('backup')} className="btn bg-blue-600 text-white hover:bg-blue-700" onClick={() => setBackupOpen(false)}>
+                        <Icon name="download" /> Backup Now
+                    </a>
+                </div>
+            </Modal>
         </AppLayout>
     );
 }

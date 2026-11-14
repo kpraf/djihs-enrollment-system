@@ -7,6 +7,7 @@ use App\Enums\Role;
 use App\Models\AuditLog;
 use App\Models\Enrollment;
 use App\Models\SchoolYear;
+use App\Models\Section;
 use App\Models\Strand;
 use App\Models\Student;
 use App\Models\User;
@@ -103,44 +104,57 @@ class EnrollmentEditingTest extends TestCase
     public function test_cancel_and_restore(): void
     {
         $this->actingAs($this->registrar)
-            ->post("/enrollments/{$this->enrollment->id}/cancel", ['reason' => 'Transferred out', 'enrollment_version' => 1])
+            ->post("/enrollments/{$this->enrollment->id}/leave", ['status' => 'cancelled', 'reason' => 'Transferred out', 'enrollment_version' => 1])
             ->assertSessionHasNoErrors();
 
         $fresh = $this->enrollment->fresh();
         $this->assertSame(EnrollmentStatus::Cancelled, $fresh->status);
-        $this->assertSame($this->registrar->id, $fresh->cancelled_by);
+        $this->assertSame($this->registrar->id, $fresh->status_changed_by);
 
         $this->actingAs($this->registrar)->post("/enrollments/{$this->enrollment->id}/restore", ['enrollment_version' => 2]);
         $this->assertSame(EnrollmentStatus::Enrolled, $this->enrollment->fresh()->status);
-        $this->assertNull($this->enrollment->fresh()->cancellation_reason);
+        $this->assertNull($this->enrollment->fresh()->status_reason);
+    }
+
+    public function test_dropped_and_transferred_out_free_the_section_seat(): void
+    {
+        $section = Section::create(['school_year_id' => $this->enrollment->school_year_id, 'grade_level' => 11, 'strand_id' => $this->enrollment->strand_id, 'name' => 'Integrity', 'capacity' => 40]);
+        $this->enrollment->update(['status' => EnrollmentStatus::Enrolled, 'section_id' => $section->id]);
+
+        $this->actingAs($this->registrar)
+            ->post("/enrollments/{$this->enrollment->id}/leave", ['status' => 'dropped', 'reason' => 'Stopped attending', 'enrollment_version' => $this->enrollment->fresh()->lock_version])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(EnrollmentStatus::Dropped, $this->enrollment->fresh()->status);
+        $this->assertNull($this->enrollment->fresh()->section_id);
     }
 
     public function test_cancelling_twice_from_two_screens_is_reported(): void
     {
-        $this->actingAs($this->registrar)->post("/enrollments/{$this->enrollment->id}/cancel", ['reason' => 'A', 'enrollment_version' => 1]);
+        $this->actingAs($this->registrar)->post("/enrollments/{$this->enrollment->id}/leave", ['status' => 'cancelled', 'reason' => 'A', 'enrollment_version' => 1]);
 
         $this->actingAs(User::factory()->role(Role::Registrar)->create())
-            ->post("/enrollments/{$this->enrollment->id}/cancel", ['reason' => 'B', 'enrollment_version' => 1])
+            ->post("/enrollments/{$this->enrollment->id}/leave", ['status' => 'cancelled', 'reason' => 'B', 'enrollment_version' => 1])
             ->assertSessionHas('error');
 
-        $this->assertSame('A', $this->enrollment->fresh()->cancellation_reason);
+        $this->assertSame('A', $this->enrollment->fresh()->status_reason);
     }
 
-    public function test_cancel_needs_a_reason(): void
+    public function test_leaving_needs_a_reason_and_a_valid_status(): void
     {
         $this->actingAs($this->registrar)
-            ->post("/enrollments/{$this->enrollment->id}/cancel", ['reason' => '', 'enrollment_version' => 1])
-            ->assertSessionHasErrors('reason');
+            ->post("/enrollments/{$this->enrollment->id}/leave", ['status' => 'enrolled', 'reason' => '', 'enrollment_version' => 1])
+            ->assertSessionHasErrors(['reason', 'status']);
     }
 
     public function test_key_teachers_can_view_but_not_edit(): void
     {
         $key = User::factory()->role(Role::KeyTeacher)->create();
 
-        $this->actingAs($key)->get("/enrollments/{$this->enrollment->id}")->assertOk()->assertInertia(fn ($p) => $p->where('canEdit', false));
+        $this->actingAs($key)->get("/enrollments/{$this->enrollment->id}")->assertOk()->assertInertia(fn ($p) => $p->where('can.edit', false)->where('can.requestRevision', false));
         $this->actingAs($key)->get("/enrollments/{$this->enrollment->id}/edit")->assertForbidden();
         $this->actingAs($key)->put("/enrollments/{$this->enrollment->id}", $this->editPayload())->assertForbidden();
-        $this->actingAs($key)->post("/enrollments/{$this->enrollment->id}/cancel", ['reason' => 'x', 'enrollment_version' => 1])->assertForbidden();
+        $this->actingAs($key)->post("/enrollments/{$this->enrollment->id}/leave", ['status' => 'cancelled', 'reason' => 'x', 'enrollment_version' => 1])->assertForbidden();
     }
 
     public function test_the_list_searches_across_name_parts(): void

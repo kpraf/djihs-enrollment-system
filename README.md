@@ -28,13 +28,20 @@ The interface keeps the look of the original DJIHS pages: the green sidebar, the
 - **Larger text.** Three text sizes for staff who find small text hard to read, available on every page and the sign-in page, and saved to each account.
 - **Dashboard.** Rebuilds the workbook's MONITORING and DAILY_MONITORING tabs: counts per grade and strand by sex, learner type, Indigenous Peoples and 4Ps, track subtotals, Grade 10 retention, and learners encoded per day.
 - **Spreadsheet import.** Upload the school's workbook, review problems row by row, then import. Re-importing updates learners instead of duplicating them.
-- **User accounts and audit log.** Create, edit, deactivate and reset accounts. Every change is recorded with who made it and shown in readable form. Passwords are never logged.
-
-Next up: sections and sectioning, school-year management, and SF1 export.
+- **Review Enrollments.** Every submission from the form waits as Pending until a registrar, ICT coordinator or adviser approves or rejects it, one at a time or all at once. If two reviewers decide on the same learner at the same moment, only the first decision counts and the other is told who decided.
+- **Revision requests.** Advisers don't edit an approved record directly. They send the change with a reason, and the registrar approves it from Review Enrollments. A request is refused if the record changed after it was sent.
+- **Document checklist.** PSA or local birth certificate, report card, Form 137, good moral and transfer certificate, per learner. Student Management can list learners with missing documents.
+- **Dropped and transferred out.** Change Status marks a learner Cancelled, Dropped or Transferred Out, with a reason, and frees their seat. Restore brings them back.
+- **Strands, sections and sectioning.** Key teachers manage strands and sections, set capacity and advisers, assign subject teachers, and place learners by hand or automatically (first come, first served). A full section cannot be overfilled, even by two people at once.
+- **School years.** Add, activate and archive school years, and open or close enrollment.
+- **My Section and My Students.** Advisers see their class list with SF1, CSV and Excel downloads and a printable list. Subject teachers see the learners in the classes they teach.
+- **Analytics and Metrics.** Charts of enrollment by grade, strand, sex and learner type, year-on-year trends, and transition, promotion, retention and dropout rates, with downloads.
+- **Role dashboards.** Each role sees its own summary: pending reviews, its sections, section fill, classes taught, or system status.
+- **User accounts, audit log and backup.** Create, edit, deactivate and reset accounts, and download the list. Every change is recorded with who made it and shown in readable form. Download the audit log, a blank encoding template, or a full backup as a ZIP of CSV files. Passwords are never logged or backed up.
 
 ## Data model
 
-Seven tables replace the legacy system's twelve.
+Ten tables replace the legacy system's twelve.
 
 | Table | Holds |
 | --- | --- |
@@ -44,25 +51,38 @@ Seven tables replace the legacy system's twelve.
 | `sections` | Sections per school year and grade, with an adviser |
 | `students` | Permanent learner facts: LRN, name, birth date, sex, religion, IP, disability, 4Ps, address, parents and guardian |
 | `enrollments` | One row per learner per school year: grade, strand, section, learner type, status, weight and height for SF8 |
+| `document_submissions` | Which documents each enrollment has handed in |
+| `revision_requests` | Adviser change requests waiting for approval, with the old and new values |
+| `teacher_assignments` | Which teacher teaches which subject in which section |
 | `audit_logs` | Who changed what, written automatically |
 
 These legacy tables were folded in:
 - **Grade levels** became a fixed list in code.
 - **Parent and guardian** columns moved onto `students`, because the school records one legal guardian.
 - **Section assignments** became `enrollments.section_id`.
-- **Revision requests** were replaced by direct edits plus the audit log.
+- **Enrollment status history** lives on `enrollments` (who reviewed it, who changed the status, and why) plus the audit log.
 
 ## Roles
 
 | Ability | Admin | ICT Coordinator | Registrar | Key Teacher | Adviser | Subject Teacher |
 | --- | :-: | :-: | :-: | :-: | :-: | :-: |
-| Manage user accounts | ✓ | ✓ | | | | |
-| Manage school years, strands, sections | ✓ | ✓ | | ✓ | | |
+| Manage user accounts | ✓ | ✓ | ✓ | | | |
+| Manage school years | ✓ | ✓ | | | | |
+| Manage strands, sections and sectioning | ✓ | | | ✓ | | |
 | Encode enrollments | ✓ | ✓ | ✓ | | ✓ | |
+| Review (approve or reject) enrollments | ✓ | ✓ | ✓ | | ✓ | |
+| Edit enrollments directly | ✓ | ✓ | ✓ | | | |
+| Request changes for approval | ✓ | | | | ✓ | |
+| Document checklist | ✓ | ✓ | ✓ | | ✓ | |
 | Import the spreadsheet | ✓ | ✓ | ✓ | | | |
 | View enrollments | ✓ | ✓ | ✓ | ✓ | ✓ | |
-| View reports | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| View audit log | ✓ | ✓ | ✓ | | | |
+| My Section | | | | | ✓ | |
+| My Students | | | | | | ✓ |
+| Dashboard reports | ✓ | ✓ | ✓ | ✓ | ✓ | |
+| Analytics | ✓ | | ✓ | | | |
+| Metrics | ✓ | | | | | |
+| Audit log | ✓ | ✓ | ✓ | | | |
+| Backup | ✓ | ✓ | | | | |
 
 Only administrators can create or change administrator accounts. Change a role's abilities in [`app/Enums/Role.php`](app/Enums/Role.php).
 
@@ -108,8 +128,8 @@ npx tsc --noEmit && npx eslint resources/js && vendor/bin/pint --test
 
 ## Tests
 
-- **Feature tests** cover permissions, validation, duplicate prevention, edit conflicts, the importer, reports and the audit log. CI runs them on both SQLite and PostgreSQL.
-- **Browser tests** in [`tests/e2e`](tests/e2e) drive Chromium against a real server and PostgreSQL. They include staff submitting the same learner at the same moment, ten simultaneous submissions, two people editing one record, the spreadsheet import, text size and phone layouts. See [`tests/e2e/README.md`](tests/e2e/README.md).
+- **Feature tests** (128) cover permissions, validation, duplicate prevention, edit conflicts, the review workflow, revision requests, documents, sections, school years, teacher pages, exports, analytics, metrics, the importer and the audit log. CI runs them on both SQLite and PostgreSQL.
+- **Browser tests** (35) in [`tests/e2e`](tests/e2e) drive Chromium against a real server and PostgreSQL. They include staff submitting the same learner at the same moment, ten simultaneous submissions, two people editing one record, two reviewers deciding on one learner at once, two people racing for the last seat in a section, an adviser's change approved by the registrar, SF1 and CSV downloads, the spreadsheet import, text size and phone layouts. See [`tests/e2e/README.md`](tests/e2e/README.md).
 
 ```bash
 npm run test:e2e

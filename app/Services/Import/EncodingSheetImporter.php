@@ -303,12 +303,14 @@ class EncodingSheetImporter
             $enrollment->encoded_by = $actor?->id;
         }
 
-        if ($status === EnrollmentStatus::Cancelled && $enrollment->cancelled_at === null) {
-            $enrollment->cancelled_at = $encodedOn ?? now();
-            $enrollment->cancelled_by = $actor?->id;
+        // Rows in the school's sheet are already final: enrolled or cancelled.
+        if ($status === EnrollmentStatus::Cancelled && $enrollment->status_changed_at === null) {
+            $enrollment->status_changed_at = $encodedOn ?? now();
+            $enrollment->status_changed_by = $actor?->id;
         } elseif ($status === EnrollmentStatus::Enrolled) {
-            $enrollment->cancelled_at = null;
-            $enrollment->cancelled_by = null;
+            $enrollment->status_changed_at = null;
+            $enrollment->status_changed_by = null;
+            $enrollment->status_reason = null;
         }
 
         $enrollment->save();

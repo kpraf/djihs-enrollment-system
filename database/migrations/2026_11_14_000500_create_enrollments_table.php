@@ -25,7 +25,7 @@ return new class extends Migration
             $table->foreignId('section_id')->nullable()->constrained()->nullOnDelete();
             $table->string('learner_type');
             $table->boolean('is_irregular')->default(false);
-            $table->string('status')->default('enrolled');
+            $table->string('status')->default('pending');
 
             $table->decimal('weight_kg', 5, 2)->nullable();
             $table->decimal('height_m', 3, 2)->nullable();
@@ -34,9 +34,15 @@ return new class extends Migration
             $table->foreignId('encoded_by')->nullable()->constrained('users')->nullOnDelete();
             $table->text('remarks')->nullable();
 
-            $table->timestamp('cancelled_at')->nullable();
-            $table->foreignId('cancelled_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->string('cancellation_reason')->nullable();
+            // Review of a pending enrollment.
+            $table->timestamp('reviewed_at')->nullable();
+            $table->foreignId('reviewed_by')->nullable()->constrained('users')->nullOnDelete();
+
+            // Last status change away from enrolled: rejected, cancelled,
+            // dropped or transferred out, with who, when and why.
+            $table->timestamp('status_changed_at')->nullable();
+            $table->foreignId('status_changed_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->string('status_reason')->nullable();
 
             $table->unsignedInteger('lock_version')->default(1);
             $table->timestamps();

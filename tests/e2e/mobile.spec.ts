@@ -5,7 +5,22 @@ test('every main page fits a phone screen and the menu opens as a drawer', async
     await login(page, 'admin');
     await expect(page).toHaveURL(/\/dashboard/);
 
-    for (const url of ['/dashboard', '/enrollments', '/enrollments/create', '/users', '/audit-log', '/imports', '/settings/profile']) {
+    for (const url of [
+        '/dashboard',
+        '/enrollments',
+        '/enrollments/create',
+        '/reviews',
+        '/sections',
+        '/section-assignments',
+        '/strands',
+        '/analytics',
+        '/metrics',
+        '/school-years',
+        '/users',
+        '/audit-log',
+        '/imports',
+        '/settings/profile',
+    ]) {
         await page.goto(url);
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
         expect(overflow, `${url} scrolls sideways`).toBeLessThanOrEqual(1);

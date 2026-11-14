@@ -6,7 +6,15 @@ import { Head } from '@inertiajs/react';
 import { useMemo } from 'react';
 import { type EnrollmentRecord } from './show';
 
-export default function EditEnrollment({ enrollment, options }: { enrollment: EnrollmentRecord; options: FormOptions }) {
+export default function EditEnrollment({
+    enrollment,
+    options,
+    asRevision,
+}: {
+    enrollment: EnrollmentRecord;
+    options: FormOptions;
+    asRevision: boolean;
+}) {
     const initial = useMemo<Partial<LearnerForm>>(
         () => ({
             ...toFormValues(enrollment.student),
@@ -27,7 +35,7 @@ export default function EditEnrollment({ enrollment, options }: { enrollment: En
     return (
         <AppLayout>
             <Head title={`Edit ${enrollment.student.full_name}`} />
-            <PageHeader title="Edit Enrollment" description={enrollment.student.full_name} />
+            <PageHeader title={asRevision ? 'Request Changes' : 'Edit Enrollment'} description={enrollment.student.full_name} />
             <EnrollmentForm
                 key={`${enrollment.student_version}-${enrollment.enrollment_version}`}
                 mode="edit"
@@ -36,6 +44,7 @@ export default function EditEnrollment({ enrollment, options }: { enrollment: En
                 initial={initial}
                 action={{ method: 'put', url: route('enrollments.update', enrollment.id) }}
                 cancelHref={route('enrollments.show', enrollment.id)}
+                asRevision={asRevision}
             />
         </AppLayout>
     );

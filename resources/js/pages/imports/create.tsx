@@ -88,6 +88,14 @@ export default function ImportCreate({ schoolYears, preview, result }: Props) {
                             </p>
                         </div>
 
+                        <div>
+                            <p className="mb-2 text-sm font-semibold text-slate-800">Download Template</p>
+                            <a href={route('imports.template')} className="btn bg-blue-100 font-medium text-blue-700 hover:bg-blue-200">
+                                <Icon name="table_view" /> Excel Template
+                            </a>
+                            <p className="mt-1 text-xs text-slate-500">A blank encoding sheet in the school's format, with the same dropdowns.</p>
+                        </div>
+
                         <div
                             className={`rounded-lg border-2 border-dashed p-8 text-center transition-colors ${dragging ? 'border-primary bg-green-50' : 'border-slate-300'}`}
                             onDragOver={(e) => {

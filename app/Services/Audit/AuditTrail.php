@@ -2,15 +2,19 @@
 
 namespace App\Services\Audit;
 
+use App\Enums\DocumentType;
 use App\Enums\EnrollmentStatus;
 use App\Enums\LearnerType;
 use App\Enums\Role;
 use App\Models\AuditLog;
+use App\Models\DocumentSubmission;
 use App\Models\Enrollment;
+use App\Models\RevisionRequest;
 use App\Models\SchoolYear;
 use App\Models\Section;
 use App\Models\Strand;
 use App\Models\Student;
+use App\Models\TeacherAssignment;
 use App\Models\User;
 use Illuminate\Support\Collection;
 
@@ -26,6 +30,9 @@ class AuditTrail
         Enrollment::class => 'Enrollment',
         User::class => 'User account',
         Strand::class => 'Strand',
+        DocumentSubmission::class => 'Document',
+        RevisionRequest::class => 'Revision request',
+        TeacherAssignment::class => 'Subject teacher',
         Section::class => 'Section',
         SchoolYear::class => 'School year',
     ];
@@ -44,7 +51,10 @@ class AuditTrail
         'guardian_middle_name' => "Guardian's middle name", 'guardian_relationship' => 'Guardian relationship',
         'grade_level' => 'Grade', 'strand_id' => 'Strand', 'section_id' => 'Section', 'learner_type' => 'Type of learner',
         'is_irregular' => 'Irregular', 'status' => 'Status', 'weight_kg' => 'Weight (kg)', 'height_m' => 'Height (m)',
-        'remarks' => 'Remarks', 'cancellation_reason' => 'Cancellation reason', 'school_year_id' => 'School year',
+        'remarks' => 'Remarks', 'status_reason' => 'Reason', 'school_year_id' => 'School year', 'adviser_id' => 'Adviser',
+        'document_type' => 'Document', 'is_submitted' => 'Submitted', 'is_verified' => 'Verified', 'notes' => 'Notes',
+        'subject_name' => 'Subject', 'subject_code' => 'Subject code', 'description' => 'Description', 'is_archived' => 'Archived',
+        'justification' => 'Justification', 'review_notes' => 'Review notes', 'changes' => 'Changes',
         'encoded_on' => 'Date encoded', 'username' => 'Username', 'role' => 'Role', 'is_active' => 'Active',
         'must_change_password' => 'Must change password', 'email' => 'Email', 'text_size' => 'Text size',
         'code' => 'Code', 'name' => 'Name', 'track' => 'Track', 'start_year' => 'Start year',
@@ -52,7 +62,7 @@ class AuditTrail
     ];
 
     /** Fields that are bookkeeping, not something a person changed. */
-    private const HIDDEN = ['id', 'student_id', 'encoded_by', 'cancelled_by', 'cancelled_at', 'adviser_id', 'sort_order'];
+    private const HIDDEN = ['id', 'student_id', 'encoded_by', 'reviewed_by', 'reviewed_at', 'status_changed_by', 'status_changed_at', 'sort_order', 'updated_by', 'enrollment_id', 'user_id'];
 
     /**
      * History of one enrollment and its learner, newest first.
@@ -78,26 +88,13 @@ class AuditTrail
      */
     public function present(Collection $logs): array
     {
-        $strands = Strand::pluck('code', 'id');
-        $sections = Section::pluck('name', 'id');
-        $years = SchoolYear::all()->pluck('name', 'id');
         $subjects = $this->subjectNames($logs);
 
-        return $logs->map(function (AuditLog $log) use ($strands, $sections, $years, $subjects) {
-            $changes = [];
-            $fields = array_unique([...array_keys($log->old_values ?? []), ...array_keys($log->new_values ?? [])]);
-
-            foreach ($fields as $field) {
-                if (in_array($field, self::HIDDEN, true)) {
-                    continue;
-                }
-                $format = fn ($v) => $this->formatValue($field, $v, $strands, $sections, $years);
-                $changes[] = [
-                    'field' => self::LABELS[$field] ?? ucfirst(str_replace('_', ' ', $field)),
-                    'old' => $log->event === 'created' ? null : $format($log->old_values[$field] ?? null),
-                    'new' => $log->event === 'deleted' ? null : $format($log->new_values[$field] ?? null),
-                ];
-            }
+        return $logs->map(function (AuditLog $log) use ($subjects) {
+            $changes = $this->changeList(
+                $log->event === 'created' ? [] : ($log->old_values ?? []),
+                $log->event === 'deleted' ? [] : ($log->new_values ?? []),
+            );
 
             return [
                 'id' => $log->id,
@@ -110,6 +107,42 @@ class AuditTrail
                 'ip_address' => $log->ip_address,
             ];
         })->values()->all();
+    }
+
+    /** @var array{0: Collection, 1: Collection, 2: Collection}|null */
+    private ?array $lookups = null;
+
+    /**
+     * Turns {field: value} pairs into readable {field, old, new} rows,
+     * such as "Strand: HUMSS → ABM".
+     *
+     * @param  array<string, mixed>  $old
+     * @param  array<string, mixed>  $new
+     * @return list<array{field: string, old: ?string, new: ?string}>
+     */
+    public function changeList(array $old, array $new): array
+    {
+        $this->lookups ??= [Strand::pluck('code', 'id'), Section::pluck('name', 'id'), SchoolYear::all()->pluck('name', 'id')];
+        [$strands, $sections, $years] = $this->lookups;
+
+        $rows = [];
+        foreach (array_unique([...array_keys($old), ...array_keys($new)]) as $field) {
+            if (in_array($field, self::HIDDEN, true)) {
+                continue;
+            }
+            $rows[] = [
+                'field' => self::label($field),
+                'old' => $this->formatValue($field, $old[$field] ?? null, $strands, $sections, $years),
+                'new' => $this->formatValue($field, $new[$field] ?? null, $strands, $sections, $years),
+            ];
+        }
+
+        return $rows;
+    }
+
+    public static function label(string $field): string
+    {
+        return self::LABELS[$field] ?? ucfirst(str_replace('_', ' ', $field));
     }
 
     /**
@@ -157,6 +190,9 @@ class AuditTrail
             $field === 'grade_level' => "Grade {$value}",
             $field === 'status' => EnrollmentStatus::tryFrom($value)?->label() ?? (string) $value,
             $field === 'learner_type' => LearnerType::tryFrom($value)?->label() ?? (string) $value,
+            $field === 'document_type' => DocumentType::tryFrom($value)?->label() ?? (string) $value,
+            $field === 'adviser_id' => User::find($value)?->name ?? "#{$value}",
+            is_array($value) => count($value).' fields',
             $field === 'role' => Role::tryFrom($value)?->label() ?? (string) $value,
             $field === 'sex' => ucfirst((string) $value),
             in_array($field, ['birthdate', 'encoded_on'], true) => substr((string) $value, 0, 10),

@@ -17,6 +17,8 @@ interface Props {
     initial?: Partial<LearnerForm>;
     action: { method: 'post' | 'put'; url: string };
     cancelHref?: string;
+    /** Advisers' edits are sent for approval with a reason. */
+    asRevision?: boolean;
 }
 
 function ageFrom(birthdate: string): string {
@@ -32,7 +34,7 @@ function ageFrom(birthdate: string): string {
 /**
  * The legacy "Student Enrollment" form, used for new enrollments and edits.
  */
-export function EnrollmentForm({ mode, schoolYear, options, initial, action, cancelHref }: Props) {
+export function EnrollmentForm({ mode, schoolYear, options, initial, action, cancelHref, asRevision = false }: Props) {
     const start = useMemo(() => ({ ...emptyLearner, ...initial }), [initial]);
     const form = useForm<LearnerForm>(start);
     const { data, setData, errors, processing } = form;
@@ -359,6 +361,26 @@ export function EnrollmentForm({ mode, schoolYear, options, initial, action, can
                     </Field>
                 </section>
 
+                {asRevision && (
+                    <section className="space-y-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                        <p className="text-sm text-blue-900">
+                            Your changes are sent to the Registrar or ICT Coordinator for approval. Nothing changes until they approve.
+                        </p>
+                        <Field label="Reason for the change" required error={(errors as Record<string, string | undefined>).justification}>
+                            {(p) => (
+                                <textarea
+                                    {...p}
+                                    rows={2}
+                                    className="field-input bg-white"
+                                    value={data.justification}
+                                    onChange={(e) => setData('justification', e.target.value)}
+                                    placeholder="e.g., Birth date corrected based on the PSA certificate"
+                                />
+                            )}
+                        </Field>
+                    </section>
+                )}
+
                 {duplicateWarning && (
                     <div className="rounded-lg border border-amber-300 bg-amber-50 p-4" data-error>
                         <p className="flex items-start gap-2 text-sm font-medium text-amber-900">
@@ -398,7 +420,7 @@ export function EnrollmentForm({ mode, schoolYear, options, initial, action, can
                     </button>
                 )}
                 <button type="submit" className={cn('btn-primary')} disabled={processing}>
-                    {processing ? 'Saving…' : mode === 'create' ? 'Submit Enrollment' : 'Save Changes'}
+                    {processing ? 'Saving…' : mode === 'create' ? 'Submit Enrollment' : asRevision ? 'Send for Approval' : 'Save Changes'}
                 </button>
             </div>
         </form>
@@ -431,7 +453,7 @@ function LookupBanner({
             <div className="flex flex-wrap items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
                 <Icon name="error" className="text-red-600" />
                 <span className="flex-1">
-                    <strong>{lookup.student?.full_name}</strong> is already enrolled this school year: {lookup.enrollment.summary}.
+                    <strong>{lookup.student?.full_name}</strong> is already encoded this school year: {lookup.enrollment.summary}.
                 </span>
                 <Link href={route('enrollments.show', lookup.enrollment.id)} className="font-semibold underline">
                     View record

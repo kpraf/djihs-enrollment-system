@@ -56,7 +56,7 @@ class EnrollmentEncodingTest extends TestCase
         $enrollment = Enrollment::sole();
         $this->assertSame($this->year->id, $enrollment->school_year_id);
         $this->assertSame($this->registrar->id, $enrollment->encoded_by);
-        $this->assertSame(EnrollmentStatus::Enrolled, $enrollment->status);
+        $this->assertSame(EnrollmentStatus::Pending, $enrollment->status, 'Encoded learners wait for review, as in the legacy system.');
         $this->assertSame(now()->toDateString(), $enrollment->encoded_on->toDateString());
     }
 
@@ -94,7 +94,7 @@ class EnrollmentEncodingTest extends TestCase
         $this->enroll()->assertSessionHasNoErrors();
 
         $other = User::factory()->role(Role::Adviser)->create();
-        $this->enroll([], $other)->assertSessionHasErrors(['lrn' => 'This learner is already enrolled for school year 2026-2027: Grade 11 HUMSS by '.$this->registrar->name.' on '.now()->format('M j, Y').'.']);
+        $this->enroll([], $other)->assertSessionHasErrors(['lrn' => 'This learner is already encoded for school year 2026-2027: Grade 11 HUMSS, Pending, by '.$this->registrar->name.' on '.now()->format('M j, Y').'.']);
 
         $this->assertSame(1, Enrollment::count());
     }
@@ -162,7 +162,7 @@ class EnrollmentEncodingTest extends TestCase
         $this->actingAs($this->registrar)->getJson('/students/lookup?lrn=123456789012')
             ->assertOk()
             ->assertJsonPath('student.full_name', 'DELA CRUZ, JUAN SANTOS')
-            ->assertJsonPath('enrollment.status', 'enrolled');
+            ->assertJsonPath('enrollment.status', 'pending');
 
         $this->actingAs($this->registrar)->getJson('/students/lookup?lrn=12')->assertUnprocessable();
     }

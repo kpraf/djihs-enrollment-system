@@ -65,6 +65,6 @@ class DuplicateFinder
         $who = $e->encoder ? ' by '.$e->encoder->name : '';
         $when = $e->encoded_on ? ' on '.$e->encoded_on->format('M j, Y') : '';
 
-        return "{$where}{$who}{$when}";
+        return "{$where}, {$e->status->label()},{$who}{$when}";
     }
 }

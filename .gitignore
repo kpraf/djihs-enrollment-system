@@ -26,6 +26,7 @@ yarn-error.log
 
 # Never commit real learner data
 *.xlsx
+!resources/templates/SF1_Template.xlsx
 !tests/**/*.xlsx
 /storage/app/private/imports/*
 /tests/e2e/.tmp/

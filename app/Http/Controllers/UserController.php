@@ -51,7 +51,7 @@ class UserController extends Controller
         $password = $this->temporaryPassword();
 
         try {
-            User::create([...$data, 'password' => $password, 'must_change_password' => true]);
+            DB::transaction(fn () => User::create([...$data, 'password' => $password, 'must_change_password' => true]));
         } catch (UniqueConstraintViolationException) {
             // Someone created the same username or email a moment ago.
             throw ValidationException::withMessages(['username' => 'That username or email was just taken. Choose another.']);

@@ -30,40 +30,60 @@ enum Role: string
     }
 
     /**
+     * Mirrors what each role could do in the legacy system.
+     *
      * @return list<Ability>
      */
     public function abilities(): array
     {
         return match ($this) {
-            self::Admin => Ability::cases(),
+            // Everything except the two personal pages, which only make sense
+            // for someone who advises a section or teaches a class.
+            self::Admin => array_values(array_filter(
+                Ability::cases(),
+                fn (Ability $a) => ! in_array($a, [Ability::ViewOwnSection, Ability::ViewOwnClasses], true),
+            )),
             self::IctCoordinator => [
                 Ability::ManageUsers,
-                Ability::ManageSchoolSetup,
+                Ability::ManageSchoolYears,
                 Ability::EncodeEnrollments,
+                Ability::ReviewEnrollments,
+                Ability::EditEnrollments,
+                Ability::ManageDocuments,
                 Ability::ImportEnrollments,
                 Ability::ViewEnrollments,
                 Ability::ViewReports,
                 Ability::ViewAuditLog,
+                Ability::BackupData,
             ],
             self::Registrar => [
+                Ability::ManageUsers,
                 Ability::EncodeEnrollments,
+                Ability::ReviewEnrollments,
+                Ability::EditEnrollments,
+                Ability::ManageDocuments,
                 Ability::ImportEnrollments,
                 Ability::ViewEnrollments,
                 Ability::ViewReports,
+                Ability::ViewAnalytics,
                 Ability::ViewAuditLog,
             ],
             self::KeyTeacher => [
-                Ability::ManageSchoolSetup,
+                Ability::ManageSections,
                 Ability::ViewEnrollments,
                 Ability::ViewReports,
             ],
             self::Adviser => [
                 Ability::EncodeEnrollments,
+                Ability::ReviewEnrollments,
+                Ability::RequestRevisions,
+                Ability::ManageDocuments,
                 Ability::ViewEnrollments,
+                Ability::ViewOwnSection,
                 Ability::ViewReports,
             ],
             self::SubjectTeacher => [
-                Ability::ViewReports,
+                Ability::ViewOwnClasses,
             ],
         };
     }

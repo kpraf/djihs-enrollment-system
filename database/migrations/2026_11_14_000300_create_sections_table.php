@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('name');
             $table->foreignId('adviser_id')->nullable()->constrained('users')->nullOnDelete();
             $table->unsignedSmallInteger('capacity')->default(45);
+            $table->boolean('is_active')->default(true);
             $table->timestamps();
 
             $table->unique(['school_year_id', 'grade_level', 'name']);

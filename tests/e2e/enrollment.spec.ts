@@ -15,7 +15,7 @@ test('encode a learner, then find, view, edit, cancel and restore them', async (
     await expect(page.getByText('New learner. No record with this LRN yet.')).toBeVisible();
     await page.getByRole('button', { name: 'Submit Enrollment' }).click();
 
-    await expect(page.getByRole('status').filter({ hasText: `Enrolled BAUTISTA, LIZA ${tag(lrn)} in Grade 11.` })).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: `Submitted BAUTISTA, LIZA ${tag(lrn)} for Grade 11.` })).toBeVisible();
     // The form is cleared for the next learner.
     await expect(page.getByLabel('Learner Reference No. (LRN)')).toHaveValue('');
 
@@ -36,21 +36,23 @@ test('encode a learner, then find, view, edit, cancel and restore them', async (
     await expect(page.getByRole('status').filter({ hasText: 'Changes saved.' })).toBeVisible();
     await expect(page.getByText('Strand: HUMSS → ABM')).toBeVisible();
 
-    // Cancel, with a reason, then restore.
-    await page.getByRole('button', { name: 'Cancel Enrollment' }).click();
+    // Change status to cancelled, with a reason, then restore.
+    await page.getByRole('button', { name: 'Change Status' }).click();
+    await page.getByRole('dialog').getByLabel('New status').selectOption('cancelled');
     await page.getByRole('dialog').getByLabel('Reason').fill('Moved to another school');
-    await page.getByRole('dialog').getByRole('button', { name: 'Cancel Enrollment' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Change Status' }).click();
     await expect(page.getByText(/Cancelled by Rita Registrar .*Moved to another school/)).toBeVisible();
 
-    await page.getByRole('button', { name: 'Restore Enrollment' }).click();
+    await page.getByRole('button', { name: 'Restore' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Restore' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Enrollment restored.' })).toBeVisible();
 
-    // A second cancel on the same page must use the new version, not a stale one.
-    await page.getByRole('button', { name: 'Cancel Enrollment' }).click();
-    await page.getByRole('dialog').getByLabel('Reason').fill('Second cancel');
-    await page.getByRole('dialog').getByRole('button', { name: 'Cancel Enrollment' }).click();
-    await expect(page.getByText(/Cancelled by .*Second cancel/)).toBeVisible();
+    // A second change on the same page must use the new version, not a stale one.
+    await page.getByRole('button', { name: 'Change Status' }).click();
+    await page.getByRole('dialog').getByLabel('New status').selectOption('dropped');
+    await page.getByRole('dialog').getByLabel('Reason').fill('Stopped attending');
+    await page.getByRole('dialog').getByRole('button', { name: 'Change Status' }).click();
+    await expect(page.getByText(/Dropped by .*Stopped attending/)).toBeVisible();
 });
 
 test('typing an LRN that is already enrolled warns right away', async ({ page }) => {
@@ -58,16 +60,16 @@ test('typing an LRN that is already enrolled warns right away', async ({ page })
     await page.goto('/enrollments/create');
     await fillEnrollmentForm(page, { lrn, last: 'Ramos', first: `Paolo ${tag(lrn)}`, sex: 'male' });
     await page.getByRole('button', { name: 'Submit Enrollment' }).click();
-    await expect(page.getByRole('status').filter({ hasText: `Enrolled RAMOS, PAOLO ${tag(lrn)}` })).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: `Submitted RAMOS, PAOLO ${tag(lrn)}` })).toBeVisible();
 
     await page.getByLabel('Learner Reference No. (LRN)').fill(lrn);
-    await expect(page.getByRole('alert').filter({ hasText: `RAMOS, PAOLO ${tag(lrn)} is already enrolled this school year` })).toBeVisible();
+    await expect(page.getByRole('alert').filter({ hasText: `RAMOS, PAOLO ${tag(lrn)} is already encoded this school year` })).toBeVisible();
     await expect(page.getByRole('link', { name: 'View record' })).toBeVisible();
 
     // Submitting anyway is refused by the server too.
     await fillEnrollmentForm(page, { lrn, last: 'Ramos', first: `Paolo ${tag(lrn)}`, sex: 'male' });
     await page.getByRole('button', { name: 'Submit Enrollment' }).click();
-    await expect(page.getByText(/already enrolled for school year/)).toBeVisible();
+    await expect(page.getByText(/already encoded for school year/)).toBeVisible();
     expect(await countInList(page, lrn)).toBe(1);
 });
 
@@ -77,7 +79,7 @@ test('a lookalike with a different LRN must be confirmed before saving', async (
     await page.goto('/enrollments/create');
     await fillEnrollmentForm(page, { lrn: first, last: 'Torres', first: mika, birthdate: '2009-01-02' });
     await page.getByRole('button', { name: 'Submit Enrollment' }).click();
-    await expect(page.getByRole('status').filter({ hasText: `Enrolled TORRES, ${mika.toUpperCase()}` })).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: `Submitted TORRES, ${mika.toUpperCase()}` })).toBeVisible();
 
     const second = uniqueLrn();
     await fillEnrollmentForm(page, { lrn: second, last: 'Torres', first: mika, birthdate: '2009-01-02' });

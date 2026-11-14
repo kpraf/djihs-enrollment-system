@@ -26,6 +26,9 @@ class AppServiceProvider extends ServiceProvider
             Gate::define($ability->value, fn (User $user) => $user->hasAbility($ability));
         }
 
+        // Open the edit form: saving directly, or as a revision request.
+        Gate::define('change-enrollment', fn (User $user) => $user->hasAbility(Ability::EditEnrollments) || $user->hasAbility(Ability::RequestRevisions));
+
         Password::defaults(fn () => Password::min(8)->letters()->numbers());
 
         // Set the text size in the first HTML the browser receives, so pages

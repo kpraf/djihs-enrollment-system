@@ -4,6 +4,8 @@ namespace Database\Seeders;
 
 use App\Enums\Role;
 use App\Models\SchoolYear;
+use App\Models\Section;
+use App\Models\Strand;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use RuntimeException;
@@ -40,6 +42,15 @@ class E2ESeeder extends Seeder
         foreach ($accounts as [$username, $first, $last, $role]) {
             User::create(['username' => $username, 'first_name' => $first, 'last_name' => $last, 'role' => $role, 'password' => self::PASSWORD]);
         }
+
+        // A deliberately tiny section, so tests can race for the last seat.
+        $year = SchoolYear::active();
+        $humss = Strand::where('code', 'HUMSS')->first();
+        $section = Section::create([
+            'school_year_id' => $year->id, 'grade_level' => 11, 'strand_id' => $humss->id, 'name' => 'Integrity', 'capacity' => 2,
+            'adviser_id' => User::where('username', 'adviser')->value('id'),
+        ]);
+        $section->teacherAssignments()->create(['user_id' => User::where('username', 'subject')->value('id'), 'subject_name' => 'General Mathematics', 'subject_code' => 'GENMATH']);
 
         User::create(['username' => 'newhire', 'first_name' => 'Nina', 'last_name' => 'New', 'role' => Role::Adviser, 'password' => self::PASSWORD, 'must_change_password' => true]);
         User::create(['username' => 'retired', 'first_name' => 'Rey', 'last_name' => 'Retired', 'role' => Role::Adviser, 'password' => self::PASSWORD, 'is_active' => false]);

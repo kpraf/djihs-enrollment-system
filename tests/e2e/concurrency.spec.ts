@@ -23,8 +23,8 @@ test('two encoders submit the same new learner at the same moment: one record, o
     ]);
 
     const outcome = async (page: typeof a.page) => {
-        const saved = page.getByRole('status').filter({ hasText: `Enrolled VILLANUEVA, CARLO ${tag(lrn)}` });
-        const refused = page.getByText(/(Someone else just enrolled this learner|already enrolled for school year)/);
+        const saved = page.getByRole('status').filter({ hasText: `Submitted VILLANUEVA, CARLO ${tag(lrn)}` });
+        const refused = page.getByText(/(Someone else just enrolled this learner|already encoded for school year)/);
         await expect(saved.or(refused)).toBeVisible();
         return (await saved.count()) > 0 ? 'saved' : 'refused';
     };
@@ -85,7 +85,7 @@ test('two staff edit the same learner: the second save is refused instead of ove
     await a.page.goto('/enrollments/create');
     await fillEnrollmentForm(a.page, { lrn, last: 'Mendoza', first: `Grace ${tag(lrn)}` });
     await a.page.getByRole('button', { name: 'Submit Enrollment' }).click();
-    await expect(a.page.getByRole('status').filter({ hasText: `Enrolled MENDOZA, GRACE ${tag(lrn)}` })).toBeVisible();
+    await expect(a.page.getByRole('status').filter({ hasText: `Submitted MENDOZA, GRACE ${tag(lrn)}` })).toBeVisible();
 
     await a.page.goto(`/enrollments?search=${lrn}`);
     await a.page.getByRole('link', { name: `MENDOZA, GRACE ${tag(lrn)}`, exact: true }).click();
@@ -124,7 +124,7 @@ test('two staff re-enroll the same old student at once: enrolled once', async ({
     await a.page.goto('/enrollments/create');
     await fillEnrollmentForm(a.page, { lrn, last: 'Aquino', first: `Benjie ${tag(lrn)}`, sex: 'male' });
     await a.page.getByRole('button', { name: 'Submit Enrollment' }).click();
-    await expect(a.page.getByRole('status').filter({ hasText: `Enrolled AQUINO, BENJIE ${tag(lrn)}` })).toBeVisible();
+    await expect(a.page.getByRole('status').filter({ hasText: `Submitted AQUINO, BENJIE ${tag(lrn)}` })).toBeVisible();
 
     // Both try again at the same time, for example from two enrollment desks.
     for (const { page } of [a, b]) {
@@ -137,7 +137,7 @@ test('two staff re-enroll the same old student at once: enrolled once', async ({
     ]);
 
     for (const { page } of [a, b]) {
-        await expect(page.getByText(/already enrolled for school year|Someone else just enrolled/)).toBeVisible();
+        await expect(page.getByText(/already encoded for school year|Someone else just enrolled/)).toBeVisible();
     }
     expect(await countInList(a.page, lrn)).toBe(1);
 

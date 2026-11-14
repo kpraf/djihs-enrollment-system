@@ -15,9 +15,10 @@ interface EnrollmentRow {
     sex: string;
     grade_level: number;
     strand: string | null;
+    section: string | null;
     learner_type: string;
     is_irregular: boolean;
-    status: 'enrolled' | 'cancelled';
+    status: string;
     encoded_on: string | null;
     remarks: string | null;
 }
@@ -29,6 +30,8 @@ interface Filters {
     strand?: string;
     status?: string;
     learner_type?: string;
+    section?: string;
+    documents?: string;
 }
 
 interface Props {
@@ -38,6 +41,7 @@ interface Props {
         schoolYears: { id: number; name: string }[];
         grades: Option<number>[];
         strands: { id: number; code: string }[];
+        sections: { id: number; name: string; grade_level: number }[];
         statuses: Option[];
         learnerTypes: Option[];
     };
@@ -109,7 +113,7 @@ export default function EnrollmentsIndex({ enrollments, filters, options }: Prop
                         />
                     </span>
                 </label>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     {select(
                         'Academic Year',
                         'school_year',
@@ -125,6 +129,16 @@ export default function EnrollmentsIndex({ enrollments, filters, options }: Prop
                     )}
                     {select('Type of Learner', 'learner_type', options.learnerTypes, 'All Types')}
                     {select('Enrollment Status', 'status', options.statuses, 'All Statuses')}
+                    {select(
+                        'Section',
+                        'section',
+                        [
+                            { value: 'none', label: 'Not in a section' },
+                            ...options.sections.map((s) => ({ value: s.id, label: `G${s.grade_level} ${s.name}` })),
+                        ],
+                        'All Sections',
+                    )}
+                    {select('Documents', 'documents', [{ value: 'incomplete', label: 'Incomplete only' }], 'Any')}
                 </div>
                 <div className="mt-4">
                     <button
@@ -149,6 +163,7 @@ export default function EnrollmentsIndex({ enrollments, filters, options }: Prop
                                 <th className="px-3 py-3.5">Full Name</th>
                                 <th className="px-3 py-3.5">Grade</th>
                                 <th className="px-3 py-3.5">Strand</th>
+                                <th className="px-3 py-3.5">Section</th>
                                 <th className="px-3 py-3.5">Type</th>
                                 <th className="px-3 py-3.5">Status</th>
                                 <th className="py-3.5 pr-4 pl-3 text-right sm:pr-6">
@@ -173,6 +188,7 @@ export default function EnrollmentsIndex({ enrollments, filters, options }: Prop
                                     </td>
                                     <td className="px-3 py-4 whitespace-nowrap text-slate-500">{e.grade_level}</td>
                                     <td className="px-3 py-4 whitespace-nowrap text-slate-500">{e.strand ?? '—'}</td>
+                                    <td className="px-3 py-4 whitespace-nowrap text-slate-500">{e.section ?? '—'}</td>
                                     <td className="px-3 py-4 whitespace-nowrap text-slate-500">
                                         {e.learner_type}
                                         {e.is_irregular && <span className="text-xs"> (Irregular)</span>}
@@ -189,7 +205,7 @@ export default function EnrollmentsIndex({ enrollments, filters, options }: Prop
                                             >
                                                 <Icon name="visibility" label={`View ${e.name}`} />
                                             </Link>
-                                            {can('encode-enrollments') && (
+                                            {(can('edit-enrollments') || can('request-revisions')) && (
                                                 <Link
                                                     href={route('enrollments.edit', e.id)}
                                                     className="hover:text-primary text-slate-400 transition-colors"
@@ -204,7 +220,7 @@ export default function EnrollmentsIndex({ enrollments, filters, options }: Prop
                             ))}
                             {enrollments.data.length === 0 && (
                                 <tr>
-                                    <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
+                                    <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
                                         <Icon name="search" className="mb-2 text-4xl text-slate-300" />
                                         <p className="text-lg font-medium">No students found</p>
                                         <p className="text-sm">Try adjusting your search or filters</p>

@@ -1,11 +1,21 @@
 export type Ability =
     | 'manage-users'
-    | 'manage-school-setup'
+    | 'manage-school-years'
+    | 'manage-sections'
     | 'encode-enrollments'
+    | 'review-enrollments'
+    | 'edit-enrollments'
+    | 'request-revisions'
+    | 'manage-documents'
     | 'import-enrollments'
     | 'view-enrollments'
+    | 'view-own-section'
+    | 'view-own-classes'
     | 'view-reports'
-    | 'view-audit-log';
+    | 'view-analytics'
+    | 'view-metrics'
+    | 'view-audit-log'
+    | 'backup-data';
 
 export interface User {
     id: number;

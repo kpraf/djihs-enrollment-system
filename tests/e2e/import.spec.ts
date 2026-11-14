@@ -37,13 +37,11 @@ test('check a workbook, review problems, then actually import it', async ({ page
 test('a file that is not a real workbook is rejected with a message', async ({ page }) => {
     await login(page, 'registrar');
     await page.goto('/imports');
-    await page
-        .locator('#file')
-        .setInputFiles({
-            name: 'ENROLLMENT.xlsx',
-            mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            buffer: Buffer.from('not a spreadsheet'),
-        });
+    await page.locator('#file').setInputFiles({
+        name: 'ENROLLMENT.xlsx',
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        buffer: Buffer.from('not a spreadsheet'),
+    });
     await page.getByRole('button', { name: 'Check File' }).click();
     await expect(page.getByText(/could not be read|must be a file of type/)).toBeVisible();
 });

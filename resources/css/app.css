@@ -110,3 +110,31 @@
 @utility table-head {
     @apply bg-slate-50 text-xs text-slate-700 uppercase;
 }
+
+/* Printing: only the page content, no menu, buttons or toasts. */
+@media print {
+    aside,
+    header,
+    nav,
+    button,
+    .print\:hidden {
+        display: none !important;
+    }
+
+    body,
+    main {
+        background: white !important;
+        padding: 0 !important;
+    }
+
+    .panel {
+        border-color: #cbd5e1;
+        break-inside: avoid;
+    }
+}
+
+/* Leave room for the dropdown arrow drawn by @tailwindcss/forms. */
+select.field-input,
+select.field-input-sm {
+    padding-right: 2.5rem;
+}

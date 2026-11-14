@@ -66,9 +66,14 @@ export default function UsersIndex({ users, roles }: { users: UserRow[]; roles: 
                 title="User Account Management"
                 description="Create and manage system user accounts for staff members."
                 actions={
-                    <button type="button" className="btn-primary" onClick={() => setEditing('new')}>
-                        <Icon name="add" /> Create New Account
-                    </button>
+                    <>
+                        <a href={route('users.export')} className="btn bg-blue-600 text-white hover:bg-blue-700">
+                            <Icon name="download" /> Download List
+                        </a>
+                        <button type="button" className="btn-primary" onClick={() => setEditing('new')}>
+                            <Icon name="add" /> Create New Account
+                        </button>
+                    </>
                 }
             />
 

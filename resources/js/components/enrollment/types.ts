@@ -52,6 +52,7 @@ export type LearnerForm = {
     contact_number: string;
     remarks: string;
     confirm_not_duplicate: boolean;
+    justification: string;
     student_version: number;
     enrollment_version: number;
 };
@@ -97,6 +98,7 @@ export const emptyLearner: LearnerForm = {
     contact_number: '',
     remarks: '',
     confirm_not_duplicate: false,
+    justification: '',
     student_version: 0,
     enrollment_version: 0,
 };

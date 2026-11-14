@@ -1,3 +1,4 @@
+import { CapacityBar } from '@/components/capacity-bar';
 import { Icon } from '@/components/icon';
 import { type IconName } from '@/components/icons';
 import { PageHeader } from '@/components/page-header';
@@ -47,6 +48,27 @@ interface Props {
     selectedYear: { id: number; name: string } | null;
     monitoring: Monitoring | null;
     daily: DailyRow[];
+    review: {
+        pending: number;
+        recent: { id: number; name: string; grade_level: number; strand: string | null; encoded_on: string | null }[];
+        revisions: number | null;
+        transferees: number;
+    } | null;
+    mySections: { id: number; label: string; filled: number; capacity: number }[] | null;
+    sectionOverview: { sections: number; capacity: number; assigned: number; unassigned: number; without_adviser: number; full: number } | null;
+    teaching: {
+        classes: number;
+        learners: number;
+        by_subject: { label: string; classes: number }[];
+        by_grade: { label: string; classes: number }[];
+    } | null;
+    system: {
+        users: number;
+        active_users: number;
+        roles: { label: string; count: number }[];
+        activity_today: number;
+        recent: { id: number; at: string; user: string; event: string; subject_type: string; subject: string }[];
+    } | null;
 }
 
 const number = new Intl.NumberFormat('en-PH');
@@ -54,11 +76,12 @@ const dateFormat = new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'nume
 
 const quickActions: { label: string; href: string; icon: IconName; ability: Ability }[] = [
     { label: 'New Enrollment', href: '/enrollments/create', icon: 'person_add', ability: 'encode-enrollments' },
+    { label: 'Review Enrollments', href: '/reviews', icon: 'rate_review', ability: 'review-enrollments' },
     { label: 'Search Students', href: '/enrollments', icon: 'search', ability: 'view-enrollments' },
     { label: 'Import Spreadsheet', href: '/imports', icon: 'upload_file', ability: 'import-enrollments' },
 ];
 
-export default function Dashboard({ schoolYears, selectedYear, monitoring, daily }: Props) {
+export default function Dashboard({ schoolYears, selectedYear, monitoring, daily, review, mySections, sectionOverview, teaching, system }: Props) {
     const { auth } = usePage<AuthedData>().props;
     const can = useCan();
     const actions = quickActions.filter((a) => can(a.ability));
@@ -115,6 +138,8 @@ export default function Dashboard({ schoolYears, selectedYear, monitoring, daily
                 </div>
             )}
 
+            <RoleBlocks review={review} mySections={mySections} sectionOverview={sectionOverview} teaching={teaching} system={system} />
+
             {monitoring && monitoring.grade_11_retention !== null && (
                 <div className="panel mb-8 flex flex-wrap items-center gap-4 p-6">
                     <div className="text-primary flex size-12 items-center justify-center rounded-lg bg-green-50">
@@ -141,7 +166,7 @@ export default function Dashboard({ schoolYears, selectedYear, monitoring, daily
             {actions.length > 0 && (
                 <section>
                     <h2 className="mb-4 text-xl font-bold tracking-tight text-slate-900">Quick Actions</h2>
-                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
                         {actions.map((a) => (
                             <Link
                                 key={a.href}
@@ -280,5 +305,230 @@ function DailyTable({ rows, grades }: { rows: DailyRow[]; grades: number[] }) {
                 </div>
             </div>
         </section>
+    );
+}
+
+const when = new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeStyle: 'short' });
+
+function Block({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
+    return (
+        <section className="panel p-6">
+            <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="text-xl font-bold tracking-tight text-slate-900">{title}</h2>
+                {action}
+            </div>
+            {children}
+        </section>
+    );
+}
+
+function RoleBlocks({
+    review,
+    mySections,
+    sectionOverview,
+    teaching,
+    system,
+}: Pick<Props, 'review' | 'mySections' | 'sectionOverview' | 'teaching' | 'system'>) {
+    if (!review && !mySections && !sectionOverview && !teaching && !system) return null;
+
+    return (
+        <div className="mb-8 grid grid-cols-1 gap-6 xl:grid-cols-2">
+            {review && (
+                <Block
+                    title="Pending Enrollments"
+                    action={
+                        <Link href="/reviews" className="text-primary text-sm font-medium hover:underline">
+                            View All →
+                        </Link>
+                    }
+                >
+                    <div className="mb-4 flex flex-wrap gap-6 text-sm">
+                        <span>
+                            <span className="text-2xl font-bold text-orange-500 tabular-nums">{review.pending}</span> waiting for review
+                        </span>
+                        {review.revisions !== null && (
+                            <span>
+                                <span className="text-2xl font-bold text-indigo-500 tabular-nums">{review.revisions}</span> revision requests
+                            </span>
+                        )}
+                        <span>
+                            <span className="text-2xl font-bold text-slate-900 tabular-nums">{review.transferees}</span> transferees
+                        </span>
+                    </div>
+                    {review.recent.length === 0 ? (
+                        <p className="text-sm text-slate-500">Nothing is waiting for review.</p>
+                    ) : (
+                        <table className="w-full text-left text-sm">
+                            <thead className="table-head">
+                                <tr>
+                                    <th className="px-3 py-2 font-medium">Student Name</th>
+                                    <th className="px-3 py-2 font-medium">Grade Level</th>
+                                    <th className="px-3 py-2 font-medium">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {review.recent.map((r) => (
+                                    <tr key={r.id}>
+                                        <td className="px-3 py-2">
+                                            <Link
+                                                href={route('enrollments.show', r.id)}
+                                                className="hover:text-primary font-medium text-slate-900 hover:underline"
+                                            >
+                                                {r.name}
+                                            </Link>
+                                        </td>
+                                        <td className="px-3 py-2 text-slate-600">
+                                            Grade {r.grade_level}
+                                            {r.strand ? ` · ${r.strand}` : ''}
+                                        </td>
+                                        <td className="px-3 py-2 text-slate-600">{r.encoded_on}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </Block>
+            )}
+
+            {mySections && (
+                <Block
+                    title="My Sections"
+                    action={
+                        <Link href="/my-section" className="text-primary text-sm font-medium hover:underline">
+                            Open →
+                        </Link>
+                    }
+                >
+                    {mySections.length === 0 ? (
+                        <p className="text-sm text-slate-500">You are not the adviser of any section yet.</p>
+                    ) : (
+                        <ul className="space-y-3">
+                            {mySections.map((s) => (
+                                <li key={s.id} className="flex flex-wrap items-center justify-between gap-3">
+                                    <Link
+                                        href={`/my-section?section=${s.id}`}
+                                        className="hover:text-primary font-medium text-slate-900 hover:underline"
+                                    >
+                                        {s.label}
+                                    </Link>
+                                    <CapacityBar filled={s.filled} capacity={s.capacity} />
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </Block>
+            )}
+
+            {sectionOverview && (
+                <Block title="Section Overview">
+                    <dl className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+                        {[
+                            ['Sections', sectionOverview.sections],
+                            ['Seats', sectionOverview.capacity],
+                            ['Learners placed', sectionOverview.assigned],
+                        ].map(([l, v]) => (
+                            <div key={l}>
+                                <dt className="text-xs text-slate-500 uppercase">{l}</dt>
+                                <dd className="text-2xl font-bold text-slate-900 tabular-nums">{v}</dd>
+                            </div>
+                        ))}
+                    </dl>
+                    <h3 className="mb-2 text-sm font-semibold text-slate-700">Action Required</h3>
+                    <ul className="space-y-2 text-sm">
+                        {sectionOverview.unassigned > 0 && (
+                            <li>
+                                <Link href="/section-assignments" className="text-amber-700 hover:underline">
+                                    {sectionOverview.unassigned} enrolled learners are not in a section yet
+                                </Link>
+                            </li>
+                        )}
+                        {sectionOverview.without_adviser > 0 && (
+                            <li>
+                                <Link href="/sections" className="text-amber-700 hover:underline">
+                                    {sectionOverview.without_adviser} sections have no adviser
+                                </Link>
+                            </li>
+                        )}
+                        {sectionOverview.full > 0 && <li className="text-red-700">{sectionOverview.full} sections are full</li>}
+                        {sectionOverview.unassigned + sectionOverview.without_adviser + sectionOverview.full === 0 && (
+                            <li className="text-emerald-700">Nothing needs attention.</li>
+                        )}
+                    </ul>
+                </Block>
+            )}
+
+            {teaching && (
+                <Block
+                    title="Teaching Overview"
+                    action={
+                        <Link href="/my-students" className="text-primary text-sm font-medium hover:underline">
+                            My Classes →
+                        </Link>
+                    }
+                >
+                    <p className="mb-4 text-sm text-slate-600">
+                        <span className="text-2xl font-bold text-slate-900 tabular-nums">{teaching.classes}</span> classes ·{' '}
+                        <span className="text-2xl font-bold text-slate-900 tabular-nums">{teaching.learners}</span> learners
+                    </p>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                        {[
+                            ['By Subject', teaching.by_subject],
+                            ['By Grade Level', teaching.by_grade],
+                        ].map(([title, items]) => (
+                            <div key={title as string}>
+                                <h3 className="mb-2 font-semibold text-slate-700">{title as string}</h3>
+                                <ul className="space-y-1">
+                                    {(items as { label: string; classes: number }[]).map((i) => (
+                                        <li key={i.label} className="flex justify-between gap-2">
+                                            <span>{i.label}</span>
+                                            <span className="tabular-nums">{i.classes}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ))}
+                    </div>
+                </Block>
+            )}
+
+            {system && (
+                <Block
+                    title="System"
+                    action={
+                        <span className="flex items-center gap-1 text-sm font-medium text-emerald-600">
+                            <Icon name="check_circle" /> Online
+                        </span>
+                    }
+                >
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                        <div>
+                            <h3 className="mb-2 text-sm font-semibold text-slate-700">User Role Distribution</h3>
+                            <ul className="space-y-1 text-sm">
+                                {system.roles.map((r) => (
+                                    <li key={r.label} className="flex justify-between gap-2">
+                                        <span>{r.label}</span>
+                                        <span className="tabular-nums">{r.count}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                            <p className="mt-2 text-xs text-slate-500">
+                                {system.active_users} of {system.users} accounts active · {system.activity_today} changes today
+                            </p>
+                        </div>
+                        <div>
+                            <h3 className="mb-2 text-sm font-semibold text-slate-700">Recent Activity</h3>
+                            <ul className="space-y-2 text-sm">
+                                {system.recent.map((a) => (
+                                    <li key={a.id}>
+                                        <span className="font-medium">{a.user}</span> {a.event} {a.subject_type.toLowerCase()} {a.subject}
+                                        <span className="block text-xs text-slate-500">{when.format(new Date(a.at))}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                </Block>
+            )}
+        </div>
     );
 }
