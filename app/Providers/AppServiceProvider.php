@@ -37,7 +37,10 @@ class AppServiceProvider extends ServiceProvider
 
         Model::shouldBeStrict(! $this->app->isProduction());
 
-        if ($this->app->isProduction()) {
+        // Hosted copies (Render) use an https APP_URL. A copy on a school
+        // computer is reached over plain http on the local network, where
+        // forcing https would break every link and form.
+        if ($this->app->isProduction() && str_starts_with((string) config('app.url'), 'https://')) {
             URL::forceScheme('https');
         }
     }

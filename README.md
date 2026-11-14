@@ -86,6 +86,43 @@ These legacy tables were folded in:
 
 Only administrators can create or change administrator accounts. Change a role's abilities in [`app/Enums/Role.php`](app/Enums/Role.php).
 
+## Run it on a school computer
+
+The app can run on one Windows, Mac or Linux computer with no hosting and no database server. Everything is stored in a single file, `database/database.sqlite`.
+
+**1. Install the tools (once).**
+- On Windows or Mac, install [Laravel Herd](https://herd.laravel.com), which is free and includes PHP and Composer. On Linux, install PHP 8.3 with the `sqlite3`, `pdo_sqlite`, `gd`, `zip`, `mbstring`, `xml` and `fileinfo` extensions, plus Composer.
+- Install Node 22 from [nodejs.org](https://nodejs.org) if `node -v` doesn't show version 22 or later.
+
+**2. Set it up (once).** In a terminal, inside the project folder, run:
+
+```bash
+composer run setup
+```
+
+This installs everything, creates the database and builds the screens. It prints a password for the `admin` account; write it down, because you'll be asked to change it at first sign-in. It also creates fake demo learners and one demo account per role, such as `demo.registrar`, all with the password `password`. Running setup again is safe: it keeps your data.
+
+**3. Start it.** To use it on this computer only:
+
+```bash
+composer run start
+```
+
+Then open http://localhost:8000.
+
+To let other computers on the same school network use it:
+
+```bash
+composer run start:network
+```
+
+Then, on the other computers, open `http://<this computer's IP address>:8000`. On Windows, find the address with `ipconfig` (IPv4 Address). If Windows asks whether to allow PHP through the firewall, allow it on **private** networks only. The app stops when the terminal is closed.
+
+**Before real use:**
+- Start from an empty database without demo data. Stop the app, set `APP_ENV=production` and `APP_DEBUG=false` in `.env`, delete `database/database.sqlite`, and run `composer run setup` again. It prints a new `admin` password, and no demo accounts or fake learners are created. Errors no longer show internal details.
+- Back up by copying `database/database.sqlite` somewhere safe while the app is stopped, or with **Backup Now** on the Audit Log page.
+- This simple server is fine for a few staff on a school network. For the whole school, or access from outside the school, use the Render setup below.
+
 ## Local development
 
 Requirements: PHP 8.3 with `pdo_sqlite`, `zip` and `gd`, Composer, and Node 22.
@@ -128,7 +165,7 @@ npx tsc --noEmit && npx eslint resources/js && vendor/bin/pint --test
 
 ## Tests
 
-- **Feature tests** (130) cover permissions, validation, duplicate prevention, edit conflicts, the review workflow, revision requests, documents, sections, school years, teacher pages, exports, analytics, metrics, the importer and the audit log. CI runs them on both SQLite and PostgreSQL.
+- **Feature tests** (132) cover permissions, validation, duplicate prevention, edit conflicts, the review workflow, revision requests, documents, sections, school years, teacher pages, exports, analytics, metrics, the importer and the audit log. CI runs them on both SQLite and PostgreSQL.
 - **Browser tests** (35) in [`tests/e2e`](tests/e2e) drive Chromium against a real server and PostgreSQL. They include staff submitting the same learner at the same moment, ten simultaneous submissions, two people editing one record, two reviewers deciding on one learner at once, two people racing for the last seat in a section, an adviser's change approved by the registrar, SF1 and CSV downloads, the spreadsheet import, text size and phone layouts. See [`tests/e2e/README.md`](tests/e2e/README.md).
 
 ```bash
