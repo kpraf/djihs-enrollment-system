@@ -84,16 +84,31 @@ export default function ImportCreate({ schoolYears, preview, result }: Props) {
                                 ))}
                             </select>
                             <p className="mt-2 text-xs text-slate-600">
-                                All imported learners will be enrolled for this school year. The sheet named MAIN_ENCODING_SHEET is read.
+                                All imported learners will be enrolled for this school year. From an Excel file, the sheet named MAIN_ENCODING_SHEET
+                                is read.
                             </p>
                         </div>
 
                         <div>
                             <p className="mb-2 text-sm font-semibold text-slate-800">Download Template</p>
-                            <a href={route('imports.template')} className="btn bg-blue-100 font-medium text-blue-700 hover:bg-blue-200">
-                                <Icon name="table_view" /> Excel Template
-                            </a>
-                            <p className="mt-1 text-xs text-slate-500">A blank encoding sheet in the school's format, with the same dropdowns.</p>
+                            <div className="flex flex-wrap gap-2">
+                                <a
+                                    href={route('imports.template', { format: 'csv' })}
+                                    className="btn bg-green-100 font-medium text-green-700 hover:bg-green-200"
+                                >
+                                    <Icon name="description" /> CSV Template
+                                </a>
+                                <a
+                                    href={route('imports.template', { format: 'xlsx' })}
+                                    className="btn bg-blue-100 font-medium text-blue-700 hover:bg-blue-200"
+                                >
+                                    <Icon name="table_view" /> Excel Template
+                                </a>
+                            </div>
+                            <p className="mt-1 text-xs text-slate-500">
+                                A blank encoding sheet in the school's format. The Excel template has the same dropdowns; in the CSV, type the values
+                                exactly as in the workbook.
+                            </p>
                         </div>
 
                         <div
@@ -118,14 +133,14 @@ export default function ImportCreate({ schoolYears, preview, result }: Props) {
                                 ref={fileInput}
                                 id="file"
                                 type="file"
-                                accept=".xlsx"
+                                accept=".xlsx,.csv"
                                 className="sr-only"
                                 onChange={(e) => upload.setData('file', e.target.files?.[0] ?? null)}
                             />
                             <button type="button" className="btn-primary" onClick={() => fileInput.current?.click()}>
                                 {upload.data.file ? 'Choose a different file' : 'Browse Files'}
                             </button>
-                            <p className="mt-3 text-xs text-slate-500">Supported format: Excel (.xlsx) • Max size: 20MB</p>
+                            <p className="mt-3 text-xs text-slate-500">Supported formats: Excel (.xlsx) or CSV (.csv) • Max size: 20MB</p>
                             <InputError message={upload.errors.file ?? upload.errors.school_year_id} />
                         </div>
 

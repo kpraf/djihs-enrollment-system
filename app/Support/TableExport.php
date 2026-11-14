@@ -5,6 +5,7 @@ namespace App\Support;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -28,6 +29,37 @@ class TableExport
             }
             fclose($out);
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /**
+     * A multi-table report as Excel (one sheet per table) or as one CSV with
+     * the tables stacked, each under its title.
+     *
+     * @param  array<string, array{0: list<string>, 1: iterable<array<int, mixed>>}>  $sheets  title => [headers, rows]
+     */
+    public static function report(string $format, string $basename, array $sheets): Response
+    {
+        if ($format !== 'csv') {
+            return self::xlsx($basename.'.xlsx', $sheets);
+        }
+
+        return response()->streamDownload(function () use ($sheets) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+            $first = true;
+            foreach ($sheets as $title => [$headers, $rows]) {
+                if (! $first) {
+                    fputcsv($out, []);
+                }
+                $first = false;
+                fputcsv($out, [self::safe($title)]);
+                fputcsv($out, $headers);
+                foreach ($rows as $row) {
+                    fputcsv($out, array_map(fn ($v) => self::safe($v), array_values($row)));
+                }
+            }
+            fclose($out);
+        }, $basename.'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     /**

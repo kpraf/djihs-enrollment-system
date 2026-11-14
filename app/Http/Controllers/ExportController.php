@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use ZipArchive;
 
@@ -39,9 +40,9 @@ class ExportController extends Controller
             ]));
     }
 
-    public function template(EncodingTemplate $template): BinaryFileResponse
+    public function template(Request $request, EncodingTemplate $template): Response
     {
-        return $template->download();
+        return $request->query('format') === 'csv' ? $template->csv() : $template->download();
     }
 
     /**

@@ -14,6 +14,9 @@ use App\Models\User;
 use App\Services\Import\EncodingSheetImporter;
 use Database\Seeders\StrandSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Tests\TestCase;
 use ZipArchive;
@@ -132,6 +135,58 @@ class TeacherPagesAndExportsTest extends TestCase
         $result = app(EncodingSheetImporter::class)->import($copy, $this->year);
         $this->assertSame(1, $result->enrollmentsCreated);
         $this->assertSame('HUMSS', Enrollment::where('school_year_id', $this->year->id)->latest('id')->first()->strand->code);
+    }
+
+    public function test_the_csv_template_imports_back_with_every_digit_kept(): void
+    {
+        Storage::fake();
+        $registrar = User::factory()->role(Role::Registrar)->create();
+        $csv = $this->actingAs($registrar)->get('/imports/template?format=csv')->assertOk()->streamedContent();
+        $this->assertStringContainsString("LEARNER'S NAME", $csv);
+        $this->assertStringContainsString('LAST NAME', $csv);
+
+        $columns = array_map(fn ($i) => Coordinate::stringFromColumnIndex($i), range(1, 32));
+        $line = function (array $cells) use ($columns) {
+            $out = fopen('php://temp', 'w+');
+            fputcsv($out, array_map(fn ($c) => $cells[$c] ?? '', $columns));
+            rewind($out);
+
+            return stream_get_contents($out);
+        };
+        $base = ['B' => 'GRADE 11', 'G' => 'REGULAR - NEW STUDENT (INCOMING G11)', 'H' => 'ACADEMIC',
+            'I' => 'HUMANITIES AND SOCIAL SCIENCES (HUMSS)', 'K' => '03/15/2009', 'M' => 'FEMALE', 'AE' => 'ENROLLED'];
+        $csv .= $line([...$base, 'D' => 'REYES', 'E' => 'ANA', 'J' => '012345678912', 'AC' => '09171234567', 'U' => 'POBLACION', 'N' => '45.5']);
+        $csv .= $line([...$base, 'D' => 'CRUZ', 'E' => 'MIA', 'J' => '1.60645E+11']);
+
+        $file = UploadedFile::fake()->createWithContent('ENROLLMENT_ENCODING.csv', $csv);
+        $this->actingAs($registrar)->post('/imports/preview', ['file' => $file, 'school_year_id' => $this->year->id])
+            ->assertSessionHasNoErrors()->assertRedirect('/imports');
+        $preview = session('import')['result'];
+        $this->assertTrue(collect($preview['warnings'])->contains(fn ($w) => str_contains($w['message'], 'shortened by Excel')));
+
+        $this->actingAs($registrar)->post('/imports', ['token' => session('import')['token']])->assertRedirect('/imports');
+
+        $ana = Student::where('last_name', 'REYES')->firstOrFail();
+        $this->assertSame('012345678912', $ana->lrn, 'A leading zero in the LRN must survive.');
+        $this->assertSame('09171234567', $ana->contact_number);
+        $this->assertSame('2009-03-15', $ana->birthdate->toDateString());
+        $this->assertNull(Student::where('last_name', 'CRUZ')->value('lrn'), 'A shortened LRN must not be saved as a wrong one.');
+        $this->assertSame('HUMSS', Enrollment::where('student_id', $ana->id)->first()->strand->code);
+    }
+
+    public function test_analytics_and_metrics_export_as_csv_or_excel(): void
+    {
+        $this->seat(3);
+        $admin = User::factory()->role(Role::Admin)->create();
+
+        foreach (['analytics', 'metrics'] as $page) {
+            $csv = $this->actingAs($admin)->get("/{$page}/export?format=csv")->assertOk()
+                ->assertHeader('Content-Type', 'text/csv; charset=UTF-8')->streamedContent();
+            $this->assertStringStartsWith("\xEF\xBB\xBF", $csv);
+            $xlsx = $this->actingAs($admin)->get("/{$page}/export?format=xlsx")->assertOk();
+            $this->assertStringContainsString('.xlsx', $xlsx->headers->get('content-disposition'));
+        }
+        $this->assertStringContainsString("\"By grade\"\n\"Grade Level\",Total", str_replace("\r", '', $this->actingAs($admin)->get('/analytics/export?format=csv')->streamedContent()));
     }
 
     public function test_backup_has_every_table_and_no_passwords(): void

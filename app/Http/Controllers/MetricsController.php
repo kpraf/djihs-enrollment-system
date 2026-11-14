@@ -8,7 +8,7 @@ use App\Support\TableExport;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response as DownloadResponse;
 
 class MetricsController extends Controller
 {
@@ -24,7 +24,7 @@ class MetricsController extends Controller
         ]);
     }
 
-    public function export(Request $request, MetricsReport $report): BinaryFileResponse
+    public function export(Request $request, MetricsReport $report): DownloadResponse
     {
         $year = SchoolYear::find($request->integer('school_year')) ?? SchoolYear::active();
         abort_if($year === null, 404);
@@ -32,7 +32,7 @@ class MetricsController extends Controller
         $pct = fn ($v) => $v === null ? 'n/a' : $v.'%';
         $r = $m['resources'];
 
-        return TableExport::xlsx("Metrics_{$year->name}.xlsx", [
+        return TableExport::report($request->query('format') === 'csv' ? 'csv' : 'xlsx', "Metrics_{$year->name}", [
             'Summary' => [['Indicator', 'Value'], [
                 ['Total enrollment', $m['total_enrollment']],
                 ['Growth from '.($m['previous_year'] ?? 'previous year'), $pct($m['growth_rate'])],

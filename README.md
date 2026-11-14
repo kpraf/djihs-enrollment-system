@@ -27,7 +27,7 @@ The interface keeps the look of the original DJIHS pages: the green sidebar, the
 - **Student Management.** Search by any part of the name or LRN, filter, view a learner with their full change history, edit, cancel and restore.
 - **Larger text.** Three text sizes for staff who find small text hard to read, available on every page and the sign-in page, and saved to each account.
 - **Dashboard.** Rebuilds the workbook's MONITORING and DAILY_MONITORING tabs: counts per grade and strand by sex, learner type, Indigenous Peoples and 4Ps, track subtotals, Grade 10 retention, and learners encoded per day.
-- **Spreadsheet import.** Upload the school's workbook, review problems row by row, then import. Re-importing updates learners instead of duplicating them.
+- **Spreadsheet import.** Upload the school's workbook (.xlsx) or a CSV, review problems row by row, then import. Re-importing updates learners instead of duplicating them. Blank Excel and CSV templates are provided. An LRN that Excel shortened to a form like 1.60645E+11 is flagged, not saved wrong.
 - **Review Enrollments.** Every submission from the form waits as Pending until a registrar, ICT coordinator or adviser approves or rejects it, one at a time or all at once. If two reviewers decide on the same learner at the same moment, only the first decision counts and the other is told who decided.
 - **Revision requests.** Advisers don't edit an approved record directly. They send the change with a reason, and the registrar approves it from Review Enrollments. A request is refused if the record changed after it was sent.
 - **Document checklist.** PSA or local birth certificate, report card, Form 137, good moral and transfer certificate, per learner. Student Management can list learners with missing documents.
@@ -35,7 +35,7 @@ The interface keeps the look of the original DJIHS pages: the green sidebar, the
 - **Strands, sections and sectioning.** Key teachers manage strands and sections, set capacity and advisers, assign subject teachers, and place learners by hand or automatically (first come, first served). A full section cannot be overfilled, even by two people at once.
 - **School years.** Add, activate and archive school years, and open or close enrollment.
 - **My Section and My Students.** Advisers see their class list with SF1, CSV and Excel downloads and a printable list. Subject teachers see the learners in the classes they teach.
-- **Analytics and Metrics.** Charts of enrollment by grade, strand, sex and learner type, year-on-year trends, and transition, promotion, retention and dropout rates, with downloads.
+- **Analytics and Metrics.** Charts of enrollment by grade, strand, sex and learner type, year-on-year trends, and transition, promotion, retention and dropout rates, with CSV and Excel downloads.
 - **Role dashboards.** Each role sees its own summary: pending reviews, its sections, section fill, classes taught, or system status.
 - **User accounts, audit log and backup.** Create, edit, deactivate and reset accounts, and download the list. Every change is recorded with who made it and shown in readable form. Download the audit log, a blank encoding template, or a full backup as a ZIP of CSV files. Passwords are never logged or backed up.
 
@@ -128,7 +128,7 @@ npx tsc --noEmit && npx eslint resources/js && vendor/bin/pint --test
 
 ## Tests
 
-- **Feature tests** (128) cover permissions, validation, duplicate prevention, edit conflicts, the review workflow, revision requests, documents, sections, school years, teacher pages, exports, analytics, metrics, the importer and the audit log. CI runs them on both SQLite and PostgreSQL.
+- **Feature tests** (130) cover permissions, validation, duplicate prevention, edit conflicts, the review workflow, revision requests, documents, sections, school years, teacher pages, exports, analytics, metrics, the importer and the audit log. CI runs them on both SQLite and PostgreSQL.
 - **Browser tests** (35) in [`tests/e2e`](tests/e2e) drive Chromium against a real server and PostgreSQL. They include staff submitting the same learner at the same moment, ten simultaneous submissions, two people editing one record, two reviewers deciding on one learner at once, two people racing for the last seat in a section, an adviser's change approved by the registrar, SF1 and CSV downloads, the spreadsheet import, text size and phone layouts. See [`tests/e2e/README.md`](tests/e2e/README.md).
 
 ```bash

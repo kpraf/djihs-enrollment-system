@@ -15,7 +15,9 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
+use PhpOffice\PhpSpreadsheet\Cell\StringValueBinder;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Reader\Csv as CsvReader;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
@@ -114,8 +116,18 @@ class EncodingSheetImporter
 
     private function openSheet(string $path): Worksheet
     {
-        $reader = IOFactory::createReaderForFile($path);
+        // Open the file only as the type its name says, so a renamed text
+        // file is refused instead of being guessed at.
+        $reader = IOFactory::createReader(strtolower(pathinfo($path, PATHINFO_EXTENSION)) === 'csv' ? IOFactory::READER_CSV : IOFactory::READER_XLSX);
         $reader->setReadDataOnly(true);
+        if ($reader instanceof CsvReader) {
+            // Read every value as text so LRNs and phone numbers keep their digits.
+            $reader->setInputEncoding(CsvReader::GUESS_ENCODING);
+            $reader->setValueBinder(new StringValueBinder);
+
+            // A CSV is a single sheet, whatever it is named.
+            return $reader->load($path)->getActiveSheet();
+        }
         $book = $reader->load($path);
 
         $sheet = $book->getSheetByName(self::SHEET_NAME);
@@ -416,6 +428,13 @@ class EncodingSheetImporter
 
     private function lrn(mixed $value, int $row, ImportResult $result): ?string
     {
+        // Excel saves long numbers in a CSV as 1.60645E+11, losing digits.
+        if (is_string($value) && preg_match('/^\s*\d+(\.\d+)?E\+?\d+\s*$/i', $value)) {
+            $result->warn($row, "LRN \"{$value}\" was shortened by Excel and can't be recovered. Type the LRN as text and import again. Saved without an LRN.");
+
+            return null;
+        }
+
         $digits = preg_replace('/\D/', '', (string) $value);
 
         if ($digits === '') {

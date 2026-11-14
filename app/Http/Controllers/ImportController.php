@@ -37,14 +37,15 @@ class ImportController extends Controller
     public function preview(Request $request, EncodingSheetImporter $importer): RedirectResponse
     {
         $data = $request->validate([
-            'file' => ['required', 'file', 'mimes:xlsx', 'max:20480'],
+            'file' => ['required', 'file', 'mimes:xlsx,csv,txt', 'max:20480'],
             'school_year_id' => ['required', 'exists:school_years,id'],
         ]);
 
         $this->discardPending($request);
 
         $token = (string) Str::uuid();
-        $path = $data['file']->storeAs(self::DIR, "{$token}.xlsx");
+        $extension = strtolower($data['file']->getClientOriginalExtension()) === 'csv' ? 'csv' : 'xlsx';
+        $path = $data['file']->storeAs(self::DIR, "{$token}.{$extension}");
 
         try {
             $result = $importer->import(Storage::path($path), SchoolYear::findOrFail($data['school_year_id']), $request->user(), dryRun: true);
@@ -55,7 +56,7 @@ class ImportController extends Controller
         } catch (SpreadsheetException) {
             Storage::delete($path);
 
-            return back()->withErrors(['file' => 'This file could not be read. Save it again from Excel as .xlsx and retry.']);
+            return back()->withErrors(['file' => 'This file could not be read. Save it again from Excel as .xlsx or .csv and retry.']);
         }
 
         $request->session()->put('import', [

@@ -91,8 +91,11 @@ export default function MetricsPage({
                                 </option>
                             ))}
                         </select>
-                        <a className="btn-primary" href={route('metrics.export', { school_year: selectedYear ?? undefined })}>
-                            <Icon name="download" /> Export Report
+                        <a className="btn-outline" href={route('metrics.export', { school_year: selectedYear ?? undefined, format: 'csv' })}>
+                            <Icon name="download" /> Export CSV
+                        </a>
+                        <a className="btn-primary" href={route('metrics.export', { school_year: selectedYear ?? undefined, format: 'xlsx' })}>
+                            <Icon name="table_view" /> Export Excel
                         </a>
                     </>
                 }

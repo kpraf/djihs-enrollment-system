@@ -96,9 +96,15 @@ export default function Analytics({ schoolYears, filters, grades, report, trends
                     <>
                         <a
                             className="btn-outline"
-                            href={route('analytics.export', { school_year: filters.school_year, grade: filters.grade ?? undefined })}
+                            href={route('analytics.export', { school_year: filters.school_year, grade: filters.grade ?? undefined, format: 'csv' })}
                         >
-                            <Icon name="download" /> Export
+                            <Icon name="download" /> Export CSV
+                        </a>
+                        <a
+                            className="btn-outline"
+                            href={route('analytics.export', { school_year: filters.school_year, grade: filters.grade ?? undefined, format: 'xlsx' })}
+                        >
+                            <Icon name="table_view" /> Export Excel
                         </a>
                         <button type="button" className="btn-outline" onClick={() => window.print()}>
                             <Icon name="print" /> Print

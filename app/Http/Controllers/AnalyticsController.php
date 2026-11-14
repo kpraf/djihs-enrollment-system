@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response as DownloadResponse;
 
 class AnalyticsController extends Controller
 {
@@ -30,7 +30,7 @@ class AnalyticsController extends Controller
         ]);
     }
 
-    public function export(Request $request, AnalyticsReport $report): BinaryFileResponse
+    public function export(Request $request, AnalyticsReport $report): DownloadResponse
     {
         [, $year, $grade] = $this->filters($request);
         abort_if($year === null, 404);
@@ -38,7 +38,7 @@ class AnalyticsController extends Controller
         $cols = fn (array $row) => [$row['total'], $row['male'], $row['female'], $row['pwd'], $row['balik_aral'], $row['transferee'], $row['indigenous'], $row['four_ps']];
         $headers = ['Total', 'Male', 'Female', 'PWD', 'Balik-Aral', 'Transferee', 'IP', '4Ps'];
 
-        return TableExport::xlsx("Analytics_{$year->name}.xlsx", [
+        return TableExport::report($request->query('format') === 'csv' ? 'csv' : 'xlsx', "Analytics_{$year->name}", [
             'By grade' => [['Grade Level', ...$headers], collect($r['by_grade'])->map(fn ($g) => [$g['label'], ...$cols($g)])],
             'By strand' => [['Strand', 'Name', ...$headers], collect($r['by_strand'])->map(fn ($s) => [$s['code'], $s['name'], ...$cols($s)])],
             'By learner type' => [['Type of Learner', 'Total'], collect($r['by_learner_type'])->map(fn ($t) => [$t['label'], $t['total']])],

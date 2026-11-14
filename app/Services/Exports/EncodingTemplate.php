@@ -9,6 +9,7 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * A blank workbook in the school's ENROLLMENT_ENCODING layout, with the
@@ -16,18 +17,14 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  */
 class EncodingTemplate
 {
+    private const LAST_COLUMN = 'AF';
+
     public function download(): BinaryFileResponse
     {
         $book = new Spreadsheet;
         $sheet = $book->getActiveSheet()->setTitle('MAIN_ENCODING_SHEET');
 
-        $top = ['A' => 'NO.', 'B' => 'GRADE LEVEL TO ENROLL', 'D' => "LEARNER'S NAME", 'G' => 'TYPE OF LEARNER', 'H' => 'TRACK', 'I' => 'STRAND', 'J' => 'LRN',
-            'K' => "BIRTH DATE\n(mm/dd/yyyy)", 'M' => 'SEX', 'N' => 'FOR SF8', 'P' => 'OTHER DETAILS', 'S' => 'CURRENT ADDRESS', 'Z' => "LEGAL GUARDIAN'S NAME",
-            'AD' => "DATE ENCODED\n(mm/dd/yyyy)", 'AE' => 'ENROLLMENTSTATUS', 'AF' => 'REMARKS'];
-        $sub = ['D' => 'LAST NAME', 'E' => 'FIRST NAME', 'F' => 'MIDDLE NAME', 'N' => "WEIGHT\n(kg)", 'O' => "HEIGHT\n(mtrs)",
-            'P' => 'BELONGING TO ANY INDIGENOUS PEOPLES (IP)', 'Q' => 'IF YES, PLEASE SPECIFY', 'R' => "IS YOUR FAMILY A BENEFICIARY OF 4P'S?",
-            'S' => 'HOUSE NO.', 'T' => 'STREET NAME', 'U' => 'BARANGAY', 'V' => 'MUNICIPALITY / CITY', 'W' => 'PROVINCE', 'X' => 'COUNTRY', 'Y' => 'ZIP CODE',
-            'Z' => 'LAST NAME', 'AA' => 'FIRST NAME', 'AB' => 'MIDDLE NAME', 'AC' => 'CONTACT NO.'];
+        [$top, $sub] = self::headers();
 
         foreach ($top as $col => $text) {
             $sheet->setCellValue("{$col}1", $text);
@@ -77,5 +74,43 @@ class EncodingTemplate
         (new Xlsx($book))->save($path);
 
         return response()->download($path, 'ENROLLMENT_ENCODING_TEMPLATE.xlsx')->deleteFileAfterSend();
+    }
+
+    /**
+     * The same two header rows as the Excel template, for people who
+     * prefer CSV. Dropdowns can't be kept in a CSV, so values must be typed
+     * exactly as in the workbook.
+     */
+    public function csv(): StreamedResponse
+    {
+        [$top, $sub] = self::headers();
+        $columns = array_map(
+            fn (int $i) => Coordinate::stringFromColumnIndex($i),
+            range(1, Coordinate::columnIndexFromString(self::LAST_COLUMN)),
+        );
+
+        return response()->streamDownload(function () use ($top, $sub, $columns) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, array_map(fn ($c) => $top[$c] ?? '', $columns));
+            fputcsv($out, array_map(fn ($c) => $sub[$c] ?? '', $columns));
+            fclose($out);
+        }, 'ENROLLMENT_ENCODING_TEMPLATE.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /**
+     * @return array{0: array<string, string>, 1: array<string, string>} top row and sub-header row, by column
+     */
+    private static function headers(): array
+    {
+        $top = ['A' => 'NO.', 'B' => 'GRADE LEVEL TO ENROLL', 'D' => "LEARNER'S NAME", 'G' => 'TYPE OF LEARNER', 'H' => 'TRACK', 'I' => 'STRAND', 'J' => 'LRN',
+            'K' => "BIRTH DATE\n(mm/dd/yyyy)", 'M' => 'SEX', 'N' => 'FOR SF8', 'P' => 'OTHER DETAILS', 'S' => 'CURRENT ADDRESS', 'Z' => "LEGAL GUARDIAN'S NAME",
+            'AD' => "DATE ENCODED\n(mm/dd/yyyy)", 'AE' => 'ENROLLMENTSTATUS', 'AF' => 'REMARKS'];
+        $sub = ['D' => 'LAST NAME', 'E' => 'FIRST NAME', 'F' => 'MIDDLE NAME', 'N' => "WEIGHT\n(kg)", 'O' => "HEIGHT\n(mtrs)",
+            'P' => 'BELONGING TO ANY INDIGENOUS PEOPLES (IP)', 'Q' => 'IF YES, PLEASE SPECIFY', 'R' => "IS YOUR FAMILY A BENEFICIARY OF 4P'S?",
+            'S' => 'HOUSE NO.', 'T' => 'STREET NAME', 'U' => 'BARANGAY', 'V' => 'MUNICIPALITY / CITY', 'W' => 'PROVINCE', 'X' => 'COUNTRY', 'Y' => 'ZIP CODE',
+            'Z' => 'LAST NAME', 'AA' => 'FIRST NAME', 'AB' => 'MIDDLE NAME', 'AC' => 'CONTACT NO.'];
+
+        return [$top, $sub];
     }
 }
