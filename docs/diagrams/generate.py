@@ -1,419 +1,639 @@
 """
-Draws the DJIHS Enrollment System diagrams with matplotlib.
+Draws the DJIHS Enrollment System figures with matplotlib, in standard
+notations:
 
+  Figure 1  System architecture      three-tier (presentation, application, data)
+  Figure 2  Context diagram          DFD level 0, Gane & Sarson
+  Figure 3  Data flow diagram        DFD level 1, Gane & Sarson
+  Figure 4  Enrollment activity      UML 2 activity diagram with partitions
+  Figure 5  Enrollment status        UML 2 state machine
+  Figure 6  Entity relationship      crow's foot notation
+  Figure 7  Old and new system       architecture and comparison table
+
+    pip install matplotlib
     python3 docs/diagrams/generate.py
 
-Writes one PNG and one SVG per diagram, plus all of them in one PDF, next to
-this file. Architecture diagrams follow the C4 model (system context and
-containers: one level of detail per diagram, each with a title and a key);
-the enrollment flow is a swimlane activity diagram with one lane per role.
+Writes a PNG and an SVG per figure next to this file, and all figures in
+DJIHS-system-diagrams.pdf.
 """
 
+from math import hypot
 from pathlib import Path
-import textwrap
 
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.backends.backend_pdf import PdfPages  # noqa: E402
-from matplotlib.patches import Ellipse, FancyArrowPatch, FancyBboxPatch, Polygon, Rectangle  # noqa: E402
+from matplotlib.patches import Circle, FancyArrowPatch, FancyBboxPatch, Polygon, Rectangle  # noqa: E402
 
 OUT = Path(__file__).resolve().parent
 
-# School green for the system itself, greys for things outside it.
-GREEN_DARK = "#0a4d1c"
-GREEN = "#13803a"
-GREEN_SOFT = "#e7f4ea"
-PERSON = "#08451a"
-EXTERNAL = "#6b7280"
-EXTERNAL_SOFT = "#f1f2f4"
-OLD = "#9a3412"
-OLD_SOFT = "#fdf0e8"
-INK = "#1f2937"
-MUTED = "#5b6472"
-LINE = "#4b5563"
-AMBER = "#b45309"
+INK = "#111111"
+LINE = "#2b2b2b"
+MUTED = "#555555"
+SOFT = "#f3f4f3"
+TINT = "#e9f2eb"  # school green, very light: headers and tier bands only
+GREEN = "#0a5a1d"
 WHITE = "#ffffff"
+LW = 1.1
 
-plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 10, "svg.fonttype": "none"})
+plt.rcParams.update({
+    "font.family": ["Inter", "Liberation Sans", "Arial", "DejaVu Sans"],
+    "font.size": 9,
+    "svg.fonttype": "none",
+    "lines.solid_capstyle": "butt",
+})
 
 
-def canvas(w, h, title, subtitle):
+# --- primitives ---------------------------------------------------------------
+def figure(w, h, number, caption):
     fig = plt.figure(figsize=(w, h))
     ax = fig.add_axes((0, 0, 1, 1))
     ax.set_xlim(0, w)
     ax.set_ylim(0, h)
     ax.axis("off")
-    ax.text(0.45, h - 0.5, title, fontsize=19, fontweight="bold", color=INK, va="top")
-    ax.text(0.45, h - 0.98, subtitle, fontsize=11, color=MUTED, va="top")
+    r = fig.canvas.get_renderer()
+    head = ax.text(0, 0.32, f"Figure {number}. ", va="center", fontsize=10.5, fontweight="bold", color=INK)
+    body = ax.text(0, 0.32, caption, va="center", fontsize=10.5, color=INK)
+    to_in = lambda t: t.get_window_extent(r).width / fig.dpi  # noqa: E731
+    left = (w - to_in(head) - to_in(body)) / 2
+    head.set_x(left)
+    body.set_x(left + to_in(head))
     return fig, ax
 
 
-def wrap(text, width):
-    return "\n".join(textwrap.fill(p, width) for p in text.split("\n"))
+def rect(ax, x, y, w, h, text="", fill=WHITE, lw=LW, round_=0.0, size=9, weight="normal", color=INK, z=2, ls="-"):
+    style = f"round,pad=0,rounding_size={round_}" if round_ else "square,pad=0"
+    ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle=style, facecolor=fill, edgecolor=LINE, linewidth=lw, zorder=z, linestyle=ls))
+    if text:
+        ax.text(x + w / 2, y + h / 2, text, ha="center", va="center", fontsize=size, fontweight=weight, color=color, zorder=z + 1, linespacing=1.25)
 
 
-def box(ax, x, y, w, h, title, tag=None, body=None, fill=GREEN, text=WHITE, edge=None, size=10.5, wrapw=None, dashed=False, align="center", bold=True):
-    """A rounded box: bold title, an optional [tag] line and wrapped body."""
-    ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.02,rounding_size=0.12", facecolor=fill,
-                                edgecolor=edge or fill, linewidth=1.4, linestyle="--" if dashed else "-", zorder=2))
-    wrapw = wrapw or max(14, int(w * 9.5))
-    lines = [(wrap(title, wrapw), {"fontweight": "bold" if bold else "normal", "fontsize": size})]
-    if tag:
-        lines.append((f"[{tag}]", {"fontsize": size - 2, "fontstyle": "italic"}))
-    if body:
-        lines.append((wrap(body, wrapw), {"fontsize": size - 1.5}))
-    block = "\n".join(t for t, _ in lines)
-    total = block.count("\n") + 1
-    line_h = 0.19 * size / 10
-    cy = y + h / 2 + (total - 1) * line_h / 2
-    tx = x + w / 2 if align == "center" else x + 0.15
-    for t, style in lines:
-        n = t.count("\n") + 1
-        ax.text(tx, cy - (n - 1) * line_h / 2, t, ha=align, va="center", color=text, zorder=3, linespacing=1.25, **style)
-        cy -= n * line_h + 0.04
+def label(ax, x, y, text, size=8, ha="center", va="center", bg=True, color=INK, style="normal", weight="normal"):
+    ax.text(x, y, text, ha=ha, va=va, fontsize=size, color=color, zorder=6, linespacing=1.2, fontstyle=style, fontweight=weight,
+            bbox=dict(boxstyle="square,pad=0.12", facecolor=WHITE, edgecolor="none") if bg else None)
 
 
-def person(ax, x, y, w, h, title, body=None, fill=PERSON):
-    """C4 person: a box with a head above it."""
-    ax.add_patch(Ellipse((x + w / 2, y + h + 0.2), 0.42, 0.42, facecolor=fill, edgecolor=fill, zorder=2))
-    box(ax, x, y, w, h, title, body=body, fill=fill, size=10)
+def line(ax, pts, arrow_end=True, arrow_start=False, dashed=False, z=1.5):
+    """Orthogonal or straight polyline with filled arrowheads."""
+    ls = (0, (4, 3)) if dashed else "-"
+    xs, ys = zip(*pts)
+    ax.plot(xs, ys, color=LINE, linewidth=LW, linestyle=ls, zorder=z)
+    for on, (a, b) in ((arrow_end, (pts[-2], pts[-1])), (arrow_start, (pts[1], pts[0]))):
+        if on:
+            ax.add_patch(FancyArrowPatch(a, b, arrowstyle="-|>", mutation_scale=9, color=LINE, linewidth=LW, shrinkA=0, shrinkB=0, zorder=z))
 
 
-def database(ax, x, y, w, h, title, tag, body, fill=GREEN):
-    """A cylinder."""
-    e = 0.32
-    ax.add_patch(Rectangle((x, y + e / 2), w, h - e, facecolor=fill, edgecolor=fill, zorder=2))
-    ax.add_patch(Ellipse((x + w / 2, y + e / 2), w, e, facecolor=fill, edgecolor=fill, zorder=2))
-    ax.add_patch(Ellipse((x + w / 2, y + h - e / 2), w, e, facecolor=fill, edgecolor=WHITE, linewidth=1.2, zorder=3))
-    box(ax, x, y + 0.12, w, h - 0.45, title, tag, body, fill="none", size=10.5)
-
-
-def boundary(ax, x, y, w, h, label, color=GREEN):
-    ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.02,rounding_size=0.15", facecolor="none",
-                                edgecolor=color, linewidth=1.6, linestyle=(0, (6, 4)), zorder=1))
-    ax.text(x + 0.18, y + 0.14, label, fontsize=10.5, fontweight="bold", color=color, va="bottom", zorder=3)
-
-
-def arrow(ax, a, b, label=None, dashed=False, rad=0.0, color=LINE, lx=0.0, ly=0.0, both=False, fontsize=8.8, lw=1.4):
-    style = "<|-|>" if both else "-|>"
-    ax.add_patch(FancyArrowPatch(a, b, arrowstyle=style, mutation_scale=13, color=color, linewidth=lw,
-                                 linestyle=(0, (5, 4)) if dashed else "-", connectionstyle=f"arc3,rad={rad}", zorder=1.5,
-                                 shrinkA=2, shrinkB=2))
-    if label:
-        mx, my = (a[0] + b[0]) / 2 + lx, (a[1] + b[1]) / 2 + ly
-        ax.text(mx, my, label, fontsize=fontsize, color=INK, ha="center", va="center", zorder=4, linespacing=1.2,
-                bbox=dict(boxstyle="round,pad=0.25", facecolor=WHITE, edgecolor="none", alpha=0.95))
-
-
-def path(ax, points, dashed=False, color=LINE):
-    """Straight segments through the points, with an arrowhead on the last one."""
-    style = dict(color=color, linewidth=1.4, linestyle=(0, (5, 4)) if dashed else "-", zorder=1.5)
-    for a, b in zip(points[:-2], points[1:-1]):
-        ax.plot([a[0], b[0]], [a[1], b[1]], solid_capstyle="butt", **style)
-    ax.add_patch(FancyArrowPatch(points[-2], points[-1], arrowstyle="-|>", mutation_scale=13, shrinkA=0, shrinkB=1,
-                                 color=color, linewidth=1.4, linestyle=style["linestyle"], zorder=1.5))
-
-
-def key(ax, x, y, items):
-    """A legend row at the bottom: (label, color, kind)."""
-    ax.text(x, y + 0.1, "Key", fontsize=9.5, fontweight="bold", color=INK, va="center")
-    cx = x + 0.55
-    for label, color, kind in items:
-        if kind == "line":
-            ax.plot([cx, cx + 0.45], [y + 0.1, y + 0.1], color=color, linewidth=1.4, linestyle=(0, (5, 4)))
-        elif kind == "boundary":
-            ax.add_patch(Rectangle((cx, y - 0.02), 0.45, 0.24, facecolor="none", edgecolor=color, linestyle=(0, (4, 3))))
-        else:
-            ax.add_patch(FancyBboxPatch((cx, y - 0.02), 0.45, 0.24, boxstyle="round,pad=0.01,rounding_size=0.05", facecolor=color, edgecolor=color))
-        ax.text(cx + 0.55, y + 0.1, label, fontsize=9, color=MUTED, va="center")
-        cx += 0.75 + len(label) * 0.075
+def cylinder(ax, x, y, w, h, title, sub):
+    e = 0.22
+    ax.add_patch(Rectangle((x, y + e / 2), w, h - e, facecolor=WHITE, edgecolor="none", zorder=2))
+    ax.plot([x, x], [y + e / 2, y + h - e / 2], color=LINE, lw=LW, zorder=3)
+    ax.plot([x + w, x + w], [y + e / 2, y + h - e / 2], color=LINE, lw=LW, zorder=3)
+    from matplotlib.patches import Arc, Ellipse
+    ax.add_patch(Ellipse((x + w / 2, y + h - e / 2), w, e, facecolor=WHITE, edgecolor=LINE, lw=LW, zorder=3))
+    ax.add_patch(Arc((x + w / 2, y + e / 2), w, e, theta1=180, theta2=360, edgecolor=LINE, lw=LW, zorder=3))
+    ax.text(x + w / 2, y + h / 2, title, ha="center", va="center", fontsize=9.5, fontweight="bold", color=INK, zorder=4)
+    ax.text(x + w / 2, y + h / 2 - 0.27, sub, ha="center", va="center", fontsize=8, color=MUTED, zorder=4)
 
 
 def save(fig, name, pdf):
     for ext in ("png", "svg"):
-        fig.savefig(OUT / f"{name}.{ext}", dpi=200 if ext == "png" else None, facecolor=WHITE)
+        fig.savefig(OUT / f"{name}.{ext}", dpi=220 if ext == "png" else None, facecolor=WHITE)
     pdf.savefig(fig, facecolor=WHITE)
     plt.close(fig)
 
 
-# 1. System context ------------------------------------------------------------
-def system_context(pdf):
-    fig, ax = canvas(16, 10, "1. System context: who uses the DJIHS Enrollment System",
-                     "C4 level 1. The system, the people who use it, and the things outside it that it exchanges data with.")
-    roles = [
-        ("Administrator", "Everything, including the DepEd rates on Reports"),
-        ("ICT Coordinator", "Accounts, school years, backups"),
-        ("Registrar", "Encodes, reviews, imports the workbook, Reports"),
-        ("Key Teacher", "Sections, strands, placing learners"),
-        ("Adviser", "Encodes, requests changes, My Section, SF1"),
-        ("Subject Teacher", "My Classes: learners per subject"),
-    ]
-    w, gap, x0 = 2.25, 0.25, 0.75
-    for i, (t, b) in enumerate(roles):
-        x = x0 + i * (w + gap)
-        person(ax, x, 6.95, w, 1.05, t, b)
-        arrow(ax, (x + w / 2, 6.95), (5.6 + (i + 0.5) * 4.8 / 6, 5.55))
-    ax.text(8.0, 6.55, "Sign in with their own account; each role sees only its pages", fontsize=9.5, color=INK, ha="center",
-            bbox=dict(boxstyle="round,pad=0.3", facecolor=WHITE, edgecolor="none"))
+# --- Figure 1: three-tier architecture --------------------------------------------
+def architecture(pdf):
+    fig, ax = figure(13.33, 7.5, 1, "System architecture of the DJIHS Enrollment System")
+    tiers = [(0.45, 3.0, "Presentation tier"), (3.75, 5.45, "Application tier"), (9.5, 3.38, "Data tier")]
+    for x, w, name in tiers:
+        ax.add_patch(Rectangle((x, 1.0), w, 5.95, facecolor=SOFT, edgecolor="none", zorder=0))
+        ax.text(x + 0.18, 6.72, name, fontsize=10, fontweight="bold", color=GREEN, va="center")
 
-    box(ax, 5.6, 3.55, 4.8, 2.0, "DJIHS Enrollment System", "Software system",
-        "Records each learner's enrollment, has it reviewed, places learners in sections, keeps an audit log, and produces DepEd forms and reports.",
-        fill=GREEN, size=12, wrapw=48)
+    # Presentation: browsers on PCs and phones.
+    def monitor(cx, cy):
+        rect(ax, cx - 0.42, cy - 0.12, 0.84, 0.52, round_=0.03)
+        ax.plot([cx, cx], [cy - 0.12, cy - 0.27], color=LINE, lw=LW)
+        ax.plot([cx - 0.2, cx + 0.2], [cy - 0.27, cy - 0.27], color=LINE, lw=LW)
 
-    person(ax, 0.75, 3.85, 2.6, 1.25, "Parent or guardian", "Gives the enrollment forms; is shown the privacy notice. Has no account.", fill=EXTERNAL)
-    arrow(ax, (3.35, 4.45), (5.6, 4.45), "Information on paper,\nencoded by staff", dashed=True)
+    def phone(cx, cy):
+        rect(ax, cx - 0.17, cy - 0.27, 0.34, 0.62, round_=0.05)
+        ax.plot([cx - 0.05, cx + 0.05], [cy - 0.2, cy - 0.2], color=LINE, lw=LW)
 
-    ext = [
-        (4.95, "School's Excel workbook", "ENROLLMENT_ENCODING sheet the school used before", "Imported (.xlsx or .csv);\nblank template downloaded"),
-        (3.15, "DepEd School Form 1 (SF1)", "Official class register", "Filled in from a section's\nlearners (Excel)"),
-        (1.35, "DepEd LIS", "Learner Information System", "Not connected: staff still\nencode in LIS separately"),
-    ]
-    for y, t, b, lab in ext:
-        box(ax, 12.55, y - 0.45, 2.9, 1.15, t, "External", b, fill=EXTERNAL, size=10)
-        arrow(ax, (10.4, 4.55 + (y - 3.15) * 0.45), (12.55, y + 0.12), lab, dashed=(t == "DepEd LIS"), both=(t.startswith("School")), lx=0.05, ly=0.34)
+    monitor(1.45, 5.55)
+    phone(2.55, 5.55)
+    ax.text(1.95, 4.95, "Staff computers and phones", ha="center", fontsize=8, color=MUTED)
+    rect(ax, 0.75, 2.6, 2.4, 1.95, "", round_=0.06)
+    ax.text(1.95, 4.2, "Web browser", ha="center", fontsize=9.5, fontweight="bold")
+    ax.text(1.95, 3.55, "React 19 · TypeScript\nTailwind CSS\nInertia.js pages", ha="center", va="center", fontsize=8.5, color=INK, linespacing=1.4)
+    ax.text(1.95, 2.85, "Charts: Chart.js", ha="center", fontsize=8, color=MUTED)
 
-    box(ax, 5.6, 1.35, 4.8, 1.25, "Runs on Render (cloud) or a school computer", "Deployment",
-        "Same software either way. Render: PostgreSQL and https. School computer: one SQLite file on the school network.",
-        fill=EXTERNAL_SOFT, text=INK, edge=EXTERNAL, size=10)
-    arrow(ax, (8.0, 3.55), (8.0, 2.6))
+    # Application: web server and Laravel modules.
+    rect(ax, 4.05, 5.45, 4.85, 0.75, "", round_=0.06)
+    ax.text(6.47, 5.94, "Web server", ha="center", fontsize=9.5, fontweight="bold")
+    ax.text(6.47, 5.62, "Apache (Render)  ·  PHP built-in server (school computer)", ha="center", fontsize=8, color=MUTED)
 
-    key(ax, 0.75, 0.45, [("Person with an account", PERSON, "box"), ("The system", GREEN, "box"),
-                         ("Outside the system", EXTERNAL, "box"), ("Not automated / manual", LINE, "line")])
-    save(fig, "01-system-context", pdf)
+    rect(ax, 4.05, 1.3, 4.85, 3.75, "", round_=0.06)
+    ax.text(6.47, 4.78, "Laravel 12 application (PHP 8.3)", ha="center", fontsize=9.5, fontweight="bold")
+    ax.add_patch(Rectangle((4.25, 4.15), 4.45, 0.42, facecolor=TINT, edgecolor=LINE, lw=LW, zorder=2))
+    ax.text(6.47, 4.36, "Middleware: session · role abilities · password change · privacy agreement", ha="center", va="center", fontsize=7.8, zorder=3)
+    modules = ["Enrollment\n& duplicate checks", "Review\n& revisions", "Sections\n& assignment", "Reports\n& DepEd forms", "Import / export\n(Excel, CSV)", "Accounts\n& school years", "Documents\nchecklist", "Audit &\naccess log"]
+    for i, m in enumerate(modules):
+        cx = 4.25 + (i % 4) * 1.13
+        cy = 3.0 if i < 4 else 1.55
+        rect(ax, cx, cy, 1.0, 0.95, m, size=7.6, round_=0.04)
 
+    # Data: database and files.
+    cylinder(ax, 9.95, 3.55, 2.5, 1.65, "Database", "PostgreSQL (Render) or SQLite")
+    ax.text(11.2, 3.35, "10 tables · row locks · unique keys", ha="center", fontsize=7.8, color=MUTED)
+    rect(ax, 9.95, 1.45, 2.5, 1.15, "", round_=0.04)
+    ax.text(11.2, 2.27, "File storage", ha="center", fontsize=9.5, fontweight="bold")
+    ax.text(11.2, 1.85, "SF1 template\nimport uploads (temporary)", ha="center", va="center", fontsize=8, color=MUTED, linespacing=1.3)
 
-# 2. Containers ------------------------------------------------------------------
-def containers(pdf):
-    fig, ax = canvas(16, 11, "2. Containers: how the system is built",
-                     "C4 level 2. The running parts of the system and how they talk to each other.")
-    person(ax, 6.6, 8.55, 2.8, 0.95, "School staff", "Six roles, in a web browser on a computer or phone")
+    # Connections, labelled by protocol.
+    line(ax, [(3.15, 4.0), (3.6, 4.0), (3.6, 5.82), (4.05, 5.82)], arrow_start=True)
+    label(ax, 3.6, 4.95, "HTTPS", size=8)
+    line(ax, [(6.47, 5.45), (6.47, 5.05)])
+    line(ax, [(8.9, 3.6), (9.42, 3.6), (9.42, 4.35), (9.95, 4.35)], arrow_start=True)
+    label(ax, 9.42, 3.95, "SQL", size=8)
+    line(ax, [(8.9, 2.0), (9.95, 2.0)], arrow_start=True)
+    label(ax, 9.42, 2.2, "file I/O", size=8, bg=False)
 
-    boundary(ax, 0.6, 2.3, 14.8, 5.75, "DJIHS Enrollment System")
-    box(ax, 1.0, 5.35, 4.1, 2.15, "Web pages", "React 19 + TypeScript + Tailwind, sent by Inertia",
-        "Forms, tables and charts in the browser. Green sidebar, text-size control, works on phones. No business rules: everything is checked again on the server.")
-    box(ax, 6.0, 4.55, 4.6, 2.95, "Web application", "Laravel 12 on PHP 8.3",
-        "Every request passes: sign-in and session · role abilities · forced password change · confidentiality agreement.\n"
-        "Services: enrollment with duplicate checks · review workflow · revision requests · sectioning with seat limits · reports · import and export · access logging.",
-        wrapw=50)
-    database(ax, 11.6, 5.0, 3.4, 2.4, "Database", "PostgreSQL on Render · SQLite on a school computer",
-             "10 tables. Unique keys and row locks stop duplicate learners and overfilled sections.")
-    box(ax, 11.6, 2.75, 3.4, 1.45, "Files", "Disk", "SF1 template; imported workbooks held only until confirmed", fill=GREEN, size=10)
-
-    arrow(ax, (8.0, 8.55), (3.05, 7.5), "Uses, over https\n(http on a school network)", lx=-0.3, ly=0.15)
-    arrow(ax, (5.1, 6.45), (6.0, 6.45), "Page visits and\nform posts (JSON)", both=True, ly=0.55)
-    arrow(ax, (10.6, 6.2), (11.6, 6.2), "Reads and writes\n(in transactions)", both=True, ly=0.6)
-    arrow(ax, (10.6, 4.9), (11.6, 3.7), "Reads template,\nstages uploads", lx=0.05, ly=0.15)
-
-    box(ax, 6.0, 0.75, 4.6, 1.15, "Downloads and uploads", "Excel / CSV / ZIP",
-        "SF1, class lists, Reports, audit log, full backup; workbook import", fill=EXTERNAL, size=10)
-    arrow(ax, (8.3, 4.55), (8.3, 1.9), both=True)
-
-    key(ax, 0.75, 0.3, [("Person", PERSON, "box"), ("Part of the system", GREEN, "box"),
-                        ("Outside the running system", EXTERNAL, "box"), ("System boundary", GREEN, "boundary")])
-    save(fig, "02-containers", pdf)
+    ax.text(6.66, 0.72, "The tiers are logical. On Render the database is a managed service; on a school computer all three tiers run on one machine.",
+            ha="center", fontsize=8, color=MUTED, style="italic")
+    save(fig, "fig1-system-architecture", pdf)
 
 
-# 3. Enrollment flow (swimlanes) ------------------------------------------------
-def enrollment_flow(pdf):
-    W, H = 20, 12.5
-    fig, ax = canvas(W, H, "3. Enrollment flow: from paper forms to a learner in a section",
-                     "Swimlane activity diagram. Each lane is who does the step; arrows show the order, left to right.")
-    lanes = ["Parent or\nguardian", "Encoder\n(Registrar or Adviser)", "System", "Reviewer\n(Registrar, ICT\nor Adviser)", "Key Teacher", "Adviser and\nSubject Teacher"]
-    top, lane_h, left = 10.9, 1.62, 0.5
+# --- DFD shapes (Gane & Sarson) ------------------------------------------------------
+def process(ax, x, y, w, h, number, name, size=8.6):
+    ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0,rounding_size=0.12", facecolor=WHITE, edgecolor=LINE, lw=LW, zorder=2))
+    ax.plot([x, x + w], [y + h - 0.3, y + h - 0.3], color=LINE, lw=LW, zorder=3)
+    ax.text(x + w / 2, y + h - 0.15, number, ha="center", va="center", fontsize=8.5, fontweight="bold", zorder=3)
+    ax.text(x + w / 2, y + (h - 0.3) / 2, name, ha="center", va="center", fontsize=size, zorder=3, linespacing=1.25)
+
+
+def entity(ax, x, y, w, h, name):
+    ax.add_patch(Rectangle((x + 0.05, y - 0.05), w, h, facecolor="#d9d9d9", edgecolor="none", zorder=1.8))
+    ax.add_patch(Rectangle((x, y), w, h, facecolor=WHITE, edgecolor=LINE, lw=LW, zorder=2))
+    ax.text(x + w / 2, y + h / 2, name, ha="center", va="center", fontsize=8.6, fontweight="bold", zorder=3, linespacing=1.2)
+
+
+def store(ax, x, y, w, h, sid, name):
+    ax.add_patch(Rectangle((x, y), w, h, facecolor=WHITE, edgecolor="none", zorder=2))
+    ax.plot([x + w, x, x, x + w], [y + h, y + h, y, y], color=LINE, lw=LW, zorder=3)
+    ax.plot([x + 0.42, x + 0.42], [y, y + h], color=LINE, lw=LW, zorder=3)
+    ax.text(x + 0.21, y + h / 2, sid, ha="center", va="center", fontsize=8.5, fontweight="bold", zorder=3)
+    ax.text(x + 0.55, y + h / 2, name, ha="left", va="center", fontsize=8.6, zorder=3)
+
+
+def flow(ax, a, b, text=None, at=0.5, dx=0.0, dy=0.0, ha="center"):
+    line(ax, [a, b])
+    if text:
+        label(ax, a[0] + (b[0] - a[0]) * at + dx, a[1] + (b[1] - a[1]) * at + dy, text, size=7.8, ha=ha)
+
+
+# --- Figure 2: context diagram ------------------------------------------------------
+def context(pdf):
+    fig, ax = figure(13.33, 7.5, 2, "Context diagram (DFD level 0) of the DJIHS Enrollment System")
+    px, py, pw, ph = 5.37, 2.75, 2.6, 2.3
+    process(ax, px, py, pw, ph, "0", "DJIHS\nEnrollment System", size=10.5)
+    ew, eh = 1.85, 0.7
+
+    def h_pair(name, x, y, inflow, outflow, left_side):
+        """Entity beside the process; flows run horizontally."""
+        entity(ax, x, y, ew, eh, name)
+        near = x + ew if left_side else x
+        far = px if left_side else px + pw
+        mid = (near + far) / 2
+        if inflow:
+            yy = y + eh - 0.2
+            line(ax, [(near, yy), (far, yy)])
+            label(ax, mid, yy + 0.13, inflow, size=7.9, va="bottom", bg=False)
+        if outflow:
+            yy = y + 0.2 if inflow else y + eh / 2
+            line(ax, [(far, yy), (near, yy)])
+            label(ax, mid, yy - 0.13, outflow, size=7.9, va="top", bg=False)
+
+    h_pair("Registrar", 0.6, 4.05, "learner details, review\ndecisions, school workbook", "pending list, reports", True)
+    h_pair("Adviser", 0.6, 2.9, "learner details,\nchange requests", "class list, SF1", True)
+    h_pair("Key Teacher", 10.9, 4.05, "sections, strands,\nplacements", "unplaced learners", False)
+    h_pair("Subject Teacher", 10.9, 2.9, None, "class lists", False)
+
+    def v_pair(name, x, inflow, outflow, lx_in, lx_out, y_in, y_out):
+        """Entity above the process; flows run vertically."""
+        entity(ax, x, 6.1, ew, eh, name)
+        if inflow:
+            line(ax, [(lx_in, 6.1), (lx_in, py + ph)])
+            label(ax, lx_in - 0.1, y_in, inflow, size=7.9, ha="right", bg=False)
+        if outflow:
+            line(ax, [(lx_out, py + ph), (lx_out, 6.1)])
+            label(ax, lx_out + 0.1, y_out, outflow, size=7.9, ha="left", bg=False)
+
+    v_pair("ICT Coordinator", 4.7, "accounts,\nschool years", "audit log,\nbackup", 5.6, 5.95, 5.6, 5.3)
+    v_pair("Administrator", 6.95, "accounts,\ndecisions", "DepEd\nindicators", 7.4, 7.75, 5.75, 5.6)
+
+    entity(ax, 5.74, 0.95, ew, eh, "DepEd")
+    line(ax, [(6.67, py), (6.67, 1.65)])
+    label(ax, 6.77, 2.2, "SF1, enrollment reports", size=7.9, ha="left", bg=False)
+    save(fig, "fig2-context-diagram", pdf)
+
+
+# --- Figure 3: level 1 DFD -------------------------------------------------------------
+def dfd_level1(pdf):
+    fig, ax = figure(13.33, 8.5, 3, "Data flow diagram (level 1) of the DJIHS Enrollment System")
+    pw, ph = 1.9, 1.0
+    ew, eh = 1.7, 0.66
+    sx, sw, sh = 5.6, 2.15, 0.5
+
+    stores = {"D1": ("Students", 7.1), "D2": ("Enrollments", 5.75), "D3": ("Sections", 4.4), "D4": ("Users", 3.05), "D5": ("School years", 1.85)}
+    for sid, (name, y) in stores.items():
+        store(ax, sx, y, sw, sh, sid, name)
+
+    def sy(sid, f=0.5):
+        return stores[sid][1] + sh * f
+
+    # Left: processes that write learners and enrollments.
+    L = {"1.0": ("Encode\nenrollment", 6.8), "6.0": ("Import\nworkbook", 5.0), "2.0": ("Review\nenrollment", 3.3)}
+    # Right: sections, reports, administration.
+    Rp = {"4.0": ("Generate reports\nand forms", 6.2), "3.0": ("Manage\nsections", 4.55), "5.0": ("Manage accounts\nand school years", 2.15)}
+    lx, rx = 3.05, 8.45
+    for n, (name, y) in L.items():
+        process(ax, lx, y, pw, ph, n, name)
+    for n, (name, y) in Rp.items():
+        process(ax, rx, y, pw, ph, n, name)
+
+    def lp(n, f):  # point on the right edge of a left-side process
+        return (lx + pw, L[n][1] + ph * f)
+
+    def rp(n, f):  # point on the left edge of a right-side process
+        return (rx, Rp[n][1] + ph * f)
+
+    def sl(sid, f=0.5):  # left (closed) edge of a store
+        return (sx, sy(sid, f))
+
+    def sr(sid, f=0.5):  # right (open) end of a store
+        return (sx + sw, sy(sid, f))
+
+    # Writes go into the store, reads come out of it; "both" has two heads.
+    line(ax, [lp("1.0", 0.7), sl("D1", 0.5)], arrow_start=True)
+    line(ax, [lp("1.0", 0.35), sl("D2", 0.75)])
+    line(ax, [lp("6.0", 0.75), sl("D1", 0.2)])
+    line(ax, [lp("6.0", 0.45), sl("D2", 0.4)])
+    line(ax, [lp("2.0", 0.7), sl("D2", 0.1)], arrow_start=True)
+
+    line(ax, [sr("D1"), rp("4.0", 0.75)])
+    line(ax, [sr("D2", 0.75), rp("4.0", 0.45)])
+    line(ax, [sr("D3", 0.85), rp("4.0", 0.15)])
+    line(ax, [rp("3.0", 0.85), sr("D2", 0.25)])
+    line(ax, [rp("3.0", 0.45), sr("D3", 0.3)], arrow_start=True)
+    line(ax, [rp("5.0", 0.75), sr("D4")], arrow_start=True)
+    line(ax, [rp("5.0", 0.3), sr("D5")], arrow_start=True)
+
+    # External entities.
+    def ent_left(name, n, text_in, text_out=None):
+        y = L[n][1] + (ph - eh) / 2
+        entity(ax, 0.3, y, ew, eh, name)
+        yy = y + eh / 2 + (0.13 if text_out else 0)
+        line(ax, [(0.3 + ew, yy), (lx, yy)])
+        label(ax, (0.3 + ew + lx) / 2, yy + 0.09, text_in, size=7.6, va="bottom", bg=False)
+        if text_out:
+            line(ax, [(lx, yy - 0.26), (0.3 + ew, yy - 0.26)])
+            label(ax, (0.3 + ew + lx) / 2, yy - 0.35, text_out, size=7.6, va="top", bg=False)
+
+    def ent_right(name, n, text, inbound):
+        y = Rp[n][1] + (ph - eh) / 2
+        entity(ax, 11.35, y, ew, eh, name)
+        yy = y + eh / 2
+        pts = [(11.35, yy), (rx + pw, yy)]
+        line(ax, pts if inbound else pts[::-1])
+        label(ax, (rx + pw + 11.35) / 2, yy + 0.09, text, size=7.6, va="bottom", bg=False)
+
+    ent_left("Encoder\n(Registrar, Adviser)", "1.0", "enrollment\ndetails")
+    ent_left("Registrar", "6.0", "workbook file")
+    ent_left("Reviewer\n(Registrar,\nICT, Adviser)", "2.0", "decision", "pending list")
+    ent_right("DepEd", "4.0", "SF1", False)
+    entity(ax, rx + (pw - ew) / 2, 7.65, ew, 0.55, "All staff")
+    line(ax, [(rx + pw / 2, 6.2 + ph), (rx + pw / 2, 7.65)])
+    label(ax, rx + pw / 2 + 0.1, 7.43, "reports, class lists", size=7.6, ha="left", bg=False)
+    ent_right("Key Teacher", "3.0", "sections,\nplacements", True)
+    ent_right("ICT Coordinator,\nAdministrator", "5.0", "accounts,\nschool years", True)
+
+    store(ax, sx, 0.95, sw, sh, "D6", "Audit log")
+    ax.text(sx + sw / 2, 0.82, "written by every process (lines not drawn)", ha="center", va="top", fontsize=7.4, color=MUTED, style="italic")
+    save(fig, "fig3-dfd-level-1", pdf)
+
+
+# --- UML activity shapes -----------------------------------------------------------
+def action(ax, cx, cy, text, w=1.55, h=0.42):
+    ax.add_patch(FancyBboxPatch((cx - w / 2, cy - h / 2), w, h, boxstyle="round,pad=0,rounding_size=0.13", facecolor=WHITE, edgecolor=LINE, lw=LW, zorder=2))
+    ax.text(cx, cy, text, ha="center", va="center", fontsize=8.2, zorder=3, linespacing=1.15)
+
+
+def decision(ax, cx, cy, s=0.24):
+    ax.add_patch(Polygon([(cx, cy + s), (cx + s, cy), (cx, cy - s), (cx - s, cy)], closed=True, facecolor=WHITE, edgecolor=LINE, lw=LW, zorder=2))
+
+
+def start(ax, cx, cy):
+    ax.add_patch(Circle((cx, cy), 0.11, facecolor=INK, zorder=2))
+
+
+def end(ax, cx, cy):
+    ax.add_patch(Circle((cx, cy), 0.13, facecolor=WHITE, edgecolor=INK, lw=1.3, zorder=2))
+    ax.add_patch(Circle((cx, cy), 0.075, facecolor=INK, zorder=3))
+
+
+# --- Figure 4: activity diagram -------------------------------------------------------
+def activity(pdf):
+    fig, ax = figure(8.5, 11, 4, "Activity diagram: encoding and approving an enrollment")
+    lanes = ["Encoder\n(Registrar or Adviser)", "System", "Key Teacher", "Reviewer\n(Registrar, ICT or Adviser)"]
+    x0, lw_, top, bottom = 0.45, 1.9, 10.55, 0.95
     for i, name in enumerate(lanes):
-        y = top - (i + 1) * lane_h
-        ax.add_patch(Rectangle((left, y), W - 1.0, lane_h, facecolor=GREEN_SOFT if i % 2 else WHITE, edgecolor="#cfd8d2", linewidth=1, zorder=0))
-        ax.add_patch(Rectangle((left, y), 2.1, lane_h, facecolor="#dbeee0", edgecolor="#cfd8d2", zorder=0.5))
-        ax.text(left + 1.05, y + lane_h / 2, name, ha="center", va="center", fontsize=10, fontweight="bold", color=INK, linespacing=1.3)
+        x = x0 + i * lw_
+        ax.add_patch(Rectangle((x, bottom), lw_, top - bottom, facecolor=WHITE, edgecolor=LINE, lw=LW, zorder=0))
+        ax.add_patch(Rectangle((x, top - 0.55), lw_, 0.55, facecolor=TINT, edgecolor=LINE, lw=LW, zorder=0.5))
+        ax.text(x + lw_ / 2, top - 0.275, name, ha="center", va="center", fontsize=8.6, fontweight="bold", zorder=1, linespacing=1.15)
+    E, S, K, R = (x0 + lw_ * (i + 0.5) for i in range(4))
+    hw, h1, h2 = 0.775, 0.21, 0.24  # half width; half height of one- and two-line actions
+    g = 7.4  # guard text size
 
-    def ly(i):
-        return top - (i + 0.5) * lane_h
+    start(ax, E, 9.75)
+    action(ax, E, 9.2, "Enter LRN")
+    line(ax, [(E, 9.64), (E, 9.2 + h1)])
+    action(ax, S, 9.2, "Look up LRN")
+    line(ax, [(E + hw, 9.2), (S - hw, 9.2)])
+    decision(ax, S, 8.5)
+    line(ax, [(S, 9.2 - h1), (S, 8.74)])
+    label(ax, S + 0.08, 8.1, "[enrolled\nthis year]", size=g, ha="left", bg=False)
+    action(ax, S + 0.0, 7.65, "Show existing\nrecord", h=0.48)
+    line(ax, [(S, 8.26), (S, 7.65 + h2)])
+    end(ax, S, 7.05)
+    line(ax, [(S, 7.65 - h2), (S, 7.18)])
 
-    def step(i, x, w, text, fill=GREEN, txt=WHITE, h=1.15, edge=None):
-        box(ax, x, ly(i) - h / 2, w, h, text, fill=fill, text=txt, size=9.5, edge=edge, wrapw=int(w * 10.5), bold=False)
+    line(ax, [(S - 0.24, 8.5), (E, 8.5), (E, 7.65 + h2)])
+    label(ax, E + 0.75, 8.6, "[else]", size=g, bg=False)
+    action(ax, E, 7.65, "Fill in learner\ndetails", h=0.48)
+    action(ax, E, 6.95, "Confirm privacy\nnotice given", h=0.48)
+    line(ax, [(E, 7.65 - h2), (E, 6.95 + h2)])
+    decision(ax, E, 6.3)  # merge: first submission or resubmission
+    line(ax, [(E, 6.95 - h2), (E, 6.54)])
+    action(ax, E, 5.7, "Submit form")
+    line(ax, [(E, 6.06), (E, 5.7 + h1)])
 
-    def diamond(i, cx, text, w=2.0, h=1.3):
-        cy = ly(i)
-        ax.add_patch(Polygon([(cx, cy + h / 2), (cx + w / 2, cy), (cx, cy - h / 2), (cx - w / 2, cy)], closed=True,
-                             facecolor=WHITE, edgecolor=GREEN_DARK, linewidth=1.6, zorder=2))
-        ax.text(cx, cy, text, ha="center", va="center", fontsize=8.8, color=INK, zorder=3, linespacing=1.2)
+    action(ax, S, 5.7, "Validate and\nlock record", h=0.48)
+    line(ax, [(E + hw, 5.7), (S - hw, 5.7)])
+    action(ax, S, 5.0, "Save as Pending")
+    line(ax, [(S, 5.7 - h2), (S, 5.0 + h1)])
+    action(ax, R, 5.0, "Review\nenrollment", h=0.48)
+    line(ax, [(S + hw, 5.0), (R - hw, 5.0)])
+    decision(ax, R, 4.3)
+    line(ax, [(R, 5.0 - h2), (R, 4.54)])
 
-    c1, c2, c3, c4, c5 = 3.0, 6.0, 9.2, 12.8, 15.7
-    w = 2.5
+    action(ax, S, 4.3, "Set status to\nEnrolled", h=0.48)
+    line(ax, [(R - 0.24, 4.3), (S + hw, 4.3)])
+    label(ax, R - 0.62, 4.42, "[approve]", size=g, bg=False)
+    action(ax, R, 3.55, "Return with\nreason", h=0.48)
+    line(ax, [(R, 4.06), (R, 3.55 + h2)])
+    label(ax, R + 0.08, 3.9, "[reject]", size=g, ha="left", bg=False)
 
-    # Parent: start, forms, privacy notice.
-    ax.add_patch(Ellipse((2.78, ly(0)), 0.32, 0.32, facecolor=INK, zorder=2))
-    step(0, c1, w, "Brings the forms (PSA certificate, report card…)", fill=EXTERNAL)
-    arrow(ax, (2.94, ly(0)), (c1, ly(0)))
-    step(0, c2, w, "Is shown the privacy notice", fill=EXTERNAL)
-    arrow(ax, (c1 + w, ly(0)), (c2, ly(0)))
+    action(ax, K, 3.45, "Assign to\nsection", h=0.48)
+    line(ax, [(S, 4.3 - h2), (S, 3.88), (K, 3.88), (K, 3.45 + h2)])
+    decision(ax, S, 2.85)
+    line(ax, [(K - hw, 3.3), (S, 3.3), (S, 3.09)])
+    line(ax, [(S + 0.24, 2.85), (K, 2.85), (K, 3.45 - h2)])
+    label(ax, K - 0.45, 2.73, "[section full]", size=g, bg=False)
+    action(ax, S, 1.95, "Save placement")
+    line(ax, [(S, 2.61), (S, 1.95 + h1)])
+    label(ax, S + 0.08, 2.47, "[seat free]", size=g, ha="left", bg=False)
+    end(ax, S, 1.35)
+    line(ax, [(S, 1.95 - h1), (S, 1.48)])
 
-    # Encoder types the LRN; the system checks it.
-    step(1, c2, w, "Types the 12-digit LRN")
-    arrow(ax, (c2 + w / 2, ly(0) - 0.58), (c2 + w / 2, ly(1) + 0.58))
-    diamond(2, c2 + w / 2, "Already\nenrolled this\nyear?")
-    arrow(ax, (c2 + w / 2, ly(1) - 0.58), (c2 + w / 2, ly(2) + 0.65))
-    step(2, c1 - 0.4, w - 0.2, "Warns at once with a link to the record. Stop.", fill=AMBER)
-    arrow(ax, (c2 + w / 2 - 1.0, ly(2)), (c1 - 0.4 + w - 0.2, ly(2)), "yes", ly=0.2)
-
-    # Fill in and submit.
-    step(1, c3, w + 0.3, "Fills in learner, parents and address (or uses a returning learner's saved details); ticks the privacy box; submits", h=1.3)
-    path(ax, [(c2 + w / 2 + 1.0, ly(2)), (8.75, ly(2)), (8.75, ly(1)), (c3, ly(1))])
-    ax.text(8.32, ly(2) + 0.12, "no", fontsize=8.8, color=INK)
-
-    step(2, c3, w + 0.3, "Checks the form; locks the learner's record so two staff can't save the same person", h=1.3)
-    arrow(ax, (c3 + (w + 0.3) / 2, ly(1) - 0.65), (c3 + (w + 0.3) / 2, ly(2) + 0.65))
-    step(2, c4, w, "Saves as Pending and writes the audit log")
-    arrow(ax, (c3 + w + 0.3, ly(2)), (c4, ly(2)))
-
-    # Review.
-    diamond(3, c4 + w / 2, "Approve or\nreject? (first\ndecision wins)", w=2.2, h=1.35)
-    arrow(ax, (c4 + w / 2, ly(2) - 0.58), (c4 + w / 2, ly(3) + 0.68))
-    step(3, c3, w + 0.3, "Rejected with a reason", fill=AMBER, h=0.9)
-    arrow(ax, (c4 + w / 2 - 1.1, ly(3) - 0.15), (c3 + w + 0.3, ly(3) - 0.15), "reject", ly=-0.25)
-    path(ax, [(c3 + w + 0.3, ly(3) + 0.28), (12.35, ly(3) + 0.28), (12.35, ly(1)), (c3 + w + 0.3, ly(1))], dashed=True)
-    ax.text(12.45, ly(1) - 0.32, "fixed and\nresubmitted", fontsize=8.5, color=INK, ha="left", va="top",
-            bbox=dict(boxstyle="round,pad=0.2", facecolor=WHITE, edgecolor="none"))
-    step(3, c5, w, "Enrolled", fill=GREEN_DARK, h=0.8)
-    arrow(ax, (c4 + w / 2 + 1.1, ly(3)), (c5, ly(3)), "approve", ly=0.22)
-
-    # Sectioning and the class lists.
-    step(4, c5, w, "Places the learner in a section (seat limit checked, even with two people at once)", h=1.3)
-    arrow(ax, (c5 + w / 2, ly(3) - 0.4), (c5 + w / 2, ly(4) + 0.65))
-    step(5, c5, w, "Sees the class: My Section, SF1 and class lists; My Classes", h=1.2)
-    arrow(ax, (c5 + w / 2, ly(4) - 0.65), (c5 + w / 2, ly(5) + 0.6))
-    step(5, c3, 5.6, "Later, if needed: adviser asks for a correction with a reason → Registrar approves on Review Enrollments → the record changes (refused if someone else edited it meanwhile)",
-         fill=GREEN_SOFT, txt=INK, edge=GREEN, h=1.2)
-    arrow(ax, (c5, ly(5)), (c3 + 5.6, ly(5)), dashed=True)
-    ax.add_patch(Ellipse((18.9, ly(5)), 0.36, 0.36, facecolor=WHITE, edgecolor=INK, linewidth=2, zorder=2))
-    ax.add_patch(Ellipse((18.9, ly(5)), 0.2, 0.2, facecolor=INK, zorder=3))
-    arrow(ax, (c5 + w, ly(5)), (18.72, ly(5)))
-    ax.text(18.9, ly(5) - 0.38, "Reports\nupdate", ha="center", va="top", fontsize=8.5, color=INK)
-
-    key(ax, 0.75, 0.45, [("Step in the system", GREEN, "box"), ("Outcome", GREEN_DARK, "box"), ("Stop or send back", AMBER, "box"),
-                         ("Step on paper", EXTERNAL, "box"), ("Goes back, or happens later", LINE, "line")])
-    save(fig, "03-enrollment-flow", pdf)
+    action(ax, E, 2.3, "Correct\ndetails", h=0.48)
+    line(ax, [(R, 3.55 - h2), (R, 2.3), (E + hw, 2.3)])
+    line(ax, [(E - hw, 2.3), (x0 + 0.14, 2.3), (x0 + 0.14, 6.3), (E - 0.24, 6.3)])
+    label(ax, x0 + 0.14, 4.3, "resubmit", size=g, ha="center")
+    save(fig, "fig4-activity-enrollment", pdf)
 
 
-# 4. Enrollment status lifecycle --------------------------------------------------
-def status_lifecycle(pdf):
-    fig, ax = canvas(15, 8.5, "4. Enrollment status: every state a record can be in",
-                     "State diagram. Every change is written to the audit log with who made it and when.")
+# --- Figure 5: state machine -------------------------------------------------------------
+def states(pdf):
+    fig, ax = figure(13.33, 7.4, 5, "State machine diagram of an enrollment's status")
+    sw, sh = 1.75, 0.62
 
-    def state(x, y, name, note, fill=GREEN, w=2.7, h=1.1):
-        box(ax, x, y, w, h, name, body=note, fill=fill, size=10.5, wrapw=28)
+    def state(cx, cy, name, w=sw):
+        ax.add_patch(FancyBboxPatch((cx - w / 2, cy - sh / 2), w, sh, boxstyle="round,pad=0,rounding_size=0.18", facecolor=WHITE, edgecolor=LINE, lw=LW, zorder=2))
+        ax.text(cx, cy, name, ha="center", va="center", fontsize=9.5, fontweight="bold", zorder=3)
 
-    ax.add_patch(Ellipse((0.95, 3.6), 0.34, 0.34, facecolor=INK))
-    state(1.9, 3.05, "Pending", "Waiting for review", fill=AMBER)
-    arrow(ax, (1.12, 3.6), (1.9, 3.6))
-    ax.text(1.0, 4.0, "Submitted on\nthe form", fontsize=9, color=INK, ha="left", va="bottom")
-    state(6.0, 4.55, "Enrolled", "Counted in reports; can be placed in a section", fill=GREEN_DARK)
-    state(6.0, 1.15, "Rejected", "With a reason", fill=OLD)
-    arrow(ax, (4.6, 3.95), (6.0, 5.0), "Approve", lx=-0.25, ly=0.2)
-    arrow(ax, (4.6, 3.25), (6.0, 1.8), "Reject", lx=-0.25, ly=-0.2)
-    arrow(ax, (6.0, 1.45), (3.25, 3.05), "Fixed and resubmitted", rad=-0.35, lx=-0.9, ly=-0.6)
+    P, En, Rj = (2.7, 3.8), (6.3, 5.3), (6.3, 2.2)
+    start(ax, 0.9, P[1])
+    state(*P, "Pending")
+    line(ax, [(1.01, P[1]), (P[0] - sw / 2, P[1])])
+    label(ax, 1.4, P[1] + 0.17, "submit", size=8, bg=False)
 
-    box(ax, 6.0, 6.25, 2.7, 0.85, "Spreadsheet import", body="Arrives Enrolled or Cancelled", fill=EXTERNAL_SOFT, text=INK, edge=EXTERNAL, size=9.5)
-    arrow(ax, (7.35, 6.25), (7.35, 5.65))
+    state(*En, "Enrolled")
+    state(*Rj, "Rejected")
+    line(ax, [(P[0] + sw / 2, P[1] + 0.15), (4.45, P[1] + 0.15), (4.45, En[1]), (En[0] - sw / 2, En[1])])
+    label(ax, 4.55, 4.6, "approve", size=8, ha="left", bg=False)
+    line(ax, [(P[0] + sw / 2, P[1] - 0.15), (4.45, P[1] - 0.15), (4.45, Rj[1] + 0.12), (Rj[0] - sw / 2, Rj[1] + 0.12)])
+    label(ax, 4.55, 2.95, "reject [reason given]", size=8, ha="left", bg=False)
+    line(ax, [(Rj[0], Rj[1] - sh / 2), (Rj[0], 1.35), (P[0], 1.35), (P[0], P[1] - sh / 2)])
+    label(ax, 4.4, 1.22, "resubmit", size=8, va="top", bg=False)
 
-    boundary(ax, 10.6, 1.1, 3.9, 6.0, "Left the school", color=EXTERNAL)
-    for i, name in enumerate(["Cancelled", "Dropped", "Transferred Out"]):
-        state(11.0, 5.55 - i * 1.45, name, "Reason recorded; seat freed", fill=EXTERNAL, w=3.1, h=1.05)
-    arrow(ax, (8.7, 5.35), (10.6, 5.35), "Change Status\n(with a reason)", ly=0.42)
-    arrow(ax, (10.6, 3.2), (8.4, 4.55), "Restore", dashed=True, rad=-0.2, lx=0.35, ly=-0.35)
+    start(ax, En[0] - 0.45, 6.55)
+    line(ax, [(En[0] - 0.45, 6.44), (En[0] - 0.45, En[1] + sh / 2)])
+    label(ax, En[0] - 0.55, 6.0, "import\nfrom workbook", size=8, ha="right", bg=False)
 
-    key(ax, 0.75, 0.4, [("Waiting", AMBER, "box"), ("Enrolled", GREEN_DARK, "box"), ("Rejected", OLD, "box"), ("Left the school", EXTERNAL, "box")])
-    save(fig, "04-status-lifecycle", pdf)
-
-
-# 5. Old system vs new ---------------------------------------------------------
-def old_vs_new(pdf):
-    fig, ax = canvas(16, 11.5, "5. What changed: the old system and the new one",
-                     "Same school workflows and the same look; rebuilt so the rules are enforced on the server.")
-    ax.text(3.9, 9.85, "Old system (HTML, CSS, JavaScript, PHP)", fontsize=13, fontweight="bold", color=OLD, ha="center")
-    ax.text(12.1, 9.85, "New system (Laravel, React, TypeScript)", fontsize=13, fontweight="bold", color=GREEN_DARK, ha="center")
-    rows = [
-        ("Pages", "A separate HTML page per role and task (about 30)", "One app; each role gets its own menu and pages, checked on the server"),
-        ("Signing in", "Login state and role kept in the browser (localStorage) and checked by JavaScript", "Server sessions; every page and action checks the role's abilities; 30-minute idle sign-out"),
-        ("Business logic", "28 hand-written PHP API files", "Controllers, services and validation; tested with 145 feature tests and 43 browser tests"),
-        ("Two people at once", "Not handled: duplicates and overwrites possible", "Unique keys, row locks and version checks: one save wins, the other is told why"),
-        ("Database", "MySQL, 14 tables", "PostgreSQL or SQLite, 10 tables (see diagram 6)"),
-        ("Personal data", "No privacy notice or access log", "Privacy notice, staff agreement, view and download log, Learner Data Record"),
-    ]
-    y = 8.95
-    for label, old, new in rows:
-        ax.text(8.0, y + 0.35, label, ha="center", va="center", fontsize=10, fontweight="bold", color=INK,
-                bbox=dict(boxstyle="round,pad=0.3", facecolor="#eef0f2", edgecolor="none"))
-        box(ax, 0.6, y - 0.62, 6.6, 0.85, old, fill=OLD_SOFT, text=INK, edge=OLD, size=10.5, wrapw=62, bold=False)
-        box(ax, 8.8, y - 0.62, 6.6, 0.85, new, fill=GREEN_SOFT, text=INK, edge=GREEN, size=10.5, wrapw=62, bold=False)
-        arrow(ax, (7.25, y - 0.2), (8.75, y - 0.2), color=GREEN)
-        y -= 1.32
-    ax.text(0.6, 0.95, "Added that the old system didn't have:", fontsize=10.5, fontweight="bold", color=INK)
-    ax.text(0.6, 0.5, wrap("importing the school's workbook · LRN lookup while typing · adjustable text size · one Reports page with year-on-year change · "
-                           "document checklist · revision requests · CSV and Excel everywhere · runs on Render or a school computer", 170),
-            fontsize=9.5, color=MUTED, va="center")
-    save(fig, "05-old-vs-new", pdf)
+    # Composite state: the learner has left the school.
+    cx0, cy0, cw, ch = 9.25, 1.4, 3.6, 4.75
+    ax.add_patch(FancyBboxPatch((cx0, cy0), cw, ch, boxstyle="round,pad=0,rounding_size=0.25", facecolor=WHITE, edgecolor=LINE, lw=LW, zorder=1))
+    ax.plot([cx0, cx0 + cw], [cy0 + ch - 0.5, cy0 + ch - 0.5], color=LINE, lw=LW, zorder=1.5)
+    ax.text(cx0 + cw / 2, cy0 + ch - 0.25, "Left the school", ha="center", va="center", fontsize=9.5, fontweight="bold")
+    subs = [("Cancelled", 4.95, "cancel"), ("Dropped", 3.75, "drop"), ("Transferred Out", 2.55, "transfer out")]
+    bus = [8.35, 7.95, 7.55]
+    for i, ((name, y, ev), bx) in enumerate(zip(subs, bus)):
+        state(cx0 + cw / 2 + 0.25, y, name, w=2.3)
+        ys = En[1] + 0.18 - 0.18 * i
+        line(ax, [(En[0] + sw / 2, ys), (bx, ys), (bx, y), (cx0 + cw / 2 + 0.25 - 1.15, y)])
+        label(ax, cx0 - 0.08, y + 0.08, f"{ev}\n[reason given]", size=7.4, ha="right", va="bottom", bg=False)
+    # Restore leaves the composite state, whichever substate it is in.
+    line(ax, [(cx0 + cw / 2, cy0 + ch), (cx0 + cw / 2, 6.75), (En[0] + 0.45, 6.75), (En[0] + 0.45, En[1] + sh / 2)])
+    label(ax, 9.0, 6.88, "restore", size=8, va="bottom", bg=False)
+    ax.text(6.66, 0.72, "Every transition is written to the audit log with the user and the time.", ha="center", fontsize=8, color=MUTED, style="italic")
+    save(fig, "fig5-state-enrollment-status", pdf)
 
 
-# 6. Data model ------------------------------------------------------------------
-def data_model(pdf):
-    fig, ax = canvas(18, 11.5, "6. Data model: the 10 tables and how they connect",
-                     "Entity relationship diagram. A line marked 1 … N: one record at the 1 end has many at the N end. Arrows inside a table name the table a column points to.")
+# --- Figure 6: ERD, crow's foot ---------------------------------------------------------------
+ROW = 0.235
+HEAD = 0.34
 
-    def table(x, y, name, cols, w=3.2, old=None):
-        h = 0.42 + 0.27 * len(cols)
-        ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.01,rounding_size=0.08", facecolor=WHITE, edgecolor=GREEN_DARK, linewidth=1.4, zorder=2))
-        ax.add_patch(FancyBboxPatch((x, y + h - 0.42), w, 0.42, boxstyle="round,pad=0.01,rounding_size=0.08", facecolor=GREEN_DARK, edgecolor=GREEN_DARK, zorder=2))
-        ax.text(x + 0.15, y + h - 0.21, name, color=WHITE, fontweight="bold", fontsize=10.5, va="center", zorder=3)
-        for i, c in enumerate(cols):
-            ax.text(x + 0.15, y + h - 0.62 - i * 0.27, c, fontsize=8.6, color=INK, va="center", zorder=3)
-        if old:
-            ax.text(x + w - 0.1, y - 0.18, f"was: {old}", fontsize=7.8, color=OLD, ha="right", va="top", style="italic")
-        return {"x": x, "y": y, "w": w, "h": h}
 
+def table(ax, x, y_top, name, cols, w=2.75):
+    h = HEAD + ROW * len(cols) + 0.06
+    y = y_top - h
+    ax.add_patch(Rectangle((x, y), w, h, facecolor=WHITE, edgecolor=LINE, lw=LW, zorder=2))
+    ax.add_patch(Rectangle((x, y_top - HEAD), w, HEAD, facecolor=TINT, edgecolor=LINE, lw=LW, zorder=2))
+    ax.text(x + w / 2, y_top - HEAD / 2, name, ha="center", va="center", fontsize=9, fontweight="bold", zorder=3)
+    ax.plot([x + 0.38, x + 0.38], [y, y_top - HEAD], color=LINE, lw=0.6, zorder=3)
+    for i, (key, col, typ) in enumerate(cols):
+        cy = y_top - HEAD - ROW * (i + 0.5) - 0.03
+        ax.text(x + 0.19, cy, key, ha="center", va="center", fontsize=6.8, fontweight="bold", color=GREEN, zorder=3)
+        ax.text(x + 0.47, cy, col, ha="left", va="center", fontsize=7.7, zorder=3, fontstyle="italic" if col.startswith("+") else "normal",
+                color=MUTED if col.startswith("+") else INK)
+        ax.text(x + w - 0.1, cy, typ, ha="right", va="center", fontsize=7.2, color=MUTED, zorder=3)
+    return {"x": x, "y": y, "w": w, "h": h, "top": y_top}
+
+
+def crow_end(ax, p, toward, kind):
+    """Draw a crow's foot end at point p on the entity edge. toward = unit vector from p out along the line."""
+    ux, uy = toward
+    nx, ny = -uy, ux
+    def seg(d0, d1, off0=0.0, off1=0.0):
+        ax.plot([p[0] + ux * d0 + nx * off0, p[0] + ux * d1 + nx * off1], [p[1] + uy * d0 + ny * off0, p[1] + uy * d1 + ny * off1], color=LINE, lw=LW, zorder=4)
+    many = kind.endswith("many")
+    if many:
+        seg(0.0, 0.2, 0.1, 0.0)
+        seg(0.0, 0.2, -0.1, 0.0)
+    bar_at = 0.28 if many else 0.12
+    if kind in ("one", "one_many"):
+        seg(bar_at, bar_at, 0.09, -0.09)
+    if kind == "one":
+        seg(0.2, 0.2, 0.09, -0.09)
+    if kind.startswith("zero"):
+        c = 0.36 if many else 0.3
+        ax.add_patch(Circle((p[0] + ux * c, p[1] + uy * c), 0.065, facecolor=WHITE, edgecolor=LINE, lw=LW, zorder=5))
+        if kind == "zero_one":
+            seg(0.14, 0.14, 0.09, -0.09)
+
+
+def relate(ax, pts, a_kind, b_kind):
+    ax.plot(*zip(*pts), color=LINE, lw=LW, zorder=1.5)
+    def unit(p, q):
+        d = hypot(q[0] - p[0], q[1] - p[1])
+        return ((q[0] - p[0]) / d, (q[1] - p[1]) / d)
+    crow_end(ax, pts[0], unit(pts[0], pts[1]), a_kind)
+    crow_end(ax, pts[-1], unit(pts[-1], pts[-2]), b_kind)
+
+
+def hop(ax, x, y):
+    """A small bridge where a horizontal line crosses a vertical one."""
+    from matplotlib.patches import Arc
+    ax.add_patch(Rectangle((x - 0.09, y - 0.03), 0.18, 0.06, facecolor=WHITE, edgecolor="none", zorder=1.6))
+    ax.add_patch(Arc((x, y), 0.18, 0.18, theta1=0, theta2=180, edgecolor=LINE, lw=LW, zorder=1.7))
+    ax.plot([x, x], [y - 0.04, y + 0.04], color=LINE, lw=LW, zorder=1.65)
+
+
+def erd(pdf):
+    fig, ax = figure(16, 10.2, 6, "Entity relationship diagram of the DJIHS Enrollment System database")
     T = {}
-    T["school_years"] = table(0.5, 7.0, "school_years", ["id", "start_year  (2026 → 2026-2027)", "is_active · is_enrollment_open", "grade_10_completers"], old="academicyear")
-    T["strands"] = table(0.5, 3.6, "strands", ["id", "code (ABM, HUMSS…) · track", "is_active"], old="strand")
-    T["users"] = table(14.3, 6.45, "users", ["id", "username (unique)", "role · is_active", "must_change_password", "privacy_agreed_at"], old="user, employee")
-    T["sections"] = table(5.0, 7.0, "sections", ["id", "school_year_id → school_years", "grade_level · strand_id → strands", "name · capacity", "adviser_id → users"], old="section")
-    T["students"] = table(5.0, 1.0, "students", ["id", "lrn (unique)", "names · birthdate · sex", "religion · IP · 4Ps · disability", "address · contact number", "father · mother · guardian", "lock_version"], old="student, parentguardian")
-    T["enrollments"] = table(9.6, 3.7, "enrollments", ["id", "student_id → students", "school_year_id → school_years", "  (one per learner per year)", "grade_level · strand_id", "section_id → sections", "learner_type · status", "privacy_notice_at / _by", "encoded_by · reviewed_by", "lock_version"], w=3.6, old="enrollment, sectionassignment")
-    T["teacher_assignments"] = table(9.6, 8.25, "teacher_assignments", ["section_id → sections", "user_id → users", "subject_name (unique per section)"], w=3.6, old="teacherassignment")
-    T["document_submissions"] = table(14.3, 3.6, "document_submissions", ["enrollment_id → enrollments", "document_type (unique per enrollment)", "is_submitted · is_verified"], w=3.4, old="documentsubmission")
-    T["revision_requests"] = table(14.3, 1.25, "revision_requests", ["enrollment_id → enrollments", "requested_by · reviewed_by", "changes {field: old, new}", "status · justification"], w=3.4, old="studentrevisionrequest")
-    T["audit_logs"] = table(0.5, 0.95, "audit_logs", ["user_id → users", "event (created, updated,", "  deleted, viewed, exported)", "record · old and new values"], old="auditlog")
+    T["school_years"] = table(ax, 0.4, 9.7, "school_years", [("PK", "id", "bigint"), ("UQ", "start_year", "smallint"), ("", "is_active", "boolean"),
+                                                            ("", "is_enrollment_open", "boolean"), ("", "is_archived", "boolean"), ("", "grade_10_completers", "smallint")])
+    T["sections"] = table(ax, 4.3, 9.7, "sections", [("PK", "id", "bigint"), ("FK", "school_year_id", "bigint"), ("", "grade_level", "tinyint"), ("FK", "strand_id", "bigint"),
+                                                    ("", "name", "varchar"), ("", "capacity", "smallint"), ("FK", "adviser_id", "bigint"), ("", "is_active", "boolean")])
+    T["teacher_assignments"] = table(ax, 8.4, 9.7, "teacher_assignments", [("PK", "id", "bigint"), ("FK", "section_id", "bigint"), ("FK", "user_id", "bigint"),
+                                                                          ("", "subject_code", "varchar"), ("", "subject_name", "varchar")])
+    T["users"] = table(ax, 12.6, 9.7, "users", [("PK", "id", "bigint"), ("UQ", "username", "varchar"), ("", "first_name", "varchar"), ("", "last_name", "varchar"),
+                                               ("", "role", "varchar"), ("", "is_active", "boolean"), ("", "must_change_password", "boolean"), ("", "privacy_agreed_at", "timestamp")])
+    T["strands"] = table(ax, 0.4, 7.05, "strands", [("PK", "id", "bigint"), ("UQ", "code", "varchar"), ("", "name", "varchar"), ("", "track", "varchar"), ("", "is_active", "boolean")])
+    T["students"] = table(ax, 4.3, 6.05, "students", [("PK", "id", "bigint"), ("UQ", "lrn", "varchar(12)"), ("", "last_name", "varchar"), ("", "first_name", "varchar"),
+                                                    ("", "middle_name", "varchar"), ("", "birthdate", "date"), ("", "sex", "varchar"), ("", "is_indigenous", "boolean"),
+                                                    ("", "is_4ps_beneficiary", "boolean"), ("", "is_pwd", "boolean"), ("", "contact_number", "varchar"),
+                                                    ("", "+ address, parents, guardian", ""), ("", "lock_version", "integer")])
+    T["enrollments"] = table(ax, 8.4, 6.75, "enrollments", [("PK", "id", "bigint"), ("FK", "student_id", "bigint"), ("FK", "school_year_id", "bigint"), ("", "grade_level", "tinyint"),
+                                                          ("FK", "strand_id", "bigint"), ("FK", "section_id", "bigint"), ("", "learner_type", "varchar"), ("", "status", "varchar"),
+                                                          ("", "privacy_notice_at", "timestamp"), ("FK", "encoded_by", "bigint"), ("FK", "reviewed_by", "bigint"), ("", "lock_version", "integer")], w=2.9)
+    T["document_submissions"] = table(ax, 12.6, 6.75, "document_submissions", [("PK", "id", "bigint"), ("FK", "enrollment_id", "bigint"), ("", "document_type", "varchar"),
+                                                                             ("", "is_submitted", "boolean"), ("", "is_verified", "boolean")])
+    T["revision_requests"] = table(ax, 12.6, 4.6, "revision_requests", [("PK", "id", "bigint"), ("FK", "enrollment_id", "bigint"), ("FK", "requested_by", "bigint"),
+                                                                       ("", "changes", "json"), ("", "status", "varchar"), ("FK", "reviewed_by", "bigint")])
+    T["audit_logs"] = table(ax, 0.4, 4.75, "audit_logs", [("PK", "id", "bigint"), ("FK", "user_id", "bigint"), ("", "event", "varchar"), ("", "auditable_type", "varchar"),
+                                                       ("", "auditable_id", "bigint"), ("", "old_values", "json"), ("", "new_values", "json"), ("", "created_at", "timestamp")])
 
-    def edge(a, b, pa, pb, rad=0.0):
-        A, B = T[a], T[b]
-        pos = {"r": lambda t, f=0.5: (t["x"] + t["w"], t["y"] + t["h"] * f), "l": lambda t, f=0.5: (t["x"], t["y"] + t["h"] * f),
-               "t": lambda t, f=0.5: (t["x"] + t["w"] * f, t["y"] + t["h"]), "b": lambda t, f=0.5: (t["x"] + t["w"] * f, t["y"])}
-        p1, p2 = pos[pa[0]](A, pa[1]), pos[pb[0]](B, pb[1])
-        ax.add_patch(FancyArrowPatch(p1, p2, arrowstyle="-", color=LINE, linewidth=1.2, connectionstyle=f"arc3,rad={rad}", zorder=1))
-        ax.text(*p1, " 1", fontsize=8.5, color=GREEN_DARK, fontweight="bold", va="bottom")
-        ax.text(*p2, "N ", fontsize=8.5, color=GREEN_DARK, fontweight="bold", va="bottom", ha="right" if pb[0] == "l" else "left")
+    def right(n): return T[n]["x"] + T[n]["w"]
+    def left(n): return T[n]["x"]
+    def top(n): return T[n]["top"]
+    def bottom(n): return T[n]["y"]
 
-    edge("school_years", "sections", ("r", 0.6), ("l", 0.7))
-    edge("school_years", "enrollments", ("b", 0.8), ("l", 0.62), rad=0.08)
-    edge("strands", "sections", ("r", 0.7), ("l", 0.25), rad=0.1)
-    edge("strands", "enrollments", ("r", 0.3), ("l", 0.35), rad=0.05)
-    edge("students", "enrollments", ("r", 0.6), ("l", 0.15), rad=0.1)
-    edge("sections", "enrollments", ("r", 0.3), ("t", 0.2), rad=-0.2)
-    edge("sections", "teacher_assignments", ("r", 0.8), ("l", 0.5))
-    edge("users", "teacher_assignments", ("l", 0.85), ("r", 0.5))
-    edge("users", "sections", ("t", 0.3), ("t", 0.75), rad=0.35)
-    edge("enrollments", "document_submissions", ("r", 0.55), ("l", 0.5))
-    edge("enrollments", "revision_requests", ("r", 0.2), ("l", 0.6), rad=0.1)
+    # school_years 1 ── N sections
+    relate(ax, [(right("school_years"), 9.1), (left("sections"), 9.1)], "one", "zero_many")
+    # school_years 1 ── N enrollments: down the gap below sections, then across.
+    relate(ax, [(2.6, bottom("school_years")), (2.6, 7.3), (8.0, 7.3), (8.0, 6.3), (left("enrollments"), 6.3)], "one", "zero_many")
+    # strands 0..1 ── N sections (junior high sections have no strand)
+    relate(ax, [(right("strands"), 6.75), (3.75, 6.75), (3.75, 7.75), (left("sections"), 7.75)], "zero_one", "zero_many")
+    hop(ax, 3.75, 7.3)
+    # strands 0..1 ── N enrollments
+    relate(ax, [(right("strands"), 6.3), (4.0, 6.3), (4.0, 6.55), (7.75, 6.55), (7.75, 5.9), (left("enrollments"), 5.9)], "zero_one", "zero_many")
+    # students 1 ── 1..N enrollments
+    relate(ax, [(right("students"), 4.9), (left("enrollments"), 4.9)], "one", "one_many")
+    # sections 0..1 ── N enrollments
+    relate(ax, [(right("sections"), 7.9), (8.15, 7.9), (8.15, 7.05), (8.95, 7.05), (8.95, top("enrollments"))], "zero_one", "zero_many")
+    # sections 1 ── N teacher_assignments; users 1 ── N teacher_assignments
+    relate(ax, [(right("sections"), 9.1), (left("teacher_assignments"), 9.1)], "one", "zero_many")
+    relate(ax, [(left("users"), 9.1), (right("teacher_assignments"), 9.1)], "one", "zero_many")
+    # users 0..1 ── N sections (adviser), over the top
+    relate(ax, [(13.9, top("users")), (13.9, 9.98), (5.65, 9.98), (5.65, top("sections"))], "zero_one", "zero_many")
+    # enrollments 1 ── N document_submissions, revision_requests
+    relate(ax, [(right("enrollments"), 6.2), (left("document_submissions"), 6.2)], "one", "zero_many")
+    relate(ax, [(right("enrollments"), 4.0), (left("revision_requests"), 4.0)], "one", "zero_many")
+    # users 0..1 ── N audit_logs, around the right and bottom edges
+    relate(ax, [(right("users"), 8.0), (15.75, 8.0), (15.75, 1.45), (1.75, 1.45), (1.75, bottom("audit_logs"))], "zero_one", "zero_many")
 
-    ax.text(0.5, 0.2, "Grade levels are a fixed list in the code (was the gradelevel table). Learners' parents are columns on students (was parentguardian). "
-                       "The section a learner is in is enrollments.section_id (was sectionassignment).\n"
-            "Not drawn, to keep the picture readable: audit_logs.user_id, and the encoded_by / reviewed_by / requested_by columns, all point to users.", fontsize=9, color=MUTED, va="bottom", linespacing=1.4)
-    save(fig, "06-data-model", pdf)
+    lx, ly = 0.45, 1.05
+    ax.text(lx, ly, "Notation:", fontsize=8, fontweight="bold", va="center")
+    for i, (k, t) in enumerate([("one", "exactly one"), ("zero_one", "zero or one"), ("one_many", "one or many"), ("zero_many", "zero or many")]):
+        x = lx + 1.0 + i * 2.15
+        ax.plot([x, x + 0.7], [ly, ly], color=LINE, lw=LW)
+        crow_end(ax, (x + 0.7, ly), (-1, 0), k)
+        ax.text(x + 0.85, ly, t, va="center", fontsize=7.8)
+    ax.text(9.6, ly, "PK primary key · FK foreign key · UQ unique", va="center", fontsize=7.8)
+    ax.text(0.45, 0.68, "One enrollment per learner per school year (unique student_id + school_year_id). Not drawn: encoded_by, reviewed_by, requested_by and "
+            "document updated_by, which also point to users.", fontsize=7.6, color=MUTED, style="italic", va="center")
+    save(fig, "fig6-erd", pdf)
+
+
+# --- Figure 7: old and new -----------------------------------------------------------------
+def old_vs_new(pdf):
+    fig, ax = figure(13.33, 9.0, 7, "Architecture of the old and new systems")
+
+    def stack(x0, title, rows):
+        ax.text(x0 + 2.9, 8.45, title, ha="center", fontsize=10.5, fontweight="bold", color=INK)
+        for i, (tier, body) in enumerate(rows):
+            y = 7.35 - i * 1.05
+            ax.add_patch(Rectangle((x0, y), 1.45, 0.8, facecolor=SOFT, edgecolor=LINE, lw=LW, zorder=2))
+            ax.text(x0 + 0.72, y + 0.4, tier, ha="center", va="center", fontsize=8, fontweight="bold", color=GREEN, zorder=3, linespacing=1.15)
+            ax.add_patch(Rectangle((x0 + 1.45, y), 4.35, 0.8, facecolor=WHITE, edgecolor=LINE, lw=LW, zorder=2))
+            ax.text(x0 + 1.6, y + 0.4, body, ha="left", va="center", fontsize=8.2, zorder=3, linespacing=1.3)
+            if i:
+                line(ax, [(x0 + 3.62, y + 1.05), (x0 + 3.62, y + 0.8)], arrow_start=True)
+
+    stack(0.45, "Old system", [("Presentation", "About 30 static HTML pages, one set per role\nJavaScript fetch calls; login state kept in localStorage"),
+                               ("Application", "28 separate PHP API files\nOnly 3 check the server session"),
+                               ("Data", "MySQL, 14 tables")])
+    stack(7.05, "New system", [("Presentation", "One React and TypeScript app, pages sent by Inertia\nMenus and pages per role"),
+                               ("Application", "Laravel 12: middleware checks every request;\ncontrollers, services and validation"),
+                               ("Data", "PostgreSQL or SQLite, 10 tables\nunique keys, row locks, version checks")])
+    ax.annotate("", xy=(7.0, 6.3), xytext=(6.3, 6.3), arrowprops=dict(arrowstyle="-|>", color=LINE, lw=1.4, mutation_scale=12))
+
+    rows = [("Aspect", "Old system", "New system"),
+            ("Access control", "Checked in the browser", "Checked on the server for every page and action"),
+            ("Two users at once", "Duplicates and overwrites possible", "One save wins; the other is told why"),
+            ("Validation", "Spread across each API file", "Shared server-side rules for every form"),
+            ("Testing", "None automated", "145 feature tests, 43 browser tests"),
+            ("Data privacy", "No notice or access log", "Privacy notice, staff agreement, access log"),
+            ("Deployment", "Local XAMPP-style server", "Render (cloud) or a school computer")]
+    cw = [2.3, 4.3, 5.8]
+    x0, y0, rh = 0.45, 3.85, 0.42
+    for r, cells in enumerate(rows):
+        x = x0
+        for c, text in enumerate(cells):
+            ax.add_patch(Rectangle((x, y0 - r * rh), cw[c], rh, facecolor=TINT if r == 0 else (SOFT if c == 0 else WHITE), edgecolor=LINE, lw=0.8, zorder=2))
+            ax.text(x + 0.12, y0 - r * rh + rh / 2, text, va="center", fontsize=8.4, fontweight="bold" if r == 0 or c == 0 else "normal", zorder=3)
+            x += cw[c]
+    save(fig, "fig7-old-vs-new", pdf)
 
 
 if __name__ == "__main__":
     with PdfPages(OUT / "DJIHS-system-diagrams.pdf") as pdf:
-        for draw in (system_context, containers, enrollment_flow, status_lifecycle, old_vs_new, data_model):
+        for draw in (architecture, context, dfd_level1, activity, states, erd, old_vs_new):
             draw(pdf)
     print("Wrote", sorted(p.name for p in OUT.iterdir() if p.suffix in {".png", ".svg", ".pdf"}))

@@ -175,7 +175,7 @@ npm run test:e2e
 
 ## Diagrams
 
-[`docs/diagrams`](docs/diagrams) has the system context, how the system is built, the enrollment flow, the status lifecycle, what changed from the old system, and the data model, as PNG, SVG and one PDF. `docs/diagrams/generate.py` redraws them.
+[`docs/diagrams`](docs/diagrams) has seven figures in standard notations: system architecture (three-tier), context diagram and level 1 data flow diagram (Gane & Sarson), UML activity and state machine diagrams, a crow's foot ERD, and an old-versus-new comparison. Each is a PNG and an SVG, and all are in one PDF. `docs/diagrams/generate.py` redraws them.
 
 ## Testing with real users
 

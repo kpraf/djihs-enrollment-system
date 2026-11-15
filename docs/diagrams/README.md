@@ -1,15 +1,18 @@
-# System diagrams
+# System figures
 
-| File | What it shows |
-| --- | --- |
-| `01-system-context` | Who uses the system and what it exchanges data with (C4 level 1) |
-| `02-containers` | How it is built: web pages, web application, database, files (C4 level 2) |
-| `03-enrollment-flow` | From paper forms to a learner in a section, one lane per role |
-| `04-status-lifecycle` | Every status an enrollment can have, and what moves it |
-| `05-old-vs-new` | What changed from the old HTML/PHP system |
-| `06-data-model` | The 10 tables, how they connect, and which old tables they replace |
+Drawn in standard notations so they can go straight into a paper, report or slides.
 
-`DJIHS-system-diagrams.pdf` has all six, one per page. Each diagram is also a PNG (for documents and slides) and an SVG (scales without blurring).
+| Figure | File | Notation |
+| --- | --- | --- |
+| 1. System architecture | `fig1-system-architecture` | Three-tier: presentation, application, data |
+| 2. Context diagram | `fig2-context-diagram` | Data flow diagram, level 0 (Gane & Sarson) |
+| 3. Data flow diagram | `fig3-dfd-level-1` | Data flow diagram, level 1 (Gane & Sarson) |
+| 4. Enrollment activity | `fig4-activity-enrollment` | UML 2 activity diagram with partitions (swimlanes) |
+| 5. Enrollment status | `fig5-state-enrollment-status` | UML 2 state machine diagram |
+| 6. Database | `fig6-erd` | Entity relationship diagram, crow's foot notation |
+| 7. Old and new system | `fig7-old-vs-new` | Architecture comparison and table |
+
+Each figure is a PNG (for documents) and an SVG (scales without blurring). `DJIHS-system-diagrams.pdf` has all seven, one per page.
 
 To redraw them after the system changes, edit `generate.py`, then run:
 
@@ -21,4 +24,4 @@ pip install matplotlib
 python3 docs/diagrams/generate.py
 ```
 
-The architecture diagrams follow the [C4 model](https://c4model.com): one level of detail per diagram, each with a title and a key.
+Figures 5 and 7 quote counts (tests, tables). Update them in `generate.py` when those change.
