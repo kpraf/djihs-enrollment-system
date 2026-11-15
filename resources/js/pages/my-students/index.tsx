@@ -13,7 +13,7 @@ interface Props {
 export default function MyStudents({ schoolYear, classes, selected }: Props) {
     return (
         <AppLayout>
-            <Head title="My Students" />
+            <Head title="My Classes" />
             <PageHeader
                 title="My Classes"
                 description={schoolYear ? `Classes you teach in school year ${schoolYear.name}.` : 'There is no active school year.'}

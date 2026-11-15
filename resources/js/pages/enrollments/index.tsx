@@ -84,14 +84,14 @@ export default function EnrollmentsIndex({ enrollments, filters, options }: Prop
 
     return (
         <AppLayout>
-            <Head title="Student Management" />
+            <Head title="Learners" />
             <PageHeader
-                title="Student Management"
-                description="Search, filter, and manage all student records."
+                title="Learners"
+                description="Search, filter and manage every learner's record."
                 actions={
                     can('encode-enrollments') && (
                         <Link href="/enrollments/create" className="btn-primary">
-                            <Icon name="add" /> Add New Student
+                            <Icon name="add" /> New Enrollment
                         </Link>
                     )
                 }
@@ -115,7 +115,7 @@ export default function EnrollmentsIndex({ enrollments, filters, options }: Prop
                 </label>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     {select(
-                        'Academic Year',
+                        'School Year',
                         'school_year',
                         options.schoolYears.map((y) => ({ value: y.id, label: y.name })),
                         '',

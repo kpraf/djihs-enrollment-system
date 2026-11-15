@@ -28,7 +28,7 @@ test('every main page fits a phone screen and the menu opens as a drawer', async
     }
 
     await page.getByRole('button', { name: 'Open menu' }).click();
-    await page.getByRole('link', { name: 'Student Management' }).click();
+    await page.getByRole('link', { name: 'Learners', exact: true }).click();
     await expect(page).toHaveURL(/\/enrollments$/);
     await expect(page.getByRole('button', { name: 'Open menu' })).toBeVisible();
 });

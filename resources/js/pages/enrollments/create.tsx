@@ -31,7 +31,7 @@ export default function CreateEnrollment({
             />
             {!schoolYear.is_enrollment_open && (
                 <div className="mb-6 flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
-                    <Icon name="lock" /> Enrollment for school year {schoolYear.name} is closed. The ICT Coordinator can open it in Academic Years.
+                    <Icon name="lock" /> Enrollment for school year {schoolYear.name} is closed. The ICT Coordinator can open it in School Years.
                 </div>
             )}
             <EnrollmentForm

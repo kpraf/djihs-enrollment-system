@@ -11,7 +11,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Academic Year Management: one active year at a time; old years archived.
+ * School Years: one active year at a time; old years archived.
  */
 class SchoolYearController extends Controller
 {

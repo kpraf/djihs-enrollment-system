@@ -17,7 +17,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Assign Students: place enrolled learners of the active school year into sections.
+ * Assign to Sections: place enrolled learners of the active school year into sections.
  */
 class SectionAssignmentController extends Controller
 {

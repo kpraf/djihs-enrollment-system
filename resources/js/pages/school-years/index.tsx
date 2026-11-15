@@ -32,9 +32,9 @@ export default function SchoolYears({ years, suggestedStart }: { years: Year[]; 
 
     return (
         <AppLayout>
-            <Head title="Academic Years" />
+            <Head title="School Years" />
             <PageHeader
-                title="Academic Year Management"
+                title="School Years"
                 description="Create school years, choose the active one, and open or close enrollment."
                 actions={
                     <>
@@ -42,7 +42,7 @@ export default function SchoolYears({ years, suggestedStart }: { years: Year[]; 
                             <Icon name="archive" /> {showArchived ? 'Current Years' : 'Archived Years'}
                         </button>
                         <button type="button" className="btn-primary" onClick={() => setCreating(true)}>
-                            <Icon name="add" /> New Academic Year
+                            <Icon name="add" /> New School Year
                         </button>
                     </>
                 }
@@ -165,7 +165,7 @@ function CreateYear({ open, suggestedStart, onClose }: { open: boolean; suggeste
     };
 
     return (
-        <Modal open={open} onClose={onClose} title="Create Academic Year" size="sm">
+        <Modal open={open} onClose={onClose} title="Create School Year" size="sm">
             <form onSubmit={submit} className="space-y-4" noValidate>
                 <Field
                     label="Starting year"

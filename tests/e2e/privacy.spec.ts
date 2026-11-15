@@ -31,7 +31,7 @@ test('a new staff member accepts the confidentiality agreement before seeing any
     await page.getByRole('button', { name: 'Accept and Continue' }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
     await page.goto('/enrollments');
-    await expect(page.getByRole('heading', { name: 'Student Management' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Learners' })).toBeVisible();
 });
 
 test('the form refuses to submit until the privacy notice is confirmed', async ({ page }) => {

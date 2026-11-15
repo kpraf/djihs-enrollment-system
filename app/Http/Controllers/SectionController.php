@@ -20,7 +20,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Manage Sections: sections per school year, their adviser and capacity,
+ * Sections: sections per school year, their adviser and capacity,
  * and the subject teachers assigned to each.
  */
 class SectionController extends Controller

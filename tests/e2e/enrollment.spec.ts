@@ -19,8 +19,8 @@ test('encode a learner, then find, view, edit, cancel and restore them', async (
     // The form is cleared for the next learner.
     await expect(page.getByLabel('Learner Reference No. (LRN)')).toHaveValue('');
 
-    // Find them in Student Management.
-    await page.getByRole('link', { name: 'Student Management' }).first().click();
+    // Find them in Learners.
+    await page.getByRole('link', { name: 'Learners', exact: true }).first().click();
     await page.getByLabel('Search by name or LRN').fill(`liza bautista ${tag(lrn)}`);
     await expect(page.getByRole('link', { name: `BAUTISTA, LIZA ${tag(lrn)}`, exact: true })).toBeVisible();
     await page.getByRole('link', { name: `BAUTISTA, LIZA ${tag(lrn)}`, exact: true }).click();

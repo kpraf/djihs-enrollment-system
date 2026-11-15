@@ -82,9 +82,9 @@ export default function AssignStudents({ schoolYear, unassigned, sections, filte
 
     return (
         <AppLayout>
-            <Head title="Assign Students" />
+            <Head title="Assign to Sections" />
             <PageHeader
-                title="Assign Students"
+                title="Assign to Sections"
                 description={
                     schoolYear ? `Place enrolled learners into sections for school year ${schoolYear.name}.` : 'There is no active school year.'
                 }
@@ -198,7 +198,7 @@ export default function AssignStudents({ schoolYear, unassigned, sections, filte
                         <div className="panel px-6 py-10 text-center text-sm text-slate-500">
                             No sections for this grade yet.{' '}
                             <Link href="/sections" className="text-primary font-medium hover:underline">
-                                Create one in Manage Sections
+                                Create one in Sections
                             </Link>
                             .
                         </div>

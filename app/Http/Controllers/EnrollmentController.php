@@ -33,7 +33,7 @@ use Inertia\Response;
 class EnrollmentController extends Controller
 {
     /**
-     * Student Management.
+     * Learners.
      */
     public function index(Request $request): Response
     {

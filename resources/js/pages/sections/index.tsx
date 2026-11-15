@@ -52,9 +52,9 @@ export default function Sections({ sections, schoolYears, selectedYear, options 
 
     return (
         <AppLayout>
-            <Head title="Manage Sections" />
+            <Head title="Sections" />
             <PageHeader
-                title="Manage Sections"
+                title="Sections"
                 description={selectedYear ? `Sections for school year ${selectedYear.name}.` : 'Create a school year first.'}
                 actions={
                     <>
@@ -156,7 +156,7 @@ export default function Sections({ sections, schoolYears, selectedYear, options 
             <p className="mt-4 text-sm text-slate-500">
                 Place learners into sections on{' '}
                 <Link href="/section-assignments" className="text-primary font-medium hover:underline">
-                    Assign Students
+                    Assign to Sections
                 </Link>
                 .
             </p>

@@ -13,24 +13,62 @@ export interface NavItem {
     ability?: Ability;
     /** Extra paths that should highlight this item. */
     match?: RegExp;
+    /** Shows the number of items waiting for this user's review. */
+    pendingCount?: boolean;
 }
 
-export const navItems: NavItem[] = [
-    { title: 'Dashboard', href: '/dashboard', icon: 'dashboard' },
-    { title: 'New Enrollment', href: '/enrollments/create', icon: 'how_to_reg', ability: 'encode-enrollments', match: /^\/imports/ },
-    { title: 'Review Enrollments', href: '/reviews', icon: 'rate_review', ability: 'review-enrollments' },
-    { title: 'Student Management', href: '/enrollments', icon: 'groups', ability: 'view-enrollments', match: /^\/enrollments\/\d+/ },
-    { title: 'My Section', href: '/my-section', icon: 'co_present', ability: 'view-own-section' },
-    { title: 'My Students', href: '/my-students', icon: 'school', ability: 'view-own-classes' },
-    { title: 'Manage Sections', href: '/sections', icon: 'meeting_room', ability: 'manage-sections' },
-    { title: 'Assign Students', href: '/section-assignments', icon: 'group_add', ability: 'manage-sections' },
-    { title: 'Manage Strands', href: '/strands', icon: 'category', ability: 'manage-sections' },
-    { title: 'Analytics', href: '/analytics', icon: 'analytics', ability: 'view-analytics' },
-    { title: 'Metrics', href: '/metrics', icon: 'speed', ability: 'view-metrics' },
-    { title: 'Academic Years', href: '/school-years', icon: 'calendar_month', ability: 'manage-school-years' },
-    { title: 'User Accounts', href: '/users', icon: 'person_add', ability: 'manage-users' },
-    { title: 'Audit Log', href: '/audit-log', icon: 'fact_check', ability: 'view-audit-log' },
+export interface NavGroup {
+    /** Small heading above the group; the first group has none. */
+    title?: string;
+    items: NavItem[];
+}
+
+/**
+ * Pages grouped in the order work happens: enroll, place in sections,
+ * report, administer. A group only shows if the role can open something in it.
+ */
+export const navGroups: NavGroup[] = [
+    {
+        items: [
+            { title: 'Dashboard', href: '/dashboard', icon: 'dashboard' },
+            { title: 'My Section', href: '/my-section', icon: 'co_present', ability: 'view-own-section' },
+            { title: 'My Classes', href: '/my-students', icon: 'school', ability: 'view-own-classes' },
+        ],
+    },
+    {
+        title: 'Enrollment',
+        items: [
+            { title: 'New Enrollment', href: '/enrollments/create', icon: 'how_to_reg', ability: 'encode-enrollments', match: /^\/imports/ },
+            { title: 'Review Enrollments', href: '/reviews', icon: 'rate_review', ability: 'review-enrollments', pendingCount: true },
+            { title: 'Learners', href: '/enrollments', icon: 'groups', ability: 'view-enrollments', match: /^\/enrollments\/\d+/ },
+        ],
+    },
+    {
+        title: 'Sections',
+        items: [
+            { title: 'Sections', href: '/sections', icon: 'meeting_room', ability: 'manage-sections' },
+            { title: 'Assign to Sections', href: '/section-assignments', icon: 'group_add', ability: 'manage-sections' },
+            { title: 'Strands', href: '/strands', icon: 'category', ability: 'manage-sections' },
+        ],
+    },
+    {
+        title: 'Reports',
+        items: [
+            { title: 'Analytics', href: '/analytics', icon: 'analytics', ability: 'view-analytics' },
+            { title: 'Metrics', href: '/metrics', icon: 'speed', ability: 'view-metrics' },
+        ],
+    },
+    {
+        title: 'Administration',
+        items: [
+            { title: 'School Years', href: '/school-years', icon: 'calendar_month', ability: 'manage-school-years' },
+            { title: 'User Accounts', href: '/users', icon: 'person_add', ability: 'manage-users' },
+            { title: 'Audit Log', href: '/audit-log', icon: 'fact_check', ability: 'view-audit-log' },
+        ],
+    },
 ];
+
+export const navItems: NavItem[] = navGroups.flatMap((g) => g.items);
 
 function isActive(url: string, item: NavItem): boolean {
     const path = url.split('?')[0];
@@ -45,6 +83,7 @@ export function Sidebar({ onNavigate, onLogout }: { onNavigate?: () => void; onL
     const page = usePage<AuthedData>();
     const user = page.props.auth.user;
     const can = useCan();
+    const pending = page.props.pendingReviews;
     const initials = `${user.first_name.charAt(0)}${user.last_name.charAt(0)}`.toUpperCase();
 
     return (
@@ -60,27 +99,54 @@ export function Sidebar({ onNavigate, onLogout }: { onNavigate?: () => void; onL
                     <h1 className="mt-3 text-lg leading-tight font-bold">DJIHS {user.role_label}</h1>
                     <p className="text-xs text-green-100/80">Don Jose Integrated High School</p>
                 </div>
-                <nav className="space-y-1 px-4 pb-4" aria-label="Main">
-                    {navItems
-                        .filter((item) => !item.ability || can(item.ability))
-                        .map((item) => {
-                            const active = isActive(page.url, item);
-                            return (
-                                <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    onClick={onNavigate}
-                                    aria-current={active ? 'page' : undefined}
-                                    className={cn(
-                                        'flex items-center gap-3 rounded-lg px-4 py-3 transition-colors',
-                                        active ? 'text-primary bg-white font-semibold shadow-sm' : 'text-green-50 hover:bg-white/10 hover:text-white',
-                                    )}
-                                >
-                                    <Icon name={item.icon} />
-                                    <span className="text-sm font-medium">{item.title}</span>
-                                </Link>
-                            );
-                        })}
+                <nav className="px-4 pb-4" aria-label="Main">
+                    {navGroups.map((group) => {
+                        const items = group.items.filter((item) => !item.ability || can(item.ability));
+                        if (items.length === 0) return null;
+                        const headingId = group.title ? `nav-${group.title.toLowerCase()}` : undefined;
+
+                        return (
+                            <div key={group.title ?? 'main'} className={group.title ? 'mt-5' : undefined} role="group" aria-labelledby={headingId}>
+                                {group.title && (
+                                    <p
+                                        id={headingId}
+                                        className="mb-1.5 px-4 text-[0.6875rem] font-semibold tracking-wider text-green-100/60 uppercase"
+                                    >
+                                        {group.title}
+                                    </p>
+                                )}
+                                <div className="space-y-1">
+                                    {items.map((item) => {
+                                        const active = isActive(page.url, item);
+                                        const count = item.pendingCount ? (pending ?? 0) : 0;
+                                        return (
+                                            <Link
+                                                key={item.href}
+                                                href={item.href}
+                                                onClick={onNavigate}
+                                                aria-current={active ? 'page' : undefined}
+                                                className={cn(
+                                                    'flex items-center gap-3 rounded-lg px-4 py-2.5 transition-colors',
+                                                    active
+                                                        ? 'text-primary bg-white font-semibold shadow-sm'
+                                                        : 'text-green-50 hover:bg-white/10 hover:text-white',
+                                                )}
+                                            >
+                                                <Icon name={item.icon} />
+                                                <span className="flex-1 text-sm font-medium">{item.title}</span>
+                                                {count > 0 && (
+                                                    <span className="rounded-full bg-amber-400 px-2 py-0.5 text-xs font-bold text-amber-950 tabular-nums">
+                                                        {count > 99 ? '99+' : count}
+                                                        <span className="sr-only"> waiting</span>
+                                                    </span>
+                                                )}
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        );
+                    })}
                 </nav>
             </div>
 

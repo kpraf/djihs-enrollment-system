@@ -85,7 +85,7 @@ export async function postAs(context: BrowserContext, request: APIRequestContext
     });
 }
 
-/** Total learners the Student Management search finds. */
+/** Total learners the Learners page search finds. */
 export async function countInList(page: Page, search: string): Promise<number> {
     await page.goto(`/enrollments?search=${encodeURIComponent(search)}`);
     const text = await page.locator('text=/Showing \\d+ to \\d+ of \\d+ results/').innerText();

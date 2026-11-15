@@ -3,8 +3,12 @@
 namespace App\Http\Middleware;
 
 use App\Enums\Ability;
+use App\Enums\EnrollmentStatus;
 use App\Enums\TextSize;
+use App\Models\Enrollment;
+use App\Models\RevisionRequest;
 use App\Models\SchoolYear;
+use App\Models\User;
 use App\Providers\AppServiceProvider;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -54,6 +58,8 @@ class HandleInertiaRequests extends Middleware
                 'options' => TextSize::options(),
             ],
             'activeSchoolYear' => fn () => $user ? SchoolYear::active()?->only(['id', 'name', 'is_enrollment_open']) : null,
+            // The count beside Review Enrollments in the sidebar.
+            'pendingReviews' => fn () => $user?->hasAbility(Ability::ReviewEnrollments) ? $this->pendingReviews($user) : null,
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
@@ -61,5 +67,18 @@ class HandleInertiaRequests extends Middleware
                 'credential' => fn () => $request->session()->get('credential'),
             ],
         ];
+    }
+
+    /**
+     * Pending enrollments this school year, plus revision requests for those
+     * who approve them: the same numbers as on Review Enrollments.
+     */
+    private function pendingReviews(User $user): int
+    {
+        $year = SchoolYear::active();
+        $enrollments = $year ? Enrollment::where('school_year_id', $year->id)->where('status', EnrollmentStatus::Pending)->count() : 0;
+        $revisions = $user->hasAbility(Ability::EditEnrollments) ? RevisionRequest::where('status', RevisionRequest::PENDING)->count() : 0;
+
+        return $enrollments + $revisions;
     }
 }

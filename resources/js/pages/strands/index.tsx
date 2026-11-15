@@ -26,9 +26,9 @@ export default function Strands({ strands, tracks }: { strands: StrandRow[]; tra
 
     return (
         <AppLayout>
-            <Head title="Manage Strands" />
+            <Head title="Strands" />
             <PageHeader
-                title="Manage Strands"
+                title="Strands"
                 description="Senior High School tracks and strands offered by the school."
                 actions={
                     <button type="button" className="btn-primary" onClick={() => setEditing('new')}>

@@ -186,7 +186,7 @@ export default function ImportCreate({ schoolYears, preview, result }: Props) {
                         <Summary summary={result} />
                         <Notes summary={result} />
                         <Link href="/enrollments" className="btn-primary">
-                            View Student Management
+                            View Learners
                         </Link>
                     </div>
                 )}
