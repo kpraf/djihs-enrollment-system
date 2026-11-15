@@ -64,11 +64,11 @@
         ],
         "start": [
             "Composer\\Config::disableProcessTimeout",
-            "@php artisan serve --ansi"
+            "@php artisan serve --no-reload --ansi"
         ],
         "start:network": [
             "Composer\\Config::disableProcessTimeout",
-            "@php artisan serve --host=0.0.0.0 --port=8000 --ansi"
+            "@php artisan serve --host=0.0.0.0 --port=8000 --no-reload --ansi"
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
