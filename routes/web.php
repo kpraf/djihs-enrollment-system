@@ -1,16 +1,15 @@
 <?php
 
-use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\ImportController;
-use App\Http\Controllers\MetricsController;
 use App\Http\Controllers\MySectionController;
 use App\Http\Controllers\MyStudentsController;
 use App\Http\Controllers\PrivacyController;
+use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\SchoolYearController;
 use App\Http\Controllers\SectionAssignmentController;
@@ -113,13 +112,12 @@ Route::middleware('auth')->group(function () {
     });
 
     // Reports
-    Route::middleware('can:view-analytics')->group(function () {
-        Route::get('analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
-        Route::get('analytics/export', [AnalyticsController::class, 'export'])->name('analytics.export');
-    });
-    Route::middleware('can:view-metrics')->group(function () {
-        Route::get('metrics', [MetricsController::class, 'index'])->name('metrics.index');
-        Route::get('metrics/export', [MetricsController::class, 'export'])->name('metrics.export');
+    // Reports: the old Analytics and Metrics pages in one place.
+    Route::middleware('can:open-reports')->group(function () {
+        Route::get('reports', [ReportsController::class, 'index'])->name('reports.index');
+        Route::get('reports/export', [ReportsController::class, 'export'])->name('reports.export');
+        Route::redirect('analytics', '/reports');
+        Route::redirect('metrics', '/reports');
     });
 
     // Academic Year Management

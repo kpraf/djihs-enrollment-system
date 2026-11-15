@@ -79,6 +79,62 @@ class AnalyticsReport
     }
 
     /**
+     * Enrolled learners per grade and strand, by sex: the school's
+     * MONITORING tab. Junior high grades have no strand.
+     *
+     * @return list<array{grade: int, strand: ?string, track: ?string, male: int, female: int, total: int}>
+     */
+    public function byGradeAndStrand(SchoolYear $year): array
+    {
+        $strands = Strand::orderBy('sort_order')->get()->keyBy('id');
+
+        return $this->rows($year->id, null)
+            ->groupBy(fn ($r) => $r->grade_level.'|'.($r->strand_id ?? ''))
+            ->map(function (Collection $g) use ($strands) {
+                $first = $g->first();
+                $strand = $first->strand_id ? $strands->get($first->strand_id) : null;
+
+                return [
+                    'grade' => $first->grade_level,
+                    'strand' => $strand?->code,
+                    'track' => $strand?->track->value,
+                    'sort' => $strand?->sort_order ?? 0,
+                    'male' => (int) $g->where('sex', 'male')->sum('n'),
+                    'female' => (int) $g->where('sex', 'female')->sum('n'),
+                    'total' => (int) $g->sum('n'),
+                ];
+            })
+            ->sortBy([['grade', 'asc'], ['sort', 'asc']])
+            ->map(fn ($r) => collect($r)->except('sort')->all())
+            ->values()->all();
+    }
+
+    /**
+     * Enrolled learners per strand in every school year, oldest first.
+     *
+     * @return list<array{code: string, name: string, years: list<array{year: string, total: int}>}>
+     */
+    public function strandTrends(): array
+    {
+        $years = SchoolYear::orderBy('start_year')->get();
+        $counts = Enrollment::where('status', EnrollmentStatus::Enrolled)->whereNotNull('strand_id')
+            ->groupBy('school_year_id', 'strand_id')
+            ->select('school_year_id', 'strand_id', DB::raw('count(*) as n'))
+            ->toBase()->get();
+
+        return Strand::orderBy('sort_order')->get()
+            ->filter(fn (Strand $s) => $counts->where('strand_id', $s->id)->sum('n') > 0)
+            ->map(fn (Strand $s) => [
+                'code' => $s->code,
+                'name' => $s->name,
+                'years' => $years->map(fn (SchoolYear $y) => [
+                    'year' => $y->name,
+                    'total' => (int) $counts->where('strand_id', $s->id)->where('school_year_id', $y->id)->sum('n'),
+                ])->values()->all(),
+            ])->values()->all();
+    }
+
+    /**
      * Two school years side by side, per grade, sex and learner type.
      *
      * @return array<string, mixed>

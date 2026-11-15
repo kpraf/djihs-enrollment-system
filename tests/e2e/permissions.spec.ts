@@ -11,13 +11,12 @@ const menu = [
     'Sections',
     'Assign to Sections',
     'Strands',
-    'Analytics',
-    'Metrics',
+    'Reports',
     'School Years',
     'User Accounts',
     'Audit Log',
 ];
-const headings = ['Enrollment', 'Sections', 'Reports', 'Administration'];
+const headings = ['Enrollment', 'Sections', 'Administration'];
 
 // The same pages each role had in the legacy system, now grouped.
 const expected: Record<string, { items: string[]; groups: string[] }> = {
@@ -27,8 +26,8 @@ const expected: Record<string, { items: string[]; groups: string[] }> = {
         groups: ['Enrollment', 'Administration'],
     },
     registrar: {
-        items: ['Dashboard', 'New Enrollment', 'Review Enrollments', 'Learners', 'Analytics', 'User Accounts', 'Audit Log'],
-        groups: ['Enrollment', 'Reports', 'Administration'],
+        items: ['Dashboard', 'Reports', 'New Enrollment', 'Review Enrollments', 'Learners', 'User Accounts', 'Audit Log'],
+        groups: ['Enrollment', 'Administration'],
     },
     keyteacher: { items: ['Dashboard', 'Learners', 'Sections', 'Assign to Sections', 'Strands'], groups: ['Enrollment', 'Sections'] },
     adviser: { items: ['Dashboard', 'My Section', 'New Enrollment', 'Review Enrollments', 'Learners'], groups: ['Enrollment'] },
@@ -71,8 +70,8 @@ test('typing a forbidden address is refused by the server', async ({ page }) => 
         '/enrollments/create',
         '/reviews',
         '/sections',
+        '/reports',
         '/analytics',
-        '/metrics',
         '/school-years',
         '/audit-log',
         '/imports',

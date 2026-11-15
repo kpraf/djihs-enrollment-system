@@ -9,6 +9,7 @@ use App\Models\SchoolYear;
 use App\Models\Strand;
 use App\Models\Student;
 use App\Models\User;
+use App\Services\Reports\AnalyticsReport;
 use App\Services\Reports\MetricsReport;
 use Database\Seeders\StrandSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -48,10 +49,13 @@ class ReportsAndDashboardTest extends TestCase
         $this->assertSame(50.0, $m['transition_rate'], 'Two Grade 11 learners out of 4 Grade 10 completers.');
         $this->assertSame(0.0, $m['growth_rate'], 'Four enrolled last year and four enrolled now; the dropped learner does not count.');
 
+        // On the Reports page, the rates are shown to administrators only.
         $admin = User::factory()->role(Role::Admin)->create();
-        $this->actingAs($admin)->get('/metrics')->assertOk()->assertInertia(fn ($p) => $p->component('metrics/index')->where('metrics.total_enrollment', 4));
-        $this->actingAs($admin)->get('/metrics/export')->assertOk();
-        $this->actingAs(User::factory()->role(Role::Registrar)->create())->get('/metrics')->assertForbidden();
+        $this->actingAs($admin)->get('/reports')->assertOk()->assertInertia(fn ($p) => $p->component('reports/index')
+            ->where('rates.total_enrollment', 4)->where('rates.promotion_rate', 50));
+        $this->actingAs(User::factory()->role(Role::Registrar)->create())->get('/reports')->assertOk()
+            ->assertInertia(fn ($p) => $p->where('rates', null));
+        $this->actingAs($admin)->get('/metrics')->assertRedirect('/reports');
     }
 
     public function test_analytics_and_year_comparison(): void
@@ -64,13 +68,49 @@ class ReportsAndDashboardTest extends TestCase
         Enrollment::factory()->create(['school_year_id' => $b->id, 'grade_level' => 11, 'strand_id' => Strand::first()->id, 'status' => EnrollmentStatus::Pending]);
         $registrar = User::factory()->role(Role::Registrar)->create();
 
-        $this->actingAs($registrar)->get("/analytics?compare_a={$a->id}&compare_b={$b->id}")
-            ->assertInertia(fn ($p) => $p->component('analytics/index')
-                ->where('report.overview.total', 5)
-                ->where('comparison.by_grade.0.change', 2)
-                ->has('trends', 2));
-        $this->actingAs($registrar)->get('/analytics/export')->assertOk();
-        $this->actingAs(User::factory()->role(Role::Adviser)->create())->get('/analytics')->assertForbidden();
+        // Compared with the year before by default.
+        $this->actingAs($registrar)->get('/reports')
+            ->assertInertia(fn ($p) => $p->component('reports/index')
+                ->where('filters.compare', $a->id)
+                ->where('summary.now.enrolled', 5)
+                ->where('summary.before.enrolled', 3)
+                ->where('table.0.total', 5)
+                ->where('table.0.before', 3)
+                ->has('trends', 2)
+                ->has('strandTrends', 1)
+                ->where('attention.0.count', 1, 'One enrollment is waiting for review.'));
+        // "No comparison" turns the comparison off.
+        $this->actingAs($registrar)->get('/reports?compare=0')->assertInertia(fn ($p) => $p->where('summary.before', null)->where('table.0.before', null));
+        $this->actingAs($registrar)->get('/reports/export')->assertOk();
+        $this->actingAs($registrar)->get('/analytics')->assertRedirect('/reports');
+        $this->actingAs(User::factory()->role(Role::Adviser)->create())->get('/reports')->assertForbidden();
+        $this->actingAs(User::factory()->role(Role::IctCoordinator)->create())->get('/reports')->assertForbidden();
+    }
+
+    public function test_the_grade_and_strand_table_matches_the_workbook_layout(): void
+    {
+        $this->seed(StrandSeeder::class);
+        $year = SchoolYear::factory()->active()->create();
+        $humss = Strand::where('code', 'HUMSS')->value('id');
+        $abm = Strand::where('code', 'ABM')->value('id');
+        $make = fn (int $n, int $grade, ?int $strand, string $sex) => Enrollment::factory()->count($n)->enrolled()->create([
+            'school_year_id' => $year->id, 'grade_level' => $grade, 'strand_id' => $strand,
+            'student_id' => fn () => Student::factory()->create(['sex' => $sex]),
+        ]);
+        $make(2, 11, $humss, 'female');
+        $make(1, 11, $humss, 'male');
+        $make(3, 11, $abm, 'male');
+        $make(4, 12, $humss, 'female');
+        $make(2, 10, null, 'male');
+
+        $rows = app(AnalyticsReport::class)->byGradeAndStrand($year);
+
+        $this->assertSame([
+            [10, null, 2, 0, 2],
+            [11, 'ABM', 3, 0, 3],
+            [11, 'HUMSS', 1, 2, 3],
+            [12, 'HUMSS', 0, 4, 4],
+        ], array_map(fn ($r) => [$r['grade'], $r['strand'], $r['male'], $r['female'], $r['total']], $rows));
     }
 
     public function test_each_role_gets_its_dashboard_blocks(): void

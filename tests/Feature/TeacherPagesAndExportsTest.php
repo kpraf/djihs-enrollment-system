@@ -174,19 +174,23 @@ class TeacherPagesAndExportsTest extends TestCase
         $this->assertSame('HUMSS', Enrollment::where('student_id', $ana->id)->first()->strand->code);
     }
 
-    public function test_analytics_and_metrics_export_as_csv_or_excel(): void
+    public function test_reports_export_as_csv_or_excel(): void
     {
         $this->seat(3);
         $admin = User::factory()->role(Role::Admin)->create();
 
-        foreach (['analytics', 'metrics'] as $page) {
+        foreach (['reports'] as $page) {
             $csv = $this->actingAs($admin)->get("/{$page}/export?format=csv")->assertOk()
                 ->assertHeader('Content-Type', 'text/csv; charset=UTF-8')->streamedContent();
             $this->assertStringStartsWith("\xEF\xBB\xBF", $csv);
             $xlsx = $this->actingAs($admin)->get("/{$page}/export?format=xlsx")->assertOk();
             $this->assertStringContainsString('.xlsx', $xlsx->headers->get('content-disposition'));
         }
-        $this->assertStringContainsString("\"By grade\"\n\"Grade Level\",Total", str_replace("\r", '', $this->actingAs($admin)->get('/analytics/export?format=csv')->streamedContent()));
+        $csv = str_replace("\r", '', $this->actingAs($admin)->get('/reports/export?format=csv')->streamedContent());
+        $this->assertStringContainsString("\"By grade and strand\"\nGrade,Strand,Male,Female,Total", $csv);
+        $this->assertStringContainsString('"Rates by grade"', $csv, 'Administrators also get the DepEd rates.');
+        $registrarCsv = $this->actingAs(User::factory()->role(Role::Registrar)->create())->get('/reports/export?format=csv')->streamedContent();
+        $this->assertStringNotContainsString('Rates by grade', $registrarCsv, 'Registrars do not see the rates.');
     }
 
     public function test_backup_has_every_table_and_no_passwords(): void

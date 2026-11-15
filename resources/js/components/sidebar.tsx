@@ -10,7 +10,8 @@ export interface NavItem {
     title: string;
     href: string;
     icon: IconName;
-    ability?: Ability;
+    /** Shown if the user has this ability, or any of these. */
+    ability?: Ability | Ability[];
     /** Extra paths that should highlight this item. */
     match?: RegExp;
     /** Shows the number of items waiting for this user's review. */
@@ -25,12 +26,13 @@ export interface NavGroup {
 
 /**
  * Pages grouped in the order work happens: enroll, place in sections,
- * report, administer. A group only shows if the role can open something in it.
+ * administer. Reports sits under Dashboard, since both are for reading. A group only shows if the role can open something in it.
  */
 export const navGroups: NavGroup[] = [
     {
         items: [
             { title: 'Dashboard', href: '/dashboard', icon: 'dashboard' },
+            { title: 'Reports', href: '/reports', icon: 'analytics', ability: ['view-analytics', 'view-metrics'] },
             { title: 'My Section', href: '/my-section', icon: 'co_present', ability: 'view-own-section' },
             { title: 'My Classes', href: '/my-students', icon: 'school', ability: 'view-own-classes' },
         ],
@@ -49,13 +51,6 @@ export const navGroups: NavGroup[] = [
             { title: 'Sections', href: '/sections', icon: 'meeting_room', ability: 'manage-sections' },
             { title: 'Assign to Sections', href: '/section-assignments', icon: 'group_add', ability: 'manage-sections' },
             { title: 'Strands', href: '/strands', icon: 'category', ability: 'manage-sections' },
-        ],
-    },
-    {
-        title: 'Reports',
-        items: [
-            { title: 'Analytics', href: '/analytics', icon: 'analytics', ability: 'view-analytics' },
-            { title: 'Metrics', href: '/metrics', icon: 'speed', ability: 'view-metrics' },
         ],
     },
     {
@@ -101,7 +96,7 @@ export function Sidebar({ onNavigate, onLogout }: { onNavigate?: () => void; onL
                 </div>
                 <nav className="px-4 pb-4" aria-label="Main">
                     {navGroups.map((group) => {
-                        const items = group.items.filter((item) => !item.ability || can(item.ability));
+                        const items = group.items.filter((item) => !item.ability || [item.ability].flat().some((a) => can(a)));
                         if (items.length === 0) return null;
                         const headingId = group.title ? `nav-${group.title.toLowerCase()}` : undefined;
 

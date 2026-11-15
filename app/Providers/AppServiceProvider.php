@@ -27,6 +27,8 @@ class AppServiceProvider extends ServiceProvider
         }
 
         // Open the edit form: saving directly, or as a revision request.
+        // Reports shows enrollment analytics, plus the DepEd rates to those allowed.
+        Gate::define('open-reports', fn (User $user) => $user->hasAbility(Ability::ViewAnalytics) || $user->hasAbility(Ability::ViewMetrics));
         Gate::define('change-enrollment', fn (User $user) => $user->hasAbility(Ability::EditEnrollments) || $user->hasAbility(Ability::RequestRevisions));
 
         Password::defaults(fn () => Password::min(8)->letters()->numbers());

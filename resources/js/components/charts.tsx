@@ -127,12 +127,15 @@ export function LineChart({
     height = 260,
     label,
     suffix = '',
+    max,
 }: {
     labels: string[];
     series: Series[];
     height?: number;
     label: string;
     suffix?: string;
+    /** A fixed top for the y-axis, so small multiples share one scale. */
+    max?: number;
 }) {
     const canvas = useChart(
         () => ({
@@ -157,14 +160,14 @@ export function LineChart({
                 responsive: true,
                 animation: false,
                 interaction: { mode: 'index', intersect: false },
-                scales: { ...scales(false), y: { ...scales(false).y, ticks: { precision: 0, callback: (v) => `${v}${suffix}` } } },
+                scales: { ...scales(false), y: { ...scales(false).y, max, ticks: { precision: 0, callback: (v) => `${v}${suffix}` } } },
                 plugins: {
                     legend: { display: series.length > 1, position: 'top', align: 'start', labels: { boxWidth: 12, boxHeight: 12 } },
                     tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.formattedValue}${suffix}` } },
                 },
             },
         }),
-        [JSON.stringify(labels), JSON.stringify(series), suffix],
+        [JSON.stringify(labels), JSON.stringify(series), suffix, max],
     );
 
     return (

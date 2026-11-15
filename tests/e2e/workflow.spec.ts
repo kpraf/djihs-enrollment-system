@@ -188,12 +188,16 @@ test('advisers download SF1 and class lists; reports draw charts', async ({ brow
     await adviser.context.close();
 
     const registrar = await staffBrowser(browser, 'registrar');
-    await registrar.page.goto('/analytics');
-    await expect(registrar.page.getByRole('heading', { name: 'Enrollment Analytics' })).toBeVisible();
-    await expect(registrar.page.locator('canvas').first()).toBeVisible();
+    await registrar.page.goto('/reports');
+    await expect(registrar.page.getByRole('heading', { name: 'Reports', exact: true })).toBeVisible();
+    for (const heading of ['This year at a glance', 'Where learners are', 'How enrollment is changing', 'Who the learners are', 'Needs attention']) {
+        await expect(registrar.page.getByRole('heading', { name: heading })).toBeVisible();
+    }
+    // The DepEd rates are for administrators only.
+    await expect(registrar.page.getByRole('heading', { name: 'DepEd indicators' })).toHaveCount(0);
     for (const [label, pattern] of [
-        ['Export Excel', /^Analytics_.*\.xlsx$/],
-        ['Export CSV', /^Analytics_.*\.csv$/],
+        ['Export Excel', /^Reports_.*\.xlsx$/],
+        ['Export CSV', /^Reports_.*\.csv$/],
     ] as const) {
         const [file] = await Promise.all([registrar.page.waitForEvent('download'), registrar.page.getByRole('link', { name: label }).click()]);
         expect(file.suggestedFilename()).toMatch(pattern);

@@ -127,7 +127,7 @@ class MetricsReport
     /**
      * @return array<string, mixed>
      */
-    private function resources(SchoolYear $year): array
+    public function resources(SchoolYear $year): array
     {
         $sections = Section::withCount(['enrollments' => fn ($q) => $q->where('status', EnrollmentStatus::Enrolled)])
             ->where('school_year_id', $year->id)->where('is_active', true)->get();
