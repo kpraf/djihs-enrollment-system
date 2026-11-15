@@ -129,6 +129,10 @@ Then, on the other computers, open `http://<this computer's IP address>:8000`. O
 - Back up by copying `database/database.sqlite` somewhere safe while the app is stopped, or with **Backup Now** on the Audit Log page.
 - This simple server is fine for a few staff on a school network. For the whole school, or access from outside the school, use the Render setup below.
 
+### Sign-in photo
+
+Put a photo of the school at `public/images/login-background.jpg` (or `.webp` / `.png`) and it appears behind the green panel on the sign-in screen, tinted so the white text stays readable. Use a wide photo at least 1200 pixels across that the school owns or has permission to use. Without one, the plain green gradient is shown.
+
 ## Local development
 
 Requirements: PHP 8.3 with `pdo_sqlite`, `zip` and `gd`, Composer, and Node 22.

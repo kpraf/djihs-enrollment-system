@@ -61,6 +61,7 @@ export interface SharedData {
     name: string;
     auth: Auth;
     textSize: TextSizeState;
+    loginBackground?: string | null;
     activeSchoolYear: { id: number; name: string; is_enrollment_open: boolean } | null;
     /** Enrollments and revision requests waiting for this user's review; null if they don't review. */
     pendingReviews: number | null;

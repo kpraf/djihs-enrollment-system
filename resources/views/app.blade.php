@@ -6,9 +6,12 @@
         <meta name="theme-color" content="#085019">
 
         <title inertia>{{ config('app.name', 'DJIHS Enrollment') }}</title>
-        <link rel="icon" href="/favicon.ico" sizes="any">
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+        {{-- ?v= makes browsers drop an icon cached from another app on the same address. --}}
+        <link rel="icon" href="/favicon.ico?v=2" sizes="48x48">
+        <link rel="icon" href="/favicon-32x32.png?v=2" type="image/png" sizes="32x32">
+        <link rel="icon" href="/favicon-96x96.png?v=2" type="image/png" sizes="96x96">
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2">
+        <link rel="manifest" href="/site.webmanifest?v=2">
 
         @routes
         @viteReactRefresh

@@ -57,6 +57,8 @@ class HandleInertiaRequests extends Middleware
                 'percent' => AppServiceProvider::textSize()->percent(),
                 'options' => TextSize::options(),
             ],
+            // A school photo for the sign-in screen, if one was added to public/images.
+            'loginBackground' => fn () => $user ? null : $this->loginBackground(),
             'activeSchoolYear' => fn () => $user ? SchoolYear::active()?->only(['id', 'name', 'is_enrollment_open']) : null,
             // The count beside Review Enrollments in the sidebar.
             'pendingReviews' => fn () => $user?->hasAbility(Ability::ReviewEnrollments) ? $this->pendingReviews($user) : null,
@@ -67,6 +69,18 @@ class HandleInertiaRequests extends Middleware
                 'credential' => fn () => $request->session()->get('credential'),
             ],
         ];
+    }
+
+    private function loginBackground(): ?string
+    {
+        foreach (['jpg', 'jpeg', 'webp', 'png'] as $ext) {
+            $file = public_path("images/login-background.{$ext}");
+            if (is_file($file)) {
+                return "/images/login-background.{$ext}?v=".filemtime($file);
+            }
+        }
+
+        return null;
     }
 
     /**
