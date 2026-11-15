@@ -1,0 +1,65 @@
+# Render Blueprint: creates the web app and its Postgres database together.
+# In the Render dashboard choose New > Blueprint and select this repository.
+databases:
+  - name: djihs-db
+    databaseName: djihs_enrollment
+    user: djihs
+    region: singapore
+    # Free plans for trying it out. Render deletes a free database after 30
+    # days, so switch both to paid plans (for example basic-256mb and
+    # starter) before real enrollment data goes in.
+    plan: free
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: djihs-enrollment
+    runtime: docker
+    region: singapore
+    plan: free
+    healthCheckPath: /up
+    envVars:
+      - key: APP_NAME
+        value: DJIHS Enrollment
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      # Render generates a random key once and keeps it across deploys.
+      - key: APP_KEY
+        generateValue: true
+      - key: APP_TIMEZONE
+        value: Asia/Manila
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_URL
+        fromDatabase:
+          name: djihs-db
+          property: connectionString
+      - key: SESSION_DRIVER
+        value: database
+      - key: SESSION_SECURE_COOKIE
+        value: "true"
+      - key: SESSION_LIFETIME
+        value: "30"
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: LOG_LEVEL
+        value: warning
+      - key: ADMIN_USERNAME
+        value: admin
+      # The school's Data Protection Officer, shown on the privacy notice.
+      - key: PRIVACY_DPO_NAME
+        sync: false
+      - key: PRIVACY_DPO_EMAIL
+        sync: false
+      - key: PRIVACY_DPO_PHONE
+        sync: false
+      # Leave blank to have a password generated and printed in the deploy
+      # logs. Either way it must be changed at first sign-in.
+      - key: ADMIN_PASSWORD
+        sync: false

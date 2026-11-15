@@ -1,24 +1,34 @@
-# Dependencies (rebuild with: composer install --working-dir backend)
-/backend/vendor/
-
-# Generated / temporary files
-/backend/temp/*
-!/backend/temp/.gitkeep
-
-# Archives
-*.zip
-
-# Environment / secrets
-.env
-.env.local
-*.local.php
-
-# OS junk
 .DS_Store
-Thumbs.db
-desktop.ini
+.env
+.env.backup
+.env.production
+.phpactor.json
+.phpunit.result.cache
+/.fleet
+/.idea
+/.nova
+/.phpunit.cache
+/.vscode
+/.zed
+/bootstrap/ssr
+/node_modules
+/public/build
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+/vendor
+auth.json
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
 
-# Editor / IDE
-.vscode/
-.idea/
-*.swp
+# Never commit real learner data
+*.xlsx
+!resources/templates/SF1_Template.xlsx
+!tests/**/*.xlsx
+/storage/app/private/imports/*
+/tests/e2e/.tmp/
+/test-results/
+/playwright-report/
