@@ -4,6 +4,7 @@ import { Field, SelectInput, TextInput } from '@/components/form';
 import { Icon } from '@/components/icon';
 import { Modal } from '@/components/modal';
 import { PageHeader } from '@/components/page-header';
+import { RowActionButton, RowActionLink } from '@/components/row-action';
 import { StatusBadge } from '@/components/status-badge';
 import AppLayout from '@/layouts/app-layout';
 import { type Option } from '@/types';
@@ -82,28 +83,28 @@ export default function Sections({ sections, schoolYears, selectedYear, options 
                     <table className="w-full text-left text-sm">
                         <thead className="table-head">
                             <tr>
-                                <th className="px-6 py-3 font-medium">Section Name</th>
-                                <th className="px-6 py-3 font-medium">Adviser</th>
-                                <th className="px-6 py-3 font-medium">Grade / Strand</th>
-                                <th className="px-6 py-3 font-medium">Capacity</th>
-                                <th className="px-6 py-3 font-medium">Subject Teachers</th>
-                                <th className="px-6 py-3 font-medium">Status</th>
-                                <th className="px-6 py-3 text-right font-medium">Actions</th>
+                                <th className="px-4 py-3 font-medium">Section Name</th>
+                                <th className="px-4 py-3 font-medium">Adviser</th>
+                                <th className="px-4 py-3 font-medium">Grade / Strand</th>
+                                <th className="px-4 py-3 font-medium">Capacity</th>
+                                <th className="px-4 py-3 font-medium">Subject Teachers</th>
+                                <th className="px-4 py-3 font-medium">Status</th>
+                                <th className="px-4 py-3 text-right font-medium">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {sections.map((s) => (
                                 <tr key={s.id} className="hover:bg-slate-50">
-                                    <td className="px-6 py-4 font-semibold text-slate-900">{s.name}</td>
-                                    <td className="px-6 py-4 text-slate-600">{s.adviser ?? <span className="text-amber-700">No adviser</span>}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-slate-600">
+                                    <td className="px-4 py-4 font-semibold text-slate-900">{s.name}</td>
+                                    <td className="px-4 py-4 text-slate-600">{s.adviser ?? <span className="text-amber-700">No adviser</span>}</td>
+                                    <td className="px-4 py-4 whitespace-nowrap text-slate-600">
                                         Grade {s.grade_level}
                                         {s.strand ? ` · ${s.strand}` : ''}
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-4 py-4">
                                         <CapacityBar filled={s.filled} capacity={s.capacity} />
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-4 py-4">
                                         <button
                                             type="button"
                                             className="text-primary text-sm font-medium hover:underline"
@@ -112,32 +113,26 @@ export default function Sections({ sections, schoolYears, selectedYear, options 
                                             {s.subject_teachers.length} assigned
                                         </button>
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-4 py-4">
                                         <StatusBadge status={s.is_active ? 'active' : 'inactive'} />
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex justify-end gap-1">
-                                            <a
+                                    <td className="px-4 py-4">
+                                        <div className="flex justify-end gap-2">
+                                            <RowActionLink
                                                 href={route('sections.sf1', s.id)}
-                                                className="hover:text-primary rounded-lg p-2 text-slate-400 hover:bg-slate-100"
-                                                title="Export SF1"
-                                            >
-                                                <Icon name="description" label={`Export SF1 for ${s.name}`} />
-                                            </a>
-                                            <button
-                                                type="button"
-                                                className="hover:text-primary rounded-lg p-2 text-slate-400 hover:bg-slate-100"
-                                                onClick={() => setEditing(s)}
-                                            >
-                                                <Icon name="edit" label={`Edit ${s.name}`} />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-red-600"
+                                                download
+                                                icon="download"
+                                                text="Export SF1"
+                                                srSuffix={`for ${s.name}`}
+                                            />
+                                            <RowActionButton icon="edit" text="Edit" srSuffix={s.name} onClick={() => setEditing(s)} />
+                                            <RowActionButton
+                                                icon="delete"
+                                                text="Delete"
+                                                srSuffix={s.name}
+                                                tone="danger"
                                                 onClick={() => setDeleting(s)}
-                                            >
-                                                <Icon name="delete" label={`Delete ${s.name}`} />
-                                            </button>
+                                            />
                                         </div>
                                     </td>
                                 </tr>
@@ -310,6 +305,7 @@ function TeachersDialog({
     onClose: () => void;
 }) {
     const { data, setData, post, processing, errors, reset } = useForm({ user_id: '', subject_name: '', subject_code: '' });
+    const [removing, setRemoving] = useState<number | null>(null);
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -327,13 +323,28 @@ function TeachersDialog({
                             {t.subject_code && <span className="text-slate-500"> ({t.subject_code})</span>}
                             <span className="block text-slate-600">{t.teacher}</span>
                         </span>
-                        <button
-                            type="button"
-                            className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
-                            onClick={() => router.delete(route('sections.teachers.destroy', t.id), { preserveScroll: true })}
-                        >
-                            <Icon name="close" label={`Remove ${t.subject_name}`} />
-                        </button>
+                        {removing === t.id ? (
+                            <span className="flex shrink-0 items-center gap-2" role="group" aria-label={`Remove ${t.subject_name}?`}>
+                                <span className="text-sm font-medium text-red-700">Remove?</span>
+                                <button
+                                    type="button"
+                                    className="btn-danger px-3 py-1.5"
+                                    onClick={() =>
+                                        router.delete(route('sections.teachers.destroy', t.id), {
+                                            preserveScroll: true,
+                                            onFinish: () => setRemoving(null),
+                                        })
+                                    }
+                                >
+                                    Yes, remove
+                                </button>
+                                <button type="button" className="btn-outline px-3 py-1.5" onClick={() => setRemoving(null)}>
+                                    No
+                                </button>
+                            </span>
+                        ) : (
+                            <RowActionButton icon="close" text="Remove" srSuffix={t.subject_name} tone="danger" onClick={() => setRemoving(t.id)} />
+                        )}
                     </li>
                 ))}
                 {section?.subject_teachers.length === 0 && <li className="px-4 py-3 text-sm text-slate-500">No subject teachers yet.</li>}

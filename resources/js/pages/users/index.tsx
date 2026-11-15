@@ -3,6 +3,7 @@ import { Field, SelectInput, TextInput } from '@/components/form';
 import { Icon } from '@/components/icon';
 import { Modal } from '@/components/modal';
 import { PageHeader } from '@/components/page-header';
+import { RowActionButton } from '@/components/row-action';
 import { StatCard } from '@/components/stat-card';
 import { StatusBadge } from '@/components/status-badge';
 import AppLayout from '@/layouts/app-layout';
@@ -25,7 +26,8 @@ interface UserRow {
 
 type Pending = { kind: 'active'; user: UserRow } | { kind: 'reset'; user: UserRow } | null;
 
-const lastLogin = new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeStyle: 'short' });
+const lastLoginDate = new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium' });
+const lastLoginTime = new Intl.DateTimeFormat('en-PH', { timeStyle: 'short' });
 
 export default function UsersIndex({ users, roles }: { users: UserRow[]; roles: Option[] }) {
     const { auth } = usePage<AuthedData>().props;
@@ -120,12 +122,12 @@ export default function UsersIndex({ users, roles }: { users: UserRow[]; roles: 
                     <table className="w-full text-left text-sm">
                         <thead className="table-head">
                             <tr>
-                                <th className="px-6 py-3 font-medium">Name</th>
-                                <th className="px-6 py-3 font-medium">Username</th>
-                                <th className="px-6 py-3 font-medium">Role</th>
-                                <th className="px-6 py-3 font-medium">Status</th>
-                                <th className="px-6 py-3 font-medium">Last Sign-in</th>
-                                <th className="px-6 py-3 text-right font-medium">Actions</th>
+                                <th className="px-4 py-3 font-medium">Name</th>
+                                <th className="px-4 py-3 font-medium">Username</th>
+                                <th className="px-4 py-3 font-medium">Role</th>
+                                <th className="px-4 py-3 font-medium">Status</th>
+                                <th className="px-4 py-3 font-medium">Last Sign-in</th>
+                                <th className="px-4 py-3 text-right font-medium">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -133,43 +135,42 @@ export default function UsersIndex({ users, roles }: { users: UserRow[]; roles: 
                                 const locked = u.role === 'admin' && auth.user.role !== 'admin';
                                 return (
                                     <tr key={u.id} className="hover:bg-slate-50">
-                                        <td className="px-6 py-4 font-medium text-slate-900">{u.name}</td>
-                                        <td className="px-6 py-4 font-mono text-slate-600">{u.username}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-slate-600">{u.role_label}</td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-4 py-4 font-medium text-slate-900">{u.name}</td>
+                                        <td className="px-4 py-4 font-mono text-slate-600">{u.username}</td>
+                                        <td className="px-4 py-4 text-slate-600">{u.role_label}</td>
+                                        <td className="px-4 py-4">
                                             <StatusBadge status={u.is_active ? 'active' : 'inactive'} />
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-slate-600">
-                                            {u.last_login_at ? lastLogin.format(new Date(u.last_login_at)) : 'Never'}
+                                        <td className="px-4 py-4 whitespace-nowrap text-slate-600">
+                                            {u.last_login_at ? (
+                                                <>
+                                                    {lastLoginDate.format(new Date(u.last_login_at))}
+                                                    <span className="block text-xs text-slate-400">
+                                                        {lastLoginTime.format(new Date(u.last_login_at))}
+                                                    </span>
+                                                </>
+                                            ) : (
+                                                'Never'
+                                            )}
                                         </td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-4 py-4">
                                             {!locked && (
-                                                <div className="flex justify-end gap-1">
-                                                    <button
-                                                        type="button"
-                                                        className="hover:text-primary rounded-lg p-2 text-slate-400 hover:bg-slate-100"
-                                                        onClick={() => setEditing(u)}
-                                                    >
-                                                        <Icon name="edit" label={`Edit ${u.name}`} />
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        className="hover:text-primary rounded-lg p-2 text-slate-400 hover:bg-slate-100"
+                                                <div className="flex justify-end gap-2">
+                                                    <RowActionButton icon="edit" text="Edit" srSuffix={u.name} onClick={() => setEditing(u)} />
+                                                    <RowActionButton
+                                                        icon="lock_reset"
+                                                        text="Reset password"
+                                                        srSuffix={`for ${u.name}`}
                                                         onClick={() => setPending({ kind: 'reset', user: u })}
-                                                    >
-                                                        <Icon name="lock_reset" label={`Reset password for ${u.name}`} />
-                                                    </button>
+                                                    />
                                                     {u.id !== auth.user.id && (
-                                                        <button
-                                                            type="button"
-                                                            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-red-600"
+                                                        <RowActionButton
+                                                            icon={u.is_active ? 'person_off' : 'person_check'}
+                                                            text={u.is_active ? 'Deactivate' : 'Activate'}
+                                                            srSuffix={u.name}
+                                                            tone={u.is_active ? 'danger' : 'default'}
                                                             onClick={() => setPending({ kind: 'active', user: u })}
-                                                        >
-                                                            <Icon
-                                                                name={u.is_active ? 'person_off' : 'person_check'}
-                                                                label={`${u.is_active ? 'Deactivate' : 'Activate'} ${u.name}`}
-                                                            />
-                                                        </button>
+                                                        />
                                                     )}
                                                 </div>
                                             )}

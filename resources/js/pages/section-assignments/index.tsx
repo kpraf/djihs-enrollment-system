@@ -2,6 +2,7 @@ import { CapacityBar } from '@/components/capacity-bar';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Icon } from '@/components/icon';
 import { PageHeader } from '@/components/page-header';
+import { RowActionButton } from '@/components/row-action';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { type Option } from '@/types';
@@ -42,6 +43,8 @@ export default function AssignStudents({ schoolYear, unassigned, sections, filte
     const [search, setSearch] = useState(filters.search ?? '');
     const [confirmAuto, setConfirmAuto] = useState(false);
     const [clearing, setClearing] = useState<SectionCard | null>(null);
+    const [confirmPlace, setConfirmPlace] = useState(false);
+    const [removing, setRemoving] = useState<{ id: number; name: string; section: string } | null>(null);
     const [busy, setBusy] = useState(false);
     const first = useRef(true);
 
@@ -76,9 +79,14 @@ export default function AssignStudents({ schoolYear, unassigned, sections, filte
         router.post(
             route('section-assignments.assign'),
             { enrollment_ids: selected, section_id: target },
-            { ...done, onSuccess: () => setSelected([]) },
+            { ...done, onSuccess: () => setSelected([]), onFinish: () => (setBusy(false), setConfirmPlace(false)) },
         );
     };
+
+    const targetSection = sections.find((s) => String(s.id) === target);
+    const picked = unassigned.filter((u) => selected.includes(u.id));
+    const wrongStrand = targetSection?.strand_id ? picked.filter((u) => u.strand_id !== targetSection.strand_id) : [];
+    const seatsLeft = targetSection ? targetSection.capacity - targetSection.learners.length : 0;
 
     return (
         <AppLayout>
@@ -187,7 +195,12 @@ export default function AssignStudents({ schoolYear, unassigned, sections, filte
                                     </option>
                                 ))}
                         </select>
-                        <button type="button" className="btn-primary" disabled={busy || selected.length === 0 || !target} onClick={place}>
+                        <button
+                            type="button"
+                            className="btn-primary"
+                            disabled={busy || selected.length === 0 || !target}
+                            onClick={() => setConfirmPlace(true)}
+                        >
                             Place
                         </button>
                     </div>
@@ -222,18 +235,14 @@ export default function AssignStudents({ schoolYear, unassigned, sections, filte
                                         <span className="truncate">
                                             {l.name} <span className="text-xs text-slate-400">{l.sex}</span>
                                         </span>
-                                        <button
-                                            type="button"
-                                            className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
-                                            onClick={() =>
-                                                router.delete(route('section-assignments.unassign', l.id), {
-                                                    preserveScroll: true,
-                                                    preserveState: true,
-                                                })
-                                            }
-                                        >
-                                            <Icon name="person_remove" label={`Remove ${l.name} from ${s.name}`} />
-                                        </button>
+                                        <RowActionButton
+                                            icon="person_remove"
+                                            text="Remove"
+                                            srSuffix={`${l.name} from ${s.name}`}
+                                            tone="danger"
+                                            className="px-2 py-1"
+                                            onClick={() => setRemoving({ id: l.id, name: l.name, section: s.name })}
+                                        />
                                     </li>
                                 ))}
                                 {s.learners.length === 0 && <li className="px-4 py-3 text-sm text-slate-500">No learners yet.</li>}
@@ -277,6 +286,52 @@ export default function AssignStudents({ schoolYear, unassigned, sections, filte
                 title={`Clear ${clearing?.name ?? ''}?`}
                 message={`All ${clearing?.learners.length ?? 0} learners go back to the unassigned list.`}
                 confirmLabel="Clear Section"
+                icon="person_remove"
+            />
+            <ConfirmDialog
+                open={confirmPlace}
+                onClose={() => setConfirmPlace(false)}
+                onConfirm={place}
+                processing={busy}
+                title={`Place ${picked.length} learner${picked.length === 1 ? '' : 's'} in ${targetSection?.name ?? ''}?`}
+                message={
+                    <>
+                        {picked.length <= 5
+                            ? picked.map((u) => u.name).join(', ')
+                            : `${picked
+                                  .slice(0, 5)
+                                  .map((u) => u.name)
+                                  .join(', ')} and ${picked.length - 5} more`}
+                        {targetSection?.strand ? ` will join this ${targetSection.strand} section.` : ' will join this section.'}
+                        {wrongStrand.length > 0 && (
+                            <span className="mt-3 block rounded-lg bg-amber-50 p-3 text-left font-medium text-amber-800">
+                                {wrongStrand.length} of them {wrongStrand.length === 1 ? 'is' : 'are'} not in {targetSection?.strand} and will not be
+                                placed: {wrongStrand.map((u) => u.name).join(', ')}.
+                            </span>
+                        )}
+                        {picked.length - wrongStrand.length > seatsLeft && (
+                            <span className="mt-3 block rounded-lg bg-amber-50 p-3 text-left font-medium text-amber-800">
+                                Only {seatsLeft} seat{seatsLeft === 1 ? '' : 's'} left. Learners beyond that will not be placed.
+                            </span>
+                        )}
+                    </>
+                }
+                confirmLabel="Yes, place them"
+                icon="group_add"
+                tone="primary"
+            />
+            <ConfirmDialog
+                open={removing !== null}
+                onClose={() => setRemoving(null)}
+                onConfirm={() => {
+                    if (!removing) return;
+                    setBusy(true);
+                    router.delete(route('section-assignments.unassign', removing.id), { ...done, onSuccess: () => setRemoving(null) });
+                }}
+                processing={busy}
+                title={`Remove ${removing?.name ?? ''} from ${removing?.section ?? ''}?`}
+                message="The learner stays enrolled and goes back to the unassigned list, so you can place them in another section."
+                confirmLabel="Yes, remove"
                 icon="person_remove"
             />
         </AppLayout>

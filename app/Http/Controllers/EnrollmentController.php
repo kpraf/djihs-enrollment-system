@@ -155,7 +155,7 @@ class EnrollmentController extends Controller
 
     public function edit(Enrollment $enrollment): Response
     {
-        $enrollment->load(['student', 'strand', 'schoolYear']);
+        $enrollment->load(['student', 'strand', 'section', 'schoolYear']);
 
         return Inertia::render('enrollments/edit', [
             'enrollment' => $this->present($enrollment),

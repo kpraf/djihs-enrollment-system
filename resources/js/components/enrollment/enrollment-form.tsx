@@ -1,3 +1,4 @@
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Field, InputError, SelectInput, TextInput, YesNo } from '@/components/form';
 import { Icon } from '@/components/icon';
 import { describeDate, formatWhileTyping, parseTypedDate, toTypedDate } from '@/lib/typed-date';
@@ -20,6 +21,8 @@ interface Props {
     cancelHref?: string;
     /** Advisers' edits are sent for approval with a reason. */
     asRevision?: boolean;
+    /** The learner's current section, if any. A new grade or strand takes them out of it. */
+    section?: string | null;
 }
 
 function ageFrom(birthdate: string): string {
@@ -35,7 +38,7 @@ function ageFrom(birthdate: string): string {
 /**
  * The legacy "Student Enrollment" form, used for new enrollments and edits.
  */
-export function EnrollmentForm({ mode, schoolYear, options, initial, action, cancelHref, asRevision = false }: Props) {
+export function EnrollmentForm({ mode, schoolYear, options, initial, action, cancelHref, asRevision = false, section = null }: Props) {
     const start = useMemo(() => ({ ...emptyLearner, ...initial }), [initial]);
     const form = useForm<LearnerForm>(start);
     const { data, setData, errors, processing } = form;
@@ -46,6 +49,8 @@ export function EnrollmentForm({ mode, schoolYear, options, initial, action, can
     const [kept, setKept] = useState(false);
     const formRef = useRef<HTMLFormElement>(null);
     const lrnRef = useRef<HTMLInputElement>(null);
+    const [confirmSection, setConfirmSection] = useState(false);
+    const [confirmReset, setConfirmReset] = useState(false);
 
     // Server-only error (not a form field): a learner with the same name and birthdate exists.
     const duplicateWarning = (errors as Record<string, string | undefined>).possible_duplicate;
@@ -87,8 +92,29 @@ export function EnrollmentForm({ mode, schoolYear, options, initial, action, can
         first?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, [errors]);
 
+    const leavesSection =
+        mode === 'edit' &&
+        Boolean(section) &&
+        (data.grade_level !== start.grade_level || (isSeniorHigh ? data.strand_id : '') !== (start.strand_id ?? ''));
+
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
+        if (leavesSection) {
+            setConfirmSection(true);
+            return;
+        }
+        save();
+    };
+
+    const resetForm = () => {
+        form.reset();
+        form.clearErrors();
+        setLookup(null);
+        setConfirmReset(false);
+    };
+
+    const save = () => {
+        setConfirmSection(false);
         form.transform((d) => ({ ...d, strand_id: isSeniorHigh ? d.strand_id : '' }));
         form.submit(action.method, action.url, {
             preserveScroll: true,
@@ -465,15 +491,7 @@ export function EnrollmentForm({ mode, schoolYear, options, initial, action, can
                         Cancel
                     </Link>
                 ) : (
-                    <button
-                        type="button"
-                        className="btn-secondary"
-                        onClick={() => {
-                            form.reset();
-                            form.clearErrors();
-                            setLookup(null);
-                        }}
-                    >
+                    <button type="button" className="btn-secondary" onClick={() => (form.isDirty ? setConfirmReset(true) : resetForm())}>
                         Reset Form
                     </button>
                 )}
@@ -481,6 +499,29 @@ export function EnrollmentForm({ mode, schoolYear, options, initial, action, can
                     {processing ? 'Saving…' : mode === 'create' ? 'Submit Enrollment' : asRevision ? 'Send for Approval' : 'Save Changes'}
                 </button>
             </div>
+            <ConfirmDialog
+                open={confirmSection}
+                onClose={() => setConfirmSection(false)}
+                onConfirm={save}
+                processing={processing}
+                title={`Take the learner out of ${section ?? 'their section'}?`}
+                message={
+                    asRevision
+                        ? `A new grade or strand does not fit ${section}. If this change is approved, the learner leaves the section and will need to be placed again.`
+                        : `A new grade or strand does not fit ${section}. The learner will leave the section and will need to be placed again in Assign to Sections.`
+                }
+                confirmLabel={asRevision ? 'Yes, send for approval' : 'Yes, save changes'}
+                icon="person_remove"
+            />
+            <ConfirmDialog
+                open={confirmReset}
+                onClose={() => setConfirmReset(false)}
+                onConfirm={resetForm}
+                title="Clear everything typed so far?"
+                message="All the details on this form will be erased. Nothing has been saved yet."
+                confirmLabel="Yes, clear the form"
+                icon="delete"
+            />
         </form>
     );
 }

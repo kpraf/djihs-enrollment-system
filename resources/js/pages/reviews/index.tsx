@@ -35,6 +35,7 @@ interface Props {
 export default function Reviews({ pending, revisions, filters, stats, options, canApproveRevisions }: Props) {
     const [tab, setTab] = useState(filters.tab === 'revisions' && canApproveRevisions ? 'revisions' : 'enrollments');
     const [rejecting, setRejecting] = useState<PendingRow | null>(null);
+    const [approving, setApproving] = useState<PendingRow | null>(null);
     const [reason, setReason] = useState('');
     const [confirmAll, setConfirmAll] = useState(false);
     const [busy, setBusy] = useState<number | 'all' | null>(null);
@@ -47,7 +48,7 @@ export default function Reviews({ pending, revisions, filters, stats, options, c
 
     const approve = (row: PendingRow) => {
         setBusy(row.id);
-        router.post(route('reviews.approve', row.id), {}, { preserveScroll: true, onFinish: () => setBusy(null) });
+        router.post(route('reviews.approve', row.id), {}, { preserveScroll: true, onFinish: () => (setBusy(null), setApproving(null)) });
     };
 
     const reject = () => {
@@ -200,7 +201,7 @@ export default function Reviews({ pending, revisions, filters, stats, options, c
                                                         type="button"
                                                         className="btn-primary px-3 py-1.5"
                                                         disabled={busy !== null}
-                                                        onClick={() => approve(r)}
+                                                        onClick={() => setApproving(r)}
                                                     >
                                                         Approve <span className="sr-only">{r.name}</span>
                                                     </button>
@@ -242,6 +243,26 @@ export default function Reviews({ pending, revisions, filters, stats, options, c
                 </div>
             )}
 
+            <ConfirmDialog
+                open={approving !== null}
+                onClose={() => setApproving(null)}
+                onConfirm={() => approving && approve(approving)}
+                processing={busy !== null}
+                title={`Approve ${approving?.name ?? ''}?`}
+                message={
+                    approving && (
+                        <>
+                            Grade {approving.grade_level}
+                            {approving.strand ? ` · ${approving.strand}` : ''} · {approving.learner_type}
+                            {approving.lrn ? ` · LRN ${approving.lrn}` : ''}
+                            <span className="mt-2 block">The learner will be counted as enrolled and can be placed in a section.</span>
+                        </>
+                    )
+                }
+                confirmLabel="Yes, approve"
+                icon="check_circle"
+                tone="primary"
+            />
             <ConfirmDialog
                 open={rejecting !== null}
                 onClose={() => setRejecting(null)}

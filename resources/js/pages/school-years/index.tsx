@@ -26,6 +26,9 @@ export default function SchoolYears({ years, suggestedStart }: { years: Year[]; 
     const [creating, setCreating] = useState(false);
     const [showArchived, setShowArchived] = useState(false);
     const [activating, setActivating] = useState<Year | null>(null);
+    const [toggling, setToggling] = useState(false);
+    const [archiving, setArchiving] = useState<Year | null>(null);
+    const [processing, setProcessing] = useState(false);
     const active = years.find((y) => y.is_active);
     const shown = years.filter((y) => y.is_archived === showArchived);
     const opts = { preserveScroll: true };
@@ -61,13 +64,7 @@ export default function SchoolYears({ years, suggestedStart }: { years: Year[]; 
                         >
                             Enrollment {active.is_enrollment_open ? 'open' : 'closed'}
                         </span>
-                        <button
-                            type="button"
-                            className="btn-outline ml-auto"
-                            onClick={() =>
-                                router.put(route('school-years.update', active.id), { is_enrollment_open: !active.is_enrollment_open }, opts)
-                            }
-                        >
+                        <button type="button" className="btn-outline ml-auto" onClick={() => setToggling(true)}>
                             <Icon name={active.is_enrollment_open ? 'lock' : 'how_to_reg'} />{' '}
                             {active.is_enrollment_open ? 'Close Enrollment' : 'Open Enrollment'}
                         </button>
@@ -81,7 +78,7 @@ export default function SchoolYears({ years, suggestedStart }: { years: Year[]; 
             <h2 className="mb-4 text-xl font-bold text-slate-900">{showArchived ? 'Archived School Years' : 'All School Years'}</h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {shown.map((y) => (
-                    <YearCard key={y.id} year={y} onActivate={() => setActivating(y)} />
+                    <YearCard key={y.id} year={y} onActivate={() => setActivating(y)} onArchive={() => setArchiving(y)} />
                 ))}
                 {shown.length === 0 && (
                     <p className="text-sm text-slate-500">{showArchived ? 'No archived school years.' : 'No school years yet.'}</p>
@@ -101,11 +98,64 @@ export default function SchoolYears({ years, suggestedStart }: { years: Year[]; 
                 icon="calendar_month"
                 tone="primary"
             />
+            {active && (
+                <ConfirmDialog
+                    open={toggling}
+                    onClose={() => setToggling(false)}
+                    onConfirm={() =>
+                        router.put(
+                            route('school-years.update', active.id),
+                            { is_enrollment_open: !active.is_enrollment_open },
+                            {
+                                ...opts,
+                                onStart: () => setProcessing(true),
+                                onFinish: () => (setProcessing(false), setToggling(false)),
+                            },
+                        )
+                    }
+                    title={active.is_enrollment_open ? `Close enrollment for SY ${active.name}?` : `Open enrollment for SY ${active.name}?`}
+                    message={
+                        active.is_enrollment_open
+                            ? 'Staff will no longer be able to encode new learners until enrollment is opened again. Learners already encoded are kept.'
+                            : 'Staff will be able to encode new learners for this school year right away.'
+                    }
+                    confirmLabel={active.is_enrollment_open ? 'Yes, close enrollment' : 'Yes, open enrollment'}
+                    icon={active.is_enrollment_open ? 'lock' : 'how_to_reg'}
+                    tone={active.is_enrollment_open ? 'danger' : 'primary'}
+                    processing={processing}
+                />
+            )}
+            <ConfirmDialog
+                open={archiving !== null}
+                onClose={() => setArchiving(null)}
+                onConfirm={() =>
+                    archiving &&
+                    router.put(
+                        route('school-years.archive', archiving.id),
+                        { archived: !archiving.is_archived },
+                        {
+                            ...opts,
+                            onStart: () => setProcessing(true),
+                            onFinish: () => (setProcessing(false), setArchiving(null)),
+                        },
+                    )
+                }
+                title={archiving?.is_archived ? `Unarchive SY ${archiving?.name ?? ''}?` : `Archive SY ${archiving?.name ?? ''}?`}
+                message={
+                    archiving?.is_archived
+                        ? 'It will show in the main list of school years again.'
+                        : 'It will move to Archived Years and its enrollment will be closed. Its records are kept, and you can unarchive it later.'
+                }
+                confirmLabel={archiving?.is_archived ? 'Yes, unarchive' : 'Yes, archive'}
+                icon={archiving?.is_archived ? 'unarchive' : 'archive'}
+                tone={archiving?.is_archived ? 'primary' : 'danger'}
+                processing={processing}
+            />
         </AppLayout>
     );
 }
 
-function YearCard({ year: y, onActivate }: { year: Year; onActivate: () => void }) {
+function YearCard({ year: y, onActivate, onArchive }: { year: Year; onActivate: () => void; onArchive: () => void }) {
     const [completers, setCompleters] = useState(y.grade_10_completers?.toString() ?? '');
     const opts = { preserveScroll: true };
 
@@ -142,11 +192,7 @@ function YearCard({ year: y, onActivate }: { year: Year; onActivate: () => void 
                     </button>
                 )}
                 {!y.is_active && (
-                    <button
-                        type="button"
-                        className="btn-outline py-2"
-                        onClick={() => router.put(route('school-years.archive', y.id), { archived: !y.is_archived }, opts)}
-                    >
+                    <button type="button" className="btn-outline py-2" onClick={onArchive}>
                         <Icon name={y.is_archived ? 'unarchive' : 'archive'} /> {y.is_archived ? 'Unarchive' : 'Archive'}
                     </button>
                 )}

@@ -1,5 +1,6 @@
 import { Link, router } from '@inertiajs/react';
 import { useState } from 'react';
+import { ConfirmDialog } from './confirm-dialog';
 import { Icon } from './icon';
 import { StatusBadge } from './status-badge';
 
@@ -26,11 +27,13 @@ const when = new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeStyle: 
 export function RevisionCard({ revision: r, canDecide, showLearner = false }: { revision: Revision; canDecide: boolean; showLearner?: boolean }) {
     const [notes, setNotes] = useState('');
     const [busy, setBusy] = useState(false);
+    const [deciding, setDeciding] = useState<'approve' | 'reject' | null>(null);
 
     const decide = (action: 'approve' | 'reject') => {
         setBusy(true);
-        router.post(route(`revisions.${action}`, r.id), { notes }, { preserveScroll: true, onFinish: () => setBusy(false) });
+        router.post(route(`revisions.${action}`, r.id), { notes }, { preserveScroll: true, onFinish: () => (setBusy(false), setDeciding(null)) });
     };
+    const fields = r.changes.map((c) => c.field).join(', ');
 
     return (
         <div className="panel p-5">
@@ -78,14 +81,29 @@ export function RevisionCard({ revision: r, canDecide, showLearner = false }: { 
                         onChange={(e) => setNotes(e.target.value)}
                         aria-label="Review note"
                     />
-                    <button type="button" className="btn-primary" disabled={busy} onClick={() => decide('approve')}>
+                    <button type="button" className="btn-primary" disabled={busy} onClick={() => setDeciding('approve')}>
                         <Icon name="check" /> Approve changes
                     </button>
-                    <button type="button" className="btn-danger" disabled={busy || !notes.trim()} onClick={() => decide('reject')}>
+                    <button type="button" className="btn-danger" disabled={busy || !notes.trim()} onClick={() => setDeciding('reject')}>
                         Reject
                     </button>
                 </div>
             )}
+            <ConfirmDialog
+                open={deciding !== null}
+                onClose={() => setDeciding(null)}
+                onConfirm={() => deciding && decide(deciding)}
+                processing={busy}
+                title={deciding === 'approve' ? 'Approve these changes?' : 'Reject these changes?'}
+                message={
+                    deciding === 'approve'
+                        ? `The learner's record will be updated right away: ${fields}.`
+                        : `The record stays as it is. ${r.requester ?? 'The adviser'} will see your note: "${notes.trim()}"`
+                }
+                confirmLabel={deciding === 'approve' ? 'Yes, approve' : 'Yes, reject'}
+                icon={deciding === 'approve' ? 'check_circle' : 'block'}
+                tone={deciding === 'approve' ? 'primary' : 'danger'}
+            />
         </div>
     );
 }

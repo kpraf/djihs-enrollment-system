@@ -47,11 +47,13 @@ test('two reviewers decide on the same learner at once: only one decision sticks
         .getByRole('button', { name: /^Reject/ })
         .click();
     await b.page.getByRole('dialog').getByLabel('Reason').fill('Wrong LRN');
+    await row(a.page)
+        .getByRole('button', { name: /^Approve/ })
+        .click();
+    await expect(a.page.getByRole('dialog')).toContainText(lrn);
 
     await Promise.all([
-        row(a.page)
-            .getByRole('button', { name: /^Approve/ })
-            .click(),
+        a.page.getByRole('dialog').getByRole('button', { name: 'Yes, approve' }).click(),
         b.page.getByRole('dialog').getByRole('button', { name: 'Reject' }).click(),
     ]);
 
@@ -90,6 +92,8 @@ test('an adviser requests a change; the registrar approves it from Review Enroll
     const card = registrar.page.locator('.panel', { hasText: `DIZON, REY ${tag(lrn)}` });
     await expect(card).toContainText('IGLESIA NI CRISTO');
     await card.getByRole('button', { name: 'Approve changes' }).click();
+    await expect(registrar.page.getByRole('dialog')).toContainText('Religion');
+    await registrar.page.getByRole('dialog').getByRole('button', { name: 'Yes, approve' }).click();
     await expect(registrar.page.getByRole('status').filter({ hasText: 'Changes approved and applied.' })).toBeVisible();
 
     await adviser.page.reload();
@@ -119,6 +123,68 @@ test('the document checklist marks a learner complete', async ({ page }) => {
     await expect(page.getByRole('status').filter({ hasText: 'PSA Birth Certificate updated.' })).toBeVisible();
     await row('Report Card (SF9)').getByLabel('Submitted').check();
     await expect(page.getByText('Documents incomplete')).toHaveCount(0);
+});
+
+test('placing and removing a learner both ask first', async ({ browser }) => {
+    const reg = await staffBrowser(browser, 'registrar');
+    const lrn = uniqueLrn();
+    await encode(reg.page, { lrn, last: 'Placido', first: `Ana ${tag(lrn)}` });
+    await approve(reg.page, lrn);
+
+    const key = await staffBrowser(browser, 'keyteacher');
+    await key.page.goto(`/section-assignments?grade=11&search=${lrn}`);
+    await key.page.getByRole('listitem').filter({ hasText: lrn }).getByRole('checkbox').check();
+    const picker = key.page.getByLabel('Section to place selected learners in');
+    const integrity = await picker.locator('option', { hasText: 'Integrity' }).first().getAttribute('value');
+    await picker.selectOption(integrity!);
+    await key.page.getByRole('button', { name: 'Place', exact: true }).click();
+    const dialog = key.page.getByRole('dialog');
+    await expect(dialog).toContainText('Place 1 learner in Integrity?');
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(key.page.getByRole('listitem').filter({ hasText: lrn })).toBeVisible();
+
+    await key.page.getByRole('button', { name: 'Place', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Yes, place them' }).click();
+    await expect(key.page.getByRole('status').filter({ hasText: 'Placed 1 learner in Integrity.' })).toBeVisible();
+
+    await key.page.locator('details', { hasText: 'Integrity' }).locator('summary').click();
+    await key.page.getByRole('button', { name: new RegExp(`^Remove PLACIDO, ANA ${tag(lrn)}`) }).click();
+    await expect(dialog).toContainText('stays enrolled');
+    await dialog.getByRole('button', { name: 'Yes, remove' }).click();
+    await expect(key.page.getByRole('listitem').filter({ hasText: lrn })).toBeVisible();
+
+    await reg.context.close();
+    await key.context.close();
+});
+
+test('changing the strand of a placed learner warns that they leave the section', async ({ browser }) => {
+    const reg = await staffBrowser(browser, 'registrar');
+    const lrn = uniqueLrn();
+    await encode(reg.page, { lrn, last: 'Lipat', first: `Rosa ${tag(lrn)}` });
+    await approve(reg.page, lrn);
+
+    const key = await staffBrowser(browser, 'keyteacher');
+    await key.page.goto(`/section-assignments?grade=11&search=${lrn}`);
+    const data = JSON.parse((await key.page.locator('#app').getAttribute('data-page')) ?? '{}').props;
+    const integrity = data.sections.find((s: { name: string }) => s.name === 'Integrity');
+    const id = data.unassigned.find((u: { lrn: string }) => u.lrn === lrn).id;
+    await postAs(key.context, key.context.request, '/section-assignments', { enrollment_ids: [id], section_id: integrity.id });
+
+    await reg.page.goto(`/enrollments/${id}/edit`);
+    await reg.page.getByRole('radio', { name: /^ABM/ }).check();
+    await reg.page.getByRole('button', { name: 'Save Changes' }).click();
+    const dialog = reg.page.getByRole('dialog');
+    await expect(dialog).toContainText('Take the learner out of Integrity?');
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(reg.page).toHaveURL(new RegExp(`/enrollments/${id}/edit`));
+
+    await reg.page.getByRole('button', { name: 'Save Changes' }).click();
+    await dialog.getByRole('button', { name: 'Yes, save changes' }).click();
+    await expect(reg.page.getByRole('status').filter({ hasText: 'Changes saved.' })).toBeVisible();
+    await expect(reg.page.getByText('Strand: HUMSS → ABM')).toBeVisible();
+
+    await reg.context.close();
+    await key.context.close();
 });
 
 test('two people race for the last seat in a section: it never overfills', async ({ browser }) => {
@@ -165,16 +231,45 @@ test('closing enrollment stops new submissions', async ({ browser }) => {
 
     await ict.page.goto('/school-years');
     await ict.page.getByRole('button', { name: 'Close Enrollment' }).click();
+    await expect(ict.page.getByRole('dialog')).toContainText('Staff will no longer be able to encode');
+    await ict.page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+    await expect(ict.page.getByText('Enrollment open')).toBeVisible();
+
+    await ict.page.getByRole('button', { name: 'Close Enrollment' }).click();
+    await ict.page.getByRole('dialog').getByRole('button', { name: 'Yes, close enrollment' }).click();
     await expect(ict.page.getByText('Enrollment closed')).toBeVisible();
 
     await reg.page.goto('/enrollments/create');
     await expect(reg.page.getByText(/Enrollment for school year .* is closed/)).toBeVisible();
 
     await ict.page.getByRole('button', { name: 'Open Enrollment' }).click();
+    await ict.page.getByRole('dialog').getByRole('button', { name: 'Yes, open enrollment' }).click();
     await expect(ict.page.getByText('Enrollment open')).toBeVisible();
 
     await ict.context.close();
     await reg.context.close();
+});
+
+test('a strand is switched off only after confirming, and back on with one tap', async ({ browser }) => {
+    const key = await staffBrowser(browser, 'keyteacher');
+    await key.page.goto('/strands');
+    const toggle = key.page.getByRole('switch', { name: 'IA-EIM offered' });
+    await expect(toggle).toHaveAttribute('aria-checked', 'true');
+
+    await toggle.click();
+    await expect(key.page.getByRole('dialog')).toContainText('Stop offering IA-EIM?');
+    await key.page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+    await expect(toggle).toHaveAttribute('aria-checked', 'true');
+
+    await toggle.click();
+    await key.page.getByRole('dialog').getByRole('button', { name: 'Yes, make inactive' }).click();
+    await expect(toggle).toHaveAttribute('aria-checked', 'false');
+    await expect(toggle).toContainText('Inactive');
+
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-checked', 'true');
+
+    await key.context.close();
 });
 
 test('advisers download SF1 and class lists; reports draw charts', async ({ browser }) => {

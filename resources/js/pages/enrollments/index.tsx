@@ -1,6 +1,7 @@
 import { Icon } from '@/components/icon';
 import { PageHeader } from '@/components/page-header';
 import { Pagination } from '@/components/pagination';
+import { RowActionLink } from '@/components/row-action';
 import { StatusBadge } from '@/components/status-badge';
 import { useCan } from '@/hooks/use-can';
 import AppLayout from '@/layouts/app-layout';
@@ -198,21 +199,9 @@ export default function EnrollmentsIndex({ enrollments, filters, options }: Prop
                                     </td>
                                     <td className="py-4 pr-4 pl-3 text-right whitespace-nowrap sm:pr-6">
                                         <div className="flex items-center justify-end gap-2">
-                                            <Link
-                                                href={route('enrollments.show', e.id)}
-                                                className="hover:text-primary text-slate-400 transition-colors"
-                                                title="View details"
-                                            >
-                                                <Icon name="visibility" label={`View ${e.name}`} />
-                                            </Link>
+                                            <RowActionLink href={route('enrollments.show', e.id)} icon="visibility" text="View" srSuffix={e.name} />
                                             {(can('edit-enrollments') || can('request-revisions')) && (
-                                                <Link
-                                                    href={route('enrollments.edit', e.id)}
-                                                    className="hover:text-primary text-slate-400 transition-colors"
-                                                    title="Edit"
-                                                >
-                                                    <Icon name="edit" label={`Edit ${e.name}`} />
-                                                </Link>
+                                                <RowActionLink href={route('enrollments.edit', e.id)} icon="edit" text="Edit" srSuffix={e.name} />
                                             )}
                                         </div>
                                     </td>

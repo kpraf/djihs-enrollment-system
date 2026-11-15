@@ -3,7 +3,8 @@ import { Field, SelectInput, TextInput } from '@/components/form';
 import { Icon } from '@/components/icon';
 import { Modal } from '@/components/modal';
 import { PageHeader } from '@/components/page-header';
-import { StatusBadge } from '@/components/status-badge';
+import { RowActionButton } from '@/components/row-action';
+import { Switch } from '@/components/switch';
 import AppLayout from '@/layouts/app-layout';
 import { type Option } from '@/types';
 import { Head, router, useForm } from '@inertiajs/react';
@@ -23,6 +24,9 @@ interface StrandRow {
 export default function Strands({ strands, tracks }: { strands: StrandRow[]; tracks: Option[] }) {
     const [editing, setEditing] = useState<StrandRow | 'new' | null>(null);
     const [deleting, setDeleting] = useState<StrandRow | null>(null);
+    const [deactivating, setDeactivating] = useState<StrandRow | null>(null);
+    const setActive = (s: StrandRow, active: boolean, onFinish?: () => void) =>
+        router.put(route('strands.set-active', s.id), { active }, { preserveScroll: true, onFinish });
 
     return (
         <AppLayout>
@@ -47,7 +51,7 @@ export default function Strands({ strands, tracks }: { strands: StrandRow[]; tra
                                 <th className="px-6 py-3 font-medium">Category</th>
                                 <th className="px-6 py-3 text-right font-medium">Sections</th>
                                 <th className="px-6 py-3 text-right font-medium">Students</th>
-                                <th className="px-6 py-3 font-medium">Status</th>
+                                <th className="px-6 py-3 font-medium">Offered</th>
                                 <th className="px-6 py-3 text-right font-medium">Actions</th>
                             </tr>
                         </thead>
@@ -60,38 +64,28 @@ export default function Strands({ strands, tracks }: { strands: StrandRow[]; tra
                                     <td className="px-6 py-4 text-right tabular-nums">{s.sections_count}</td>
                                     <td className="px-6 py-4 text-right tabular-nums">{s.enrollments_count}</td>
                                     <td className="px-6 py-4">
-                                        <StatusBadge status={s.is_active ? 'active' : 'inactive'} />
+                                        <Switch
+                                            checked={s.is_active}
+                                            label={`${s.code} offered`}
+                                            onText="Active"
+                                            offText="Inactive"
+                                            onChange={() => (s.is_active ? setDeactivating(s) : setActive(s, true))}
+                                        />
                                     </td>
                                     <td className="px-6 py-4">
-                                        <div className="flex justify-end gap-1">
-                                            <button
-                                                type="button"
-                                                className="hover:text-primary rounded-lg p-2 text-slate-400 hover:bg-slate-100"
-                                                onClick={() => setEditing(s)}
-                                            >
-                                                <Icon name="edit" label={`Edit ${s.code}`} />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="hover:text-primary rounded-lg p-2 text-slate-400 hover:bg-slate-100"
-                                                onClick={() =>
-                                                    router.put(route('strands.set-active', s.id), { active: !s.is_active }, { preserveScroll: true })
-                                                }
-                                            >
-                                                <Icon
-                                                    name={s.is_active ? 'toggle_on' : 'toggle_off'}
-                                                    label={`${s.is_active ? 'Deactivate' : 'Activate'} ${s.code}`}
-                                                />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-red-600 disabled:opacity-30"
+                                        <div className="flex flex-wrap justify-end gap-2">
+                                            <RowActionButton icon="edit" text="Edit" srSuffix={s.code} onClick={() => setEditing(s)} />
+                                            <RowActionButton
+                                                icon="delete"
+                                                text="Delete"
+                                                srSuffix={s.code}
+                                                tone="danger"
                                                 disabled={s.sections_count + s.enrollments_count > 0}
-                                                title={s.sections_count + s.enrollments_count > 0 ? 'In use. Deactivate it instead.' : 'Delete'}
+                                                title={
+                                                    s.sections_count + s.enrollments_count > 0 ? 'In use. Switch it to Inactive instead.' : undefined
+                                                }
                                                 onClick={() => setDeleting(s)}
-                                            >
-                                                <Icon name="delete" label={`Delete ${s.code}`} />
-                                            </button>
+                                            />
                                         </div>
                                     </td>
                                 </tr>
@@ -117,6 +111,15 @@ export default function Strands({ strands, tracks }: { strands: StrandRow[]; tra
                 message="This strand is not used by any section or learner."
                 confirmLabel="Delete"
                 icon="delete"
+            />
+            <ConfirmDialog
+                open={deactivating !== null}
+                onClose={() => setDeactivating(null)}
+                onConfirm={() => deactivating && setActive(deactivating, false, () => setDeactivating(null))}
+                title={`Stop offering ${deactivating?.code ?? ''}?`}
+                message="It will no longer appear when encoding learners or creating sections. Existing sections and learners keep it, and you can turn it back on anytime."
+                confirmLabel="Yes, make inactive"
+                icon="toggle_off"
             />
         </AppLayout>
     );

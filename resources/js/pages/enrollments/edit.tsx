@@ -45,6 +45,7 @@ export default function EditEnrollment({
                 action={{ method: 'put', url: route('enrollments.update', enrollment.id) }}
                 cancelHref={route('enrollments.show', enrollment.id)}
                 asRevision={asRevision}
+                section={enrollment.section}
             />
         </AppLayout>
     );

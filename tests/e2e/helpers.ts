@@ -109,5 +109,6 @@ export async function approve(page: Page, lrn: string) {
         .filter({ hasText: lrn })
         .getByRole('button', { name: /^Approve/ })
         .click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Yes, approve' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Approved' })).toBeVisible();
 }
