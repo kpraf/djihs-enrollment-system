@@ -104,6 +104,10 @@ composer run setup
 
 This installs everything, creates the database and builds the screens. It prints a password for the `admin` account; write it down, because you'll be asked to change it at first sign-in. It also creates fake demo learners and one demo account per role, such as `demo.registrar`, all with the password `password`. Running setup again is safe: it keeps your data.
 
+**On Windows, one command does steps 2 and 3:** from the project folder, run `powershell -ExecutionPolicy Bypass -File scripts\windows\start.ps1` (add `-Network` for other computers). It uses Herd's PHP even when XAMPP's is installed, sets up on the first run and starts the app.
+
+[`docs/demo-accounts.pdf`](docs/demo-accounts.pdf) lists the demo accounts and things to try.
+
 **3. Start it.** To use it on this computer only:
 
 ```bash
