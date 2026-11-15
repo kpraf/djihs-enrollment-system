@@ -10,7 +10,7 @@ notations:
   Figure 6  Entity relationship      crow's foot notation
   Figure 7  Old and new system       architecture and comparison table
 
-    pip install matplotlib
+    pip install matplotlib pillow
     python3 docs/diagrams/generate.py
 
 Writes a PNG and an SVG per figure next to this file, and all figures in
@@ -97,6 +97,14 @@ def cylinder(ax, x, y, w, h, title, sub):
     ax.text(x + w / 2, y + h / 2 - 0.27, sub, ha="center", va="center", fontsize=8, color=MUTED, zorder=4)
 
 
+def trim_bottom(fig, ax, w, h, new_bottom):
+    """Cut empty space below the content and move the caption up with it."""
+    for t in ax.texts[:2]:  # the caption pieces written by figure()
+        t.set_y(new_bottom + 0.32)
+    ax.set_ylim(new_bottom, h)
+    fig.set_size_inches(w, h - new_bottom)
+
+
 def save(fig, name, pdf):
     for ext in ("png", "svg"):
         fig.savefig(OUT / f"{name}.{ext}", dpi=220 if ext == "png" else None, facecolor=WHITE)
@@ -104,65 +112,120 @@ def save(fig, name, pdf):
     plt.close(fig)
 
 
-# --- Figure 1: three-tier architecture --------------------------------------------
+# --- Figure 1: three-tier architecture with real logos ---------------------------------
+ICONS = OUT / "icons"
+LINE_ICONS = {"user", "lock", "shield-check", "file-spreadsheet", "monitor", "smartphone", "hard-drive"}
+
+
+def logo(ax, name, cx, cy, size, dpi=220):
+    """Place a logo (keeps its colours) or a line icon (drawn in ink), fitted into a size x size square."""
+    from PIL import Image
+    im = Image.open(ICONS / f"{name}.png").convert("RGBA")
+    box = im.getbbox()
+    if box:
+        im = im.crop(box)
+    if name in LINE_ICONS:
+        alpha = im.getchannel("A")
+        im = Image.new("RGBA", im.size, INK)
+        im.putalpha(alpha)
+    w, h = im.size
+    k = size / max(w, h)
+    dw, dh = w * k, h * k
+    im = im.resize((max(1, round(dw * dpi)), max(1, round(dh * dpi))), Image.LANCZOS)
+    ax.imshow(im, extent=[cx - dw / 2, cx + dw / 2, cy - dh / 2, cy + dh / 2], zorder=4, interpolation="none")
+
+
 def architecture(pdf):
-    fig, ax = figure(13.33, 7.5, 1, "System architecture of the DJIHS Enrollment System")
-    tiers = [(0.45, 3.0, "Presentation tier"), (3.75, 5.45, "Application tier"), (9.5, 3.38, "Data tier")]
-    for x, w, name in tiers:
-        ax.add_patch(Rectangle((x, 1.0), w, 5.95, facecolor=SOFT, edgecolor="none", zorder=0))
-        ax.text(x + 0.18, 6.72, name, fontsize=10, fontweight="bold", color=GREEN, va="center")
+    W, H = 16.0, 9.4
+    fig, ax = figure(W, H, 1, "System architecture of the DJIHS Enrollment System")
+    top, bot, head = 9.05, 1.75, 0.66
+    cols = [(0.3, 4.75, "1", "PRESENTATION TIER", "what staff use, in the browser"),
+            (5.62, 4.75, "2", "APPLICATION TIER", "server, rules and modules"),
+            (10.94, 4.75, "3", "DATA TIER", "storage and where it runs")]
 
-    # Presentation: browsers on PCs and phones.
-    def monitor(cx, cy):
-        rect(ax, cx - 0.42, cy - 0.12, 0.84, 0.52, round_=0.03)
-        ax.plot([cx, cx], [cy - 0.12, cy - 0.27], color=LINE, lw=LW)
-        ax.plot([cx - 0.2, cx + 0.2], [cy - 0.27, cy - 0.27], color=LINE, lw=LW)
+    def tier(x, w, num, title, sub):
+        ax.add_patch(FancyBboxPatch((x, bot), w, top - bot, boxstyle="round,pad=0,rounding_size=0.12", facecolor=SOFT, edgecolor=INK, lw=1.3, zorder=1))
+        ax.add_patch(FancyBboxPatch((x, top - head), w, head, boxstyle="round,pad=0,rounding_size=0.12", facecolor=WHITE, edgecolor="none", zorder=1.2))
+        ax.add_patch(Rectangle((x + 0.01, top - head), w - 0.02, 0.2, facecolor=WHITE, edgecolor="none", zorder=1.2))
+        ax.add_patch(FancyBboxPatch((x, bot), w, top - bot, boxstyle="round,pad=0,rounding_size=0.12", facecolor="none", edgecolor=INK, lw=1.3, zorder=1.4))
+        ax.plot([x, x + w], [top - head, top - head], color=INK, lw=1.3, zorder=1.5)
+        ax.add_patch(Circle((x + 0.36, top - head / 2), 0.2, facecolor=GREEN, edgecolor=GREEN, zorder=2))
+        ax.text(x + 0.36, top - head / 2, num, color=WHITE, fontsize=11.5, fontweight="bold", ha="center", va="center", zorder=3)
+        ax.text(x + 0.72, top - head / 2 + 0.11, title, fontsize=12, fontweight="bold", va="center", color=INK)
+        ax.text(x + 0.72, top - head / 2 - 0.15, sub, fontsize=8.8, va="center", color=MUTED)
 
-    def phone(cx, cy):
-        rect(ax, cx - 0.17, cy - 0.27, 0.34, 0.62, round_=0.05)
-        ax.plot([cx - 0.05, cx + 0.05], [cy - 0.2, cy - 0.2], color=LINE, lw=LW)
+    def section(x, y, text):
+        ax.text(x, y, text, fontsize=8.2, fontweight="bold", color="#444444", va="center")
 
-    monitor(1.45, 5.55)
-    phone(2.55, 5.55)
-    ax.text(1.95, 4.95, "Staff computers and phones", ha="center", fontsize=8, color=MUTED)
-    rect(ax, 0.75, 2.6, 2.4, 1.95, "", round_=0.06)
-    ax.text(1.95, 4.2, "Web browser", ha="center", fontsize=9.5, fontweight="bold")
-    ax.text(1.95, 3.55, "React 19 · TypeScript\nTailwind CSS\nInertia.js pages", ha="center", va="center", fontsize=8.5, color=INK, linespacing=1.4)
-    ax.text(1.95, 2.85, "Charts: Chart.js", ha="center", fontsize=8, color=MUTED)
+    def tile(x, y, w, h, icons, title, sub, size=0.5, gap=0.14):
+        ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0,rounding_size=0.08", facecolor=WHITE, edgecolor="#bdbdbd", lw=1.0, zorder=2))
+        n = len(icons)
+        total = n * size + (n - 1) * gap
+        for i, name in enumerate(icons):
+            logo(ax, name, x + w / 2 - total / 2 + size / 2 + i * (size + gap), y + h - 0.12 - size / 2, size)
+        ax.text(x + w / 2, y + 0.42, title, ha="center", va="center", fontsize=9.6, fontweight="bold", zorder=3)
+        ax.text(x + w / 2, y + 0.18, sub, ha="center", va="center", fontsize=7.9, color=MUTED, zorder=3)
 
-    # Application: web server and Laravel modules.
-    rect(ax, 4.05, 5.45, 4.85, 0.75, "", round_=0.06)
-    ax.text(6.47, 5.94, "Web server", ha="center", fontsize=9.5, fontweight="bold")
-    ax.text(6.47, 5.62, "Apache (Render)  ·  PHP built-in server (school computer)", ha="center", fontsize=8, color=MUTED)
+    for c in cols:
+        tier(*c)
+    pad = 0.22
 
-    rect(ax, 4.05, 1.3, 4.85, 3.75, "", round_=0.06)
-    ax.text(6.47, 4.78, "Laravel 12 application (PHP 8.3)", ha="center", fontsize=9.5, fontweight="bold")
-    ax.add_patch(Rectangle((4.25, 4.15), 4.45, 0.42, facecolor=TINT, edgecolor=LINE, lw=LW, zorder=2))
-    ax.text(6.47, 4.36, "Middleware: session · role abilities · password change · privacy agreement", ha="center", va="center", fontsize=7.8, zorder=3)
-    modules = ["Enrollment\n& duplicate checks", "Review\n& revisions", "Sections\n& assignment", "Reports\n& DepEd forms", "Import / export\n(Excel, CSV)", "Accounts\n& school years", "Documents\nchecklist", "Audit &\naccess log"]
-    for i, m in enumerate(modules):
-        cx = 4.25 + (i % 4) * 1.13
-        cy = 3.0 if i < 4 else 1.55
-        rect(ax, cx, cy, 1.0, 0.95, m, size=7.6, round_=0.04)
+    # 1. Presentation
+    x, w = cols[0][0] + pad, cols[0][1] - 2 * pad
+    section(x, 8.05, "CLIENT")
+    tile(x, 6.55, w, 1.3, ["react", "typescript", "tailwindcss", "inertia", "chartdotjs"], "Web app in the browser",
+         "React 19 · TypeScript · Tailwind CSS · Inertia.js · Chart.js", size=0.5, gap=0.2)
+    section(x, 6.3, "DEVICES")
+    hw = (w - 0.2) / 2
+    tile(x, 4.95, hw, 1.15, ["monitor"], "Staff computers", "school offices", size=0.42)
+    tile(x + hw + 0.2, 4.95, hw, 1.15, ["smartphone"], "Phones and tablets", "same pages, phone layout", size=0.42)
+    section(x, 4.7, "USERS (SIX ROLES)")
+    roles = [("Administrator", "everything"), ("ICT Coordinator", "accounts, backups"), ("Registrar", "encode, review"),
+             ("Key Teacher", "sections"), ("Adviser", "encode, My Section"), ("Subject Teacher", "My Classes")]
+    for i, (r, d) in enumerate(roles):
+        cx = x + w / 6 + (i % 3) * w / 3
+        cy = 3.95 if i < 3 else 2.75
+        logo(ax, "user", cx, cy, 0.42)
+        ax.text(cx, cy - 0.42, r, ha="center", va="center", fontsize=8.6, fontweight="bold")
+        ax.text(cx, cy - 0.65, d, ha="center", va="center", fontsize=7.6, color=MUTED)
 
-    # Data: database and files.
-    cylinder(ax, 9.95, 3.55, 2.5, 1.65, "Database", "PostgreSQL (Render) or SQLite")
-    ax.text(11.2, 3.35, "10 tables · row locks · unique keys", ha="center", fontsize=7.8, color=MUTED)
-    rect(ax, 9.95, 1.45, 2.5, 1.15, "", round_=0.04)
-    ax.text(11.2, 2.27, "File storage", ha="center", fontsize=9.5, fontweight="bold")
-    ax.text(11.2, 1.85, "SF1 template\nimport uploads (temporary)", ha="center", va="center", fontsize=8, color=MUTED, linespacing=1.3)
+    # 2. Application
+    x, w = cols[1][0] + pad, cols[1][1] - 2 * pad
+    section(x, 8.05, "SERVER")
+    tile(x, 6.55, hw, 1.3, ["apache", "php"], "Web server", "Apache · PHP 8.3", size=0.52)
+    tile(x + hw + 0.2, 6.55, hw, 1.3, ["laravel"], "Laravel 12", "routes, validation, jobs", size=0.55)
+    section(x, 6.3, "ON EVERY REQUEST")
+    tile(x, 4.95, hw, 1.15, ["lock"], "Access control", "session and role abilities", size=0.42)
+    tile(x + hw + 0.2, 4.95, hw, 1.15, ["shield-check"], "Data privacy", "agreement, access log", size=0.42)
+    section(x, 4.7, "MODULES")
+    mods = ["Enrollment", "Review and revisions", "Documents checklist", "Sections and placement",
+            "Reports", "Import and export", "Accounts, school years", "Audit and access log"]
+    for i, m in enumerate(mods):
+        mx = x + (i % 2) * (hw + 0.2)
+        my = 4.05 - (i // 2) * 0.55
+        ax.add_patch(FancyBboxPatch((mx, my), hw, 0.42, boxstyle="round,pad=0,rounding_size=0.06", facecolor=WHITE, edgecolor="#bdbdbd", lw=1.0, zorder=2))
+        ax.text(mx + 0.14, my + 0.21, f"{i + 1}", fontsize=8.6, fontweight="bold", color=GREEN, va="center", zorder=3)
+        ax.text(mx + 0.36, my + 0.21, m, fontsize=8.6, va="center", zorder=3)
 
-    # Connections, labelled by protocol.
-    line(ax, [(3.15, 4.0), (3.6, 4.0), (3.6, 5.82), (4.05, 5.82)], arrow_start=True)
-    label(ax, 3.6, 4.95, "HTTPS", size=8)
-    line(ax, [(6.47, 5.45), (6.47, 5.05)])
-    line(ax, [(8.9, 3.6), (9.42, 3.6), (9.42, 4.35), (9.95, 4.35)], arrow_start=True)
-    label(ax, 9.42, 3.95, "SQL", size=8)
-    line(ax, [(8.9, 2.0), (9.95, 2.0)], arrow_start=True)
-    label(ax, 9.42, 2.2, "file I/O", size=8, bg=False)
+    # 3. Data
+    x, w = cols[2][0] + pad, cols[2][1] - 2 * pad
+    section(x, 8.05, "DATABASE")
+    tile(x, 6.55, w, 1.3, ["postgresql", "sqlite"], "PostgreSQL or SQLite",
+         "10 tables · unique keys and row locks stop duplicates", size=0.55, gap=0.35)
+    section(x, 6.3, "FILES")
+    tile(x, 4.95, w, 1.15, ["hard-drive", "file-spreadsheet"], "File storage",
+         "SF1 template · uploaded workbooks until confirmed", size=0.42, gap=0.3)
+    section(x, 4.7, "WHERE IT RUNS (EITHER)")
+    tile(x, 2.85, hw, 1.6, ["render", "docker"], "Render", "Docker image, managed\nPostgreSQL, HTTPS", size=0.45)
+    tile(x + hw + 0.2, 2.85, hw, 1.6, ["monitor"], "School computer", "one SQLite file,\nschool network", size=0.45)
+    ax.text(x + w / 2, 2.35, "Same code either way; only the settings differ.", ha="center", fontsize=7.8, color=MUTED, style="italic")
 
-    ax.text(6.66, 0.72, "The tiers are logical. On Render the database is a managed service; on a school computer all three tiers run on one machine.",
-            ha="center", fontsize=8, color=MUTED, style="italic")
+    # Between tiers.
+    for xa, xb, text in ((cols[0][0] + cols[0][1], cols[1][0], "HTTPS\nJSON"), (cols[1][0] + cols[1][1], cols[2][0], "SQL\nfile I/O")):
+        mid = (xa + xb) / 2
+        ax.annotate("", xy=(xb - 0.03, 5.6), xytext=(xa + 0.03, 5.6), arrowprops=dict(arrowstyle="<|-|>", color=INK, lw=1.4, mutation_scale=12, shrinkA=0, shrinkB=0))
+        ax.text(mid, 5.88, text, ha="center", va="bottom", fontsize=8.4, linespacing=1.2)
+    trim_bottom(fig, ax, W, H, bot - 0.75)
     save(fig, "fig1-system-architecture", pdf)
 
 

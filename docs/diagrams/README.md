@@ -4,7 +4,7 @@ Drawn in standard notations so they can go straight into a paper, report or slid
 
 | Figure | File | Notation |
 | --- | --- | --- |
-| 1. System architecture | `fig1-system-architecture` | Three-tier: presentation, application, data |
+| 1. System architecture | `fig1-system-architecture` | Three tiers with the real technology logos (see `icons/CREDITS.md`) |
 | 2. Context diagram | `fig2-context-diagram` | Data flow diagram, level 0 (Gane & Sarson) |
 | 3. Data flow diagram | `fig3-dfd-level-1` | Data flow diagram, level 1 (Gane & Sarson) |
 | 4. Enrollment activity | `fig4-activity-enrollment` | UML 2 activity diagram with partitions (swimlanes) |
@@ -17,7 +17,7 @@ Each figure is a PNG (for documents) and an SVG (scales without blurring). `DJIH
 To redraw them after the system changes, edit `generate.py`, then run:
 
 ```bash
-pip install matplotlib
+pip install matplotlib pillow
 ```
 
 ```bash
