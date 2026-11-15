@@ -136,96 +136,113 @@ def logo(ax, name, cx, cy, size, dpi=220):
 
 
 def architecture(pdf):
-    """A layered stack, top to bottom: who uses it, the browser, the server, the data, and where it runs."""
-    W, H = 16.0, 9.3
+    """A layered stack, top to bottom: who uses it, the browser, the server, the data, and where it runs.
+    Every layer uses the same five-column grid, and every logo sits in the same square."""
+    W = 16.0
+    L, R, lab = 0.4, 15.6, 2.35       # band edges; label column width
+    c0 = L + lab + 0.3                # content starts here
+    col = (R - 0.3 - c0) / 5          # five equal columns
+    X = [c0 + i * col for i in range(5)]
+    SQ = 0.46                          # logo square
+    GAP = 0.42                         # space between layers
+    heights = {"users": 0.9, "client": 1.0, "server": 2.3, "data": 1.0, "runs": 0.75}
+    H = 0.75 + sum(heights.values()) + GAP * 4 + 0.35
     fig, ax = figure(W, H, 1, "System architecture of the DJIHS Enrollment System")
-    L, R, lab = 0.4, 15.6, 2.35  # band edges; width of the label column
 
-    def band(y, h, name, sub, dashed=False):
+    y = H - 0.3
+    tops = {}
+    for k, h in heights.items():
+        tops[k] = (y - h, h)
+        y -= h + GAP
+
+    def band(key, name, sub, dashed=False):
+        y0, h = tops[key]
         ls = (0, (5, 3)) if dashed else "-"
-        ax.add_patch(Rectangle((L, y), R - L, h, facecolor=WHITE, edgecolor=LINE, lw=LW, ls=ls, zorder=1))
-        ax.add_patch(Rectangle((L, y), lab, h, facecolor=TINT, edgecolor=LINE, lw=LW, ls=ls, zorder=1.2))
-        ax.text(L + 0.18, y + h / 2 + 0.13, name, fontsize=10.5, fontweight="bold", va="center", color=INK)
-        ax.text(L + 0.18, y + h / 2 - 0.15, sub, fontsize=8, va="center", color=MUTED)
+        ax.add_patch(Rectangle((L, y0), R - L, h, facecolor=WHITE, edgecolor=LINE, lw=LW, ls=ls, zorder=1))
+        ax.add_patch(Rectangle((L, y0), lab, h, facecolor=TINT if not dashed else WHITE, edgecolor=LINE, lw=LW, ls=ls, zorder=1.2))
+        ax.text(L + 0.2, y0 + h / 2 + 0.12, name, fontsize=10.5, fontweight="bold", va="center")
+        ax.text(L + 0.2, y0 + h / 2 - 0.14, sub, fontsize=8, va="center", color=MUTED)
+        return y0, h
 
-    def item(x, y, icons, name, note=None, size=0.38):
-        """Logos inline, then the name and an optional note to their right. Returns the x after the item."""
+    def item(x, y, icons, name, note=None):
+        """One or two logos in fixed squares, then the name and note at a fixed offset."""
         for i, n in enumerate(icons):
-            logo(ax, n, x + size / 2 + i * (size + 0.08), y, size)
-        tx = x + len(icons) * (size + 0.08) + 0.06
-        ax.text(tx, y + (0.09 if note else 0), name, fontsize=9.4, fontweight="bold", va="center")
+            logo(ax, n, x + SQ / 2 + i * (SQ + 0.06), y, SQ)
+        tx = x + len(icons) * (SQ + 0.06) + 0.1
+        ax.text(tx, y + (0.1 if note else 0), name, fontsize=9.4, fontweight="bold", va="center")
         if note:
-            ax.text(tx, y - 0.16, note, fontsize=7.9, color=MUTED, va="center")
+            ax.text(tx, y - 0.15, note, fontsize=7.9, color=MUTED, va="center")
 
-    def link(y_from, y_to, x, text):
-        ax.annotate("", xy=(x, y_to), xytext=(x, y_from), arrowprops=dict(arrowstyle="<|-|>", color=INK, lw=1.3, mutation_scale=11, shrinkA=0, shrinkB=0))
-        ax.text(x + 0.12, (y_from + y_to) / 2, text, fontsize=8.2, va="center")
+    def link(upper, lower, text):
+        ya = tops[upper][0]
+        yb = tops[lower][0] + tops[lower][1]
+        ax.annotate("", xy=(X[0] + SQ / 2, yb), xytext=(X[0] + SQ / 2, ya), arrowprops=dict(arrowstyle="<|-|>", color=INK, lw=1.3, mutation_scale=11, shrinkA=0, shrinkB=0))
+        ax.text(X[0] + SQ / 2 + 0.15, (ya + yb) / 2, text, fontsize=8.2, va="center")
 
-    c0 = L + lab + 0.3  # first content column
-
-    # Users
-    band(7.85, 1.05, "Users", "six roles, own accounts")
+    # Users: the six roles fill columns 1-4 evenly; devices take column 5.
+    y0, h = band("users", "Users", "six roles, own accounts")
+    cy = y0 + h / 2
     roles = ["Administrator", "ICT Coordinator", "Registrar", "Key Teacher", "Adviser", "Subject Teacher"]
-    x = c0
-    for r in roles:
-        wdt = 0.16 + len(r) * 0.075
-        ax.add_patch(FancyBboxPatch((x, 8.22), wdt, 0.34, boxstyle="round,pad=0,rounding_size=0.17", facecolor=WHITE, edgecolor="#9a9a9a", lw=0.9, zorder=2))
-        ax.text(x + wdt / 2, 8.39, r, fontsize=8.4, ha="center", va="center", zorder=3)
-        x += wdt + 0.14
-    item(12.05, 8.39, ["monitor", "smartphone"], "Computers, phones", "any modern browser", size=0.34)
-
-    link(7.85, 7.35, 4.0, "uses")
+    widths = [0.3 + len(r) * 0.073 for r in roles]
+    span = X[4] - 0.35 - X[0]
+    gap = (span - sum(widths)) / (len(roles) - 1)
+    x = X[0]
+    for r, wdt in zip(roles, widths):
+        ax.add_patch(FancyBboxPatch((x, cy - 0.17), wdt, 0.34, boxstyle="round,pad=0,rounding_size=0.17", facecolor=WHITE, edgecolor="#9a9a9a", lw=0.9, zorder=2))
+        ax.text(x + wdt / 2, cy, r, fontsize=8.4, ha="center", va="center", zorder=3)
+        x += wdt + gap
+    item(X[4], cy, ["monitor", "smartphone"], "Any device", "computer, phone, tablet")
 
     # Client
-    band(6.05, 1.3, "Client", "runs in the browser")
-    for i, (icons, name, note) in enumerate([(["react"], "React 19", "user interface"), (["typescript"], "TypeScript", "typed code"),
-                                              (["tailwindcss"], "Tailwind CSS", "styling"), (["inertia"], "Inertia.js", "pages from the server"),
-                                              (["chartdotjs"], "Chart.js", "report charts")]):
-        item(c0 + i * 2.6, 6.7, icons, name, note, size=0.46)
+    y0, h = band("client", "Client", "runs in the browser")
+    cy = y0 + h / 2
+    for x, (icons, name, note) in zip(X, [(["react"], "React 19", "user interface"), (["typescript"], "TypeScript", "typed code"),
+                                          (["tailwindcss"], "Tailwind CSS", "styling"), (["inertia"], "Inertia.js", "pages from the server"),
+                                          (["chartdotjs"], "Chart.js", "report charts")]):
+        item(x, cy, icons, name, note)
 
-    link(6.05, 5.55, 4.0, "HTTPS · page data as JSON")
-
-    # Server
-    band(3.15, 2.4, "Server", "rules and business logic")
-    item(c0, 5.05, ["apache"], "Apache", "web server on Render", size=0.6)
-    item(c0 + 2.6, 5.05, ["php"], "PHP 8.3", "runtime", size=0.55)
-    item(c0 + 5.2, 5.05, ["laravel"], "Laravel 12", "application framework", size=0.46)
-    ax.text(c0, 4.4, "Every request passes", fontsize=8.2, color=MUTED, va="center")
+    # Server: stack, then the request pipeline, then the modules, all on the grid.
+    y0, h = band("server", "Server", "rules and business logic")
+    t = y0 + h
+    r1, cap1, r2, cap2, r3 = t - 0.45, t - 0.98, t - 1.28, t - 1.76, t - 2.03
+    item(X[0], r1, ["apache"], "Apache", "web server")
+    item(X[1], r1, ["php"], "PHP 8.3", "runtime")
+    item(X[2], r1, ["laravel"], "Laravel 12", "framework")
+    item(X[3], r1, ["lock"], "Access control", "roles, sessions")
+    item(X[4], r1, ["shield-check"], "Data privacy", "agreement, access log")
+    ax.text(X[0], cap1, "Every request passes, in order", fontsize=7.9, color=MUTED, va="center")
     steps = ["Signed in?", "Role allowed?", "Password changed?", "Agreement accepted?", "Run the action", "Write audit log"]
-    sx = c0 + 1.55
+    sw = (X[4] + col - 0.3 - X[0] - 0.2 * 5) / 6
     for i, st in enumerate(steps):
-        wdt = 0.24 + len(st) * 0.072
-        last = i >= 4
-        ax.add_patch(FancyBboxPatch((sx, 4.23), wdt, 0.34, boxstyle="round,pad=0,rounding_size=0.05", facecolor=TINT if last else WHITE,
-                                    edgecolor=LINE, lw=0.9, zorder=2))
-        ax.text(sx + wdt / 2, 4.4, st, fontsize=8.2, ha="center", va="center", zorder=3)
-        if i < len(steps) - 1:
-            ax.annotate("", xy=(sx + wdt + 0.2, 4.4), xytext=(sx + wdt + 0.02, 4.4), arrowprops=dict(arrowstyle="-|>", color=LINE, lw=1.0, mutation_scale=8))
-        sx += wdt + 0.22
-    ax.text(c0, 3.6, "Modules", fontsize=8.2, color=MUTED, va="center")
-    ax.text(c0 + 1.55, 3.6, "enrollment and duplicate checks  ·  review and revisions  ·  documents  ·  sections and placement  ·  reports and DepEd forms\n"
-            "import and export (Excel, CSV)  ·  accounts and school years  ·  audit and access log", fontsize=8.4, va="center", linespacing=1.6)
-
-    link(3.15, 2.65, 4.0, "SQL · file reads and writes")
+        sx = X[0] + i * (sw + 0.2)
+        ax.add_patch(FancyBboxPatch((sx, r2 - 0.17), sw, 0.34, boxstyle="round,pad=0,rounding_size=0.05", facecolor=TINT if i >= 4 else WHITE, edgecolor=LINE, lw=0.9, zorder=2))
+        ax.text(sx + sw / 2, r2, st, fontsize=8.2, ha="center", va="center", zorder=3)
+        if i < 5:
+            ax.annotate("", xy=(sx + sw + 0.2, r2), xytext=(sx + sw, r2), arrowprops=dict(arrowstyle="-|>", color=LINE, lw=1.0, mutation_scale=8, shrinkA=0, shrinkB=0))
+    ax.text(X[0], cap2, "Modules", fontsize=7.9, color=MUTED, va="center")
+    ax.text(X[0], r3, "Enrollment  ·  Review and revisions  ·  Documents  ·  Sections and placement  ·  Reports and DepEd forms  ·  "
+            "Import and export  ·  Accounts and school years  ·  Audit log", fontsize=8.4, va="center")
 
     # Data
-    band(1.45, 1.2, "Data", "kept on the server")
-    item(c0, 2.05, ["postgresql"], "PostgreSQL", "on Render", size=0.5)
-    ax.text(c0 + 2.25, 2.05, "or", fontsize=8.8, color=MUTED, va="center")
-    item(c0 + 2.55, 2.05, ["sqlite"], "SQLite", "on a school computer", size=0.46)
-    ax.text(c0 + 5.0, 2.05, "10 tables · unique keys and row locks\nstop duplicate learners and overfilled sections", fontsize=8.2, color=INK, va="center", linespacing=1.4)
-    item(c0 + 9.0, 2.05, ["hard-drive"], "File storage", "SF1 template, uploads until confirmed", size=0.42)
+    y0, h = band("data", "Data", "kept on the server")
+    cy = y0 + h / 2
+    item(X[0], cy, ["postgresql"], "PostgreSQL", "on Render")
+    item(X[1], cy, ["sqlite"], "SQLite", "on a school computer")
+    item(X[2], cy, ["hard-drive"], "File storage", "SF1 template, uploads")
+    ax.text(X[3], cy + 0.1, "10 tables", fontsize=9.4, fontweight="bold", va="center")
+    ax.text(X[3], cy - 0.15, "unique keys and row locks stop duplicate learners and overfilled sections", fontsize=7.9, color=MUTED, va="center")
 
-    # Hosting, beside the stack in the label column's style but dashed: either option.
-    ax.add_patch(Rectangle((L, 0.62), R - L, 0.62, facecolor=WHITE, edgecolor=LINE, lw=LW, ls=(0, (5, 3)), zorder=1))
-    ax.text(L + 0.18, 0.93, "Runs on (either)", fontsize=9.5, fontweight="bold", va="center")
-    item(c0, 0.93, ["render", "docker"], "Render", "Docker image, managed PostgreSQL, HTTPS", size=0.32)
-    item(c0 + 5.3, 0.93, ["monitor"], "School computer", "composer run start, school network", size=0.32)
-    ax.text(R - 0.2, 0.93, "same code; only the settings differ", fontsize=7.9, color=MUTED, style="italic", ha="right", va="center")
+    # Where it runs
+    y0, h = band("runs", "Runs on", "either option", dashed=True)
+    cy = y0 + h / 2
+    item(X[0], cy, ["render", "docker"], "Render", "Docker image, managed PostgreSQL, HTTPS")
+    item(X[2], cy, ["monitor"], "School computer", "composer run start, school network")
+    ax.text(X[4], cy, "Same code; only the settings differ.", fontsize=7.9, color=MUTED, style="italic", va="center")
 
-    trim_bottom(fig, ax, W, H, 0.0)
-    for t in ax.texts[:2]:
-        t.set_y(0.22)
+    link("users", "client", "uses")
+    link("client", "server", "HTTPS · page data as JSON")
+    link("server", "data", "SQL · file reads and writes")
+    link("data", "runs", "hosted on")
     save(fig, "fig1-system-architecture", pdf)
 
 
