@@ -94,6 +94,7 @@ The app can run on one Windows, Mac or Linux computer with no hosting and no dat
 **1. Install the tools (once).**
 - On Windows or Mac, install [Laravel Herd](https://herd.laravel.com), which is free and includes PHP and Composer. On Linux, install PHP 8.3 with the `sqlite3`, `pdo_sqlite`, `gd`, `zip`, `mbstring`, `xml` and `fileinfo` extensions, plus Composer.
 - Install Node 22 from [nodejs.org](https://nodejs.org) if `node -v` doesn't show version 22 or later.
+- Check with `php -v` that PHP is 8.3 or newer. On Windows, an older XAMPP install often comes first in the PATH with PHP 8.2, and setup then fails with "requires php ^8.3". Run `where.exe php` to see every PHP found, and move Herd's `bin` folder above `C:\xampp\php` in **Edit the system environment variables → Environment Variables → Path**. For one terminal only, run `$env:Path = "$env:USERPROFILE\.config\herd\bin;" + $env:Path` instead.
 
 **2. Set it up (once).** In a terminal, inside the project folder, run:
 
