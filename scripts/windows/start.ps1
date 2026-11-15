@@ -11,9 +11,31 @@ param([switch]$Network)
 $ErrorActionPreference = 'Stop'
 Set-Location (Resolve-Path "$PSScriptRoot\..\..")
 
-# Prefer Laravel Herd's PHP over an older one, such as XAMPP's PHP 8.2, for this window only.
-$herd = @("$env:USERPROFILE\.config\herd\bin", "$env:USERPROFILE\.config\herd-lite\bin") | Where-Object { Test-Path $_ }
-foreach ($dir in $herd) { $env:Path = "$dir;$env:Path" }
+# Prefer a newer PHP (Laravel Herd's) over an older one, such as XAMPP's 8.2, for this window only.
+# Herd keeps PHP in different places depending on its version, so look in all of them
+# and use the newest php.exe that is 8.3 or later.
+$places = @(
+    "$env:USERPROFILE\.config\herd\bin",
+    "$env:USERPROFILE\.config\herd-lite\bin",
+    "$env:USERPROFILE\.config\herd",
+    "$env:LOCALAPPDATA\Programs\Herd",
+    "$env:ProgramFiles\Herd",
+    "C:\php"
+) | Where-Object { Test-Path $_ }
+$best = $null
+foreach ($place in $places) {
+    foreach ($exe in Get-ChildItem -Path $place -Recurse -Filter php.exe -ErrorAction SilentlyContinue) {
+        try { $v = (& $exe.FullName -r "echo PHP_VERSION;" 2>$null) } catch { continue }
+        if (-not $v) { continue }
+        $ver = [version]($v -replace '[^0-9.].*$', '')
+        if ($ver -ge [version]'8.3' -and (-not $best -or $ver -gt $best.Version)) { $best = @{ Version = $ver; Dir = $exe.DirectoryName } }
+    }
+}
+if ($best) {
+    $env:Path = "$($best.Dir);$env:Path"
+} elseif (Test-Path "$env:USERPROFILE\.config\herd\bin") {
+    $env:Path = "$env:USERPROFILE\.config\herd\bin;$env:Path"
+}
 
 function Fail($message) {
     Write-Host $message -ForegroundColor Red
@@ -24,7 +46,8 @@ $php = $null
 try { $php = (& php -r "echo PHP_VERSION;" 2>$null) } catch { }
 if (-not $php) { Fail "PHP was not found. Install Laravel Herd (herd.laravel.com), open it once, then run this again." }
 if ([version]($php -replace '[^0-9.].*$', '') -lt [version]'8.3') {
-    Fail "PHP $php was found, but 8.3 or newer is needed. Open the Laravel Herd app once so it installs PHP, then run this again."
+    Fail ("PHP $php was found, but 8.3 or newer is needed, and no newer PHP was found in Herd's folders.`n" +
+          "Run the Herd installer if you only downloaded it, open the Herd app, and in Settings > PHP install PHP 8.4. Then run this again.")
 }
 Write-Host "Using PHP $php" -ForegroundColor Green
 
