@@ -1,0 +1,634 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="1296pt" height="828pt" viewBox="0 0 1296 828" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-11-15T00:29:26.543254</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 828 
+L 1296 828 
+L 1296 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 268.333813 258.695721 
+Q 313.200395 246.995897 358.066976 235.296073 
+" clip-path="url(#peeac7cfd27)" style="fill: none; stroke: #4b5563; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 222.191947 324.712875 
+Q 447.958961 410.523603 689.200034 422.227457 
+" clip-path="url(#peeac7cfd27)" style="fill: none; stroke: #4b5563; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 267.540739 505.165215 
+Q 334.31081 408.677548 359.573047 294.091546 
+" clip-path="url(#peeac7cfd27)" style="fill: none; stroke: #4b5563; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 268.401153 542.153137 
+Q 481.736774 533.647487 689.256337 483.44713 
+" clip-path="url(#peeac7cfd27)" style="fill: none; stroke: #4b5563; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 591.918766 654.903112 
+Q 653.326716 601.89489 690.29351 529.684861 
+" clip-path="url(#peeac7cfd27)" style="fill: none; stroke: #4b5563; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 592.396923 285.662208 
+Q 676.725708 281.533052 741.512356 335.672995 
+" clip-path="url(#peeac7cfd27)" style="fill: none; stroke: #4b5563; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 592.30415 221.437312 
+Q 640.799877 205.88404 689.295603 190.330767 
+" clip-path="url(#peeac7cfd27)" style="fill: none; stroke: #4b5563; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 1028.060376 254.001611 
+Q 990.001625 222.499345 951.942874 190.997079 
+" clip-path="url(#peeac7cfd27)" style="fill: none; stroke: #4b5563; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 1097.165595 234.904994 
+Q 829.542034 19.430142 534.518119 195.531266 
+" clip-path="url(#peeac7cfd27)" style="fill: none; stroke: #4b5563; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 951.751099 439.523154 
+Q 989.999646 481.283613 1028.248193 523.044072 
+" clip-path="url(#peeac7cfd27)" style="fill: none; stroke: #4b5563; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 950.9396 518.597902 
+Q 974.693534 602.681194 1028.368427 671.625086 
+" clip-path="url(#peeac7cfd27)" style="fill: none; stroke: #4b5563; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_13">
+    <path d="M 41.04 324.72 
+L 261.36 324.72 
+Q 267.12 324.72 267.12 318.96 
+L 267.12 221.04 
+Q 267.12 215.28 261.36 215.28 
+L 41.04 215.28 
+Q 35.28 215.28 35.28 221.04 
+L 35.28 318.96 
+Q 35.28 324.72 41.04 324.72 
+z
+" clip-path="url(#peeac7cfd27)" style="fill: #ffffff; stroke: #0a4d1c; stroke-width: 1.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_14">
+    <path d="M 41.04 246.96 
+L 261.36 246.96 
+Q 267.12 246.96 267.12 241.2 
+L 267.12 221.04 
+Q 267.12 215.28 261.36 215.28 
+L 41.04 215.28 
+Q 35.28 215.28 35.28 221.04 
+L 35.28 241.2 
+Q 35.28 246.96 41.04 246.96 
+z
+" clip-path="url(#peeac7cfd27)" style="fill: #0a4d1c; stroke: #0a4d1c; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_15">
+    <path d="M 41.04 569.52 
+L 261.36 569.52 
+Q 267.12 569.52 267.12 563.76 
+L 267.12 485.28 
+Q 267.12 479.52 261.36 479.52 
+L 41.04 479.52 
+Q 35.28 479.52 35.28 485.28 
+L 35.28 563.76 
+Q 35.28 569.52 41.04 569.52 
+z
+" clip-path="url(#peeac7cfd27)" style="fill: #ffffff; stroke: #0a4d1c; stroke-width: 1.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_16">
+    <path d="M 41.04 511.2 
+L 261.36 511.2 
+Q 267.12 511.2 267.12 505.44 
+L 267.12 485.28 
+Q 267.12 479.52 261.36 479.52 
+L 41.04 479.52 
+Q 35.28 479.52 35.28 485.28 
+L 35.28 505.44 
+Q 35.28 511.2 41.04 511.2 
+z
+" clip-path="url(#peeac7cfd27)" style="fill: #0a4d1c; stroke: #0a4d1c; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_17">
+    <path d="M 1034.64 364.32 
+L 1254.96 364.32 
+Q 1260.72 364.32 1260.72 358.56 
+L 1260.72 241.2 
+Q 1260.72 235.44 1254.96 235.44 
+L 1034.64 235.44 
+Q 1028.88 235.44 1028.88 241.2 
+L 1028.88 358.56 
+Q 1028.88 364.32 1034.64 364.32 
+z
+" clip-path="url(#peeac7cfd27)" style="fill: #ffffff; stroke: #0a4d1c; stroke-width: 1.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_18">
+    <path d="M 1034.64 267.12 
+L 1254.96 267.12 
+Q 1260.72 267.12 1260.72 261.36 
+L 1260.72 241.2 
+Q 1260.72 235.44 1254.96 235.44 
+L 1034.64 235.44 
+Q 1028.88 235.44 1028.88 241.2 
+L 1028.88 261.36 
+Q 1028.88 267.12 1034.64 267.12 
+z
+" clip-path="url(#peeac7cfd27)" style="fill: #0a4d1c; stroke: #0a4d1c; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_19">
+    <path d="M 365.04 324.72 
+L 585.36 324.72 
+Q 591.12 324.72 591.12 318.96 
+L 591.12 201.6 
+Q 591.12 195.84 585.36 195.84 
+L 365.04 195.84 
+Q 359.28 195.84 359.28 201.6 
+L 359.28 318.96 
+Q 359.28 324.72 365.04 324.72 
+z
+" clip-path="url(#peeac7cfd27)" style="fill: #ffffff; stroke: #0a4d1c; stroke-width: 1.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_20">
+    <path d="M 365.04 227.52 
+L 585.36 227.52 
+Q 591.12 227.52 591.12 221.76 
+L 591.12 201.6 
+Q 591.12 195.84 585.36 195.84 
+L 365.04 195.84 
+Q 359.28 195.84 359.28 201.6 
+L 359.28 221.76 
+Q 359.28 227.52 365.04 227.52 
+z
+" clip-path="url(#peeac7cfd27)" style="fill: #0a4d1c; stroke: #0a4d1c; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_21">
+    <path d="M 365.04 756.72 
+L 585.36 756.72 
+Q 591.12 756.72 591.12 750.96 
+L 591.12 594.72 
+Q 591.12 588.96 585.36 588.96 
+L 365.04 588.96 
+Q 359.28 588.96 359.28 594.72 
+L 359.28 750.96 
+Q 359.28 756.72 365.04 756.72 
+z
+" clip-path="url(#peeac7cfd27)" style="fill: #ffffff; stroke: #0a4d1c; stroke-width: 1.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_22">
+    <path d="M 365.04 620.64 
+L 585.36 620.64 
+Q 591.12 620.64 591.12 614.88 
+L 591.12 594.72 
+Q 591.12 588.96 585.36 588.96 
+L 365.04 588.96 
+Q 359.28 588.96 359.28 594.72 
+L 359.28 614.88 
+Q 359.28 620.64 365.04 620.64 
+z
+" clip-path="url(#peeac7cfd27)" style="fill: #0a4d1c; stroke: #0a4d1c; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_23">
+    <path d="M 696.24 562.32 
+L 945.36 562.32 
+Q 951.12 562.32 951.12 556.56 
+L 951.12 342 
+Q 951.12 336.24 945.36 336.24 
+L 696.24 336.24 
+Q 690.48 336.24 690.48 342 
+L 690.48 556.56 
+Q 690.48 562.32 696.24 562.32 
+z
+" clip-path="url(#peeac7cfd27)" style="fill: #ffffff; stroke: #0a4d1c; stroke-width: 1.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_24">
+    <path d="M 696.24 367.92 
+L 945.36 367.92 
+Q 951.12 367.92 951.12 362.16 
+L 951.12 342 
+Q 951.12 336.24 945.36 336.24 
+L 696.24 336.24 
+Q 690.48 336.24 690.48 342 
+L 690.48 362.16 
+Q 690.48 367.92 696.24 367.92 
+z
+" clip-path="url(#peeac7cfd27)" style="fill: #0a4d1c; stroke: #0a4d1c; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_25">
+    <path d="M 696.24 234.72 
+L 945.36 234.72 
+Q 951.12 234.72 951.12 228.96 
+L 951.12 150.48 
+Q 951.12 144.72 945.36 144.72 
+L 696.24 144.72 
+Q 690.48 144.72 690.48 150.48 
+L 690.48 228.96 
+Q 690.48 234.72 696.24 234.72 
+z
+" clip-path="url(#peeac7cfd27)" style="fill: #ffffff; stroke: #0a4d1c; stroke-width: 1.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_26">
+    <path d="M 696.24 176.4 
+L 945.36 176.4 
+Q 951.12 176.4 951.12 170.64 
+L 951.12 150.48 
+Q 951.12 144.72 945.36 144.72 
+L 696.24 144.72 
+Q 690.48 144.72 690.48 150.48 
+L 690.48 170.64 
+Q 690.48 176.4 696.24 176.4 
+z
+" clip-path="url(#peeac7cfd27)" style="fill: #0a4d1c; stroke: #0a4d1c; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_27">
+    <path d="M 1034.64 569.52 
+L 1269.36 569.52 
+Q 1275.12 569.52 1275.12 563.76 
+L 1275.12 485.28 
+Q 1275.12 479.52 1269.36 479.52 
+L 1034.64 479.52 
+Q 1028.88 479.52 1028.88 485.28 
+L 1028.88 563.76 
+Q 1028.88 569.52 1034.64 569.52 
+z
+" clip-path="url(#peeac7cfd27)" style="fill: #ffffff; stroke: #0a4d1c; stroke-width: 1.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_28">
+    <path d="M 1034.64 511.2 
+L 1269.36 511.2 
+Q 1275.12 511.2 1275.12 505.44 
+L 1275.12 485.28 
+Q 1275.12 479.52 1269.36 479.52 
+L 1034.64 479.52 
+Q 1028.88 479.52 1028.88 485.28 
+L 1028.88 505.44 
+Q 1028.88 511.2 1034.64 511.2 
+z
+" clip-path="url(#peeac7cfd27)" style="fill: #0a4d1c; stroke: #0a4d1c; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_29">
+    <path d="M 1034.64 738.72 
+L 1269.36 738.72 
+Q 1275.12 738.72 1275.12 732.96 
+L 1275.12 635.04 
+Q 1275.12 629.28 1269.36 629.28 
+L 1034.64 629.28 
+Q 1028.88 629.28 1028.88 635.04 
+L 1028.88 732.96 
+Q 1028.88 738.72 1034.64 738.72 
+z
+" clip-path="url(#peeac7cfd27)" style="fill: #ffffff; stroke: #0a4d1c; stroke-width: 1.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_30">
+    <path d="M 1034.64 660.96 
+L 1269.36 660.96 
+Q 1275.12 660.96 1275.12 655.2 
+L 1275.12 635.04 
+Q 1275.12 629.28 1269.36 629.28 
+L 1034.64 629.28 
+Q 1028.88 629.28 1028.88 635.04 
+L 1028.88 655.2 
+Q 1028.88 660.96 1034.64 660.96 
+z
+" clip-path="url(#peeac7cfd27)" style="fill: #0a4d1c; stroke: #0a4d1c; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_31">
+    <path d="M 41.04 760.32 
+L 261.36 760.32 
+Q 267.12 760.32 267.12 754.56 
+L 267.12 656.64 
+Q 267.12 650.88 261.36 650.88 
+L 41.04 650.88 
+Q 35.28 650.88 35.28 656.64 
+L 35.28 754.56 
+Q 35.28 760.32 41.04 760.32 
+z
+" clip-path="url(#peeac7cfd27)" style="fill: #ffffff; stroke: #0a4d1c; stroke-width: 1.4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_32">
+    <path d="M 41.04 682.56 
+L 261.36 682.56 
+Q 267.12 682.56 267.12 676.8 
+L 267.12 656.64 
+Q 267.12 650.88 261.36 650.88 
+L 41.04 650.88 
+Q 35.28 650.88 35.28 656.64 
+L 35.28 676.8 
+Q 35.28 682.56 41.04 682.56 
+z
+" clip-path="url(#peeac7cfd27)" style="fill: #0a4d1c; stroke: #0a4d1c; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 19px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="32.4" y="50.437031" transform="rotate(-0 32.4 50.437031)">6. Data model: the 10 tables and how they connect</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #5b6472" x="32.4" y="78.918281" transform="rotate(-0 32.4 78.918281)">Entity relationship diagram. A line marked 1 … N: one record at the 1 end has many at the N end. Arrows inside a table name the table a column points to.</text>
+   </g>
+   <g id="text_3">
+    <text style="font-weight: 700; font-size: 10.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #ffffff" x="46.8" y="233.847949" transform="rotate(-0 46.8 233.847949)">school_years</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="46.8" y="262.87432" transform="rotate(-0 46.8 262.87432)">id</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="46.8" y="282.313984" transform="rotate(-0 46.8 282.313984)">start_year  (2026 → 2026-2027)</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="46.8" y="301.75432" transform="rotate(-0 46.8 301.75432)">is_active · is_enrollment_open</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="46.8" y="321.19432" transform="rotate(-0 46.8 321.19432)">grade_10_completers</text>
+   </g>
+   <g id="text_8">
+    <text style="font-style: italic; font-size: 7.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #9a3412" x="259.2" y="342.886781" transform="rotate(-0 259.2 342.886781)">was: academicyear</text>
+   </g>
+   <g id="text_9">
+    <text style="font-weight: 700; font-size: 10.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #ffffff" x="46.8" y="498.087949" transform="rotate(-0 46.8 498.087949)">strands</text>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="46.8" y="527.11432" transform="rotate(-0 46.8 527.11432)">id</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="46.8" y="546.55432" transform="rotate(-0 46.8 546.55432)">code (ABM, HUMSS…) · track</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="46.8" y="565.99432" transform="rotate(-0 46.8 565.99432)">is_active</text>
+   </g>
+   <g id="text_13">
+    <text style="font-style: italic; font-size: 7.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #9a3412" x="259.2" y="587.686781" transform="rotate(-0 259.2 587.686781)">was: strand</text>
+   </g>
+   <g id="text_14">
+    <text style="font-weight: 700; font-size: 10.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #ffffff" x="1040.4" y="254.007539" transform="rotate(-0 1040.4 254.007539)">users</text>
+   </g>
+   <g id="text_15">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="1040.4" y="283.03432" transform="rotate(-0 1040.4 283.03432)">id</text>
+   </g>
+   <g id="text_16">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="1040.4" y="302.47432" transform="rotate(-0 1040.4 302.47432)">username (unique)</text>
+   </g>
+   <g id="text_17">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="1040.4" y="321.91432" transform="rotate(-0 1040.4 321.91432)">role · is_active</text>
+   </g>
+   <g id="text_18">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="1040.4" y="341.35432" transform="rotate(-0 1040.4 341.35432)">must_change_password</text>
+   </g>
+   <g id="text_19">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="1040.4" y="360.79432" transform="rotate(-0 1040.4 360.79432)">privacy_agreed_at</text>
+   </g>
+   <g id="text_20">
+    <text style="font-style: italic; font-size: 7.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #9a3412" x="1252.8" y="382.486781" transform="rotate(-0 1252.8 382.486781)">was: user, employee</text>
+   </g>
+   <g id="text_21">
+    <text style="font-weight: 700; font-size: 10.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #ffffff" x="370.8" y="214.407949" transform="rotate(-0 370.8 214.407949)">sections</text>
+   </g>
+   <g id="text_22">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="370.8" y="243.43432" transform="rotate(-0 370.8 243.43432)">id</text>
+   </g>
+   <g id="text_23">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="370.8" y="262.87432" transform="rotate(-0 370.8 262.87432)">school_year_id → school_years</text>
+   </g>
+   <g id="text_24">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="370.8" y="282.31432" transform="rotate(-0 370.8 282.31432)">grade_level · strand_id → strands</text>
+   </g>
+   <g id="text_25">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="370.8" y="301.75432" transform="rotate(-0 370.8 301.75432)">name · capacity</text>
+   </g>
+   <g id="text_26">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="370.8" y="321.19432" transform="rotate(-0 370.8 321.19432)">adviser_id → users</text>
+   </g>
+   <g id="text_27">
+    <text style="font-style: italic; font-size: 7.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #9a3412" x="583.2" y="342.886781" transform="rotate(-0 583.2 342.886781)">was: section</text>
+   </g>
+   <g id="text_28">
+    <text style="font-weight: 700; font-size: 10.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #ffffff" x="370.8" y="607.527949" transform="rotate(-0 370.8 607.527949)">students</text>
+   </g>
+   <g id="text_29">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="370.8" y="636.55432" transform="rotate(-0 370.8 636.55432)">id</text>
+   </g>
+   <g id="text_30">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="370.8" y="655.99432" transform="rotate(-0 370.8 655.99432)">lrn (unique)</text>
+   </g>
+   <g id="text_31">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="370.8" y="675.43432" transform="rotate(-0 370.8 675.43432)">names · birthdate · sex</text>
+   </g>
+   <g id="text_32">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="370.8" y="694.87432" transform="rotate(-0 370.8 694.87432)">religion · IP · 4Ps · disability</text>
+   </g>
+   <g id="text_33">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="370.8" y="714.31432" transform="rotate(-0 370.8 714.31432)">address · contact number</text>
+   </g>
+   <g id="text_34">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="370.8" y="733.75432" transform="rotate(-0 370.8 733.75432)">father · mother · guardian</text>
+   </g>
+   <g id="text_35">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="370.8" y="753.19432" transform="rotate(-0 370.8 753.19432)">lock_version</text>
+   </g>
+   <g id="text_36">
+    <text style="font-style: italic; font-size: 7.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #9a3412" x="583.2" y="774.886781" transform="rotate(-0 583.2 774.886781)">was: student, parentguardian</text>
+   </g>
+   <g id="text_37">
+    <text style="font-weight: 700; font-size: 10.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #ffffff" x="702" y="354.807949" transform="rotate(-0 702 354.807949)">enrollments</text>
+   </g>
+   <g id="text_38">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="702" y="383.83432" transform="rotate(-0 702 383.83432)">id</text>
+   </g>
+   <g id="text_39">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="702" y="403.27432" transform="rotate(-0 702 403.27432)">student_id → students</text>
+   </g>
+   <g id="text_40">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="702" y="422.71432" transform="rotate(-0 702 422.71432)">school_year_id → school_years</text>
+   </g>
+   <g id="text_41">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="702" y="442.15432" transform="rotate(-0 702 442.15432)">  (one per learner per year)</text>
+   </g>
+   <g id="text_42">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="702" y="461.59432" transform="rotate(-0 702 461.59432)">grade_level · strand_id</text>
+   </g>
+   <g id="text_43">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="702" y="481.03432" transform="rotate(-0 702 481.03432)">section_id → sections</text>
+   </g>
+   <g id="text_44">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="702" y="500.47432" transform="rotate(-0 702 500.47432)">learner_type · status</text>
+   </g>
+   <g id="text_45">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="702" y="519.91432" transform="rotate(-0 702 519.91432)">privacy_notice_at / _by</text>
+   </g>
+   <g id="text_46">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="702" y="539.35432" transform="rotate(-0 702 539.35432)">encoded_by · reviewed_by</text>
+   </g>
+   <g id="text_47">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="702" y="558.79432" transform="rotate(-0 702 558.79432)">lock_version</text>
+   </g>
+   <g id="text_48">
+    <text style="font-style: italic; font-size: 7.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #9a3412" x="943.2" y="580.486781" transform="rotate(-0 943.2 580.486781)">was: enrollment, sectionassignment</text>
+   </g>
+   <g id="text_49">
+    <text style="font-weight: 700; font-size: 10.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #ffffff" x="702" y="163.287949" transform="rotate(-0 702 163.287949)">teacher_assignments</text>
+   </g>
+   <g id="text_50">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="702" y="192.31432" transform="rotate(-0 702 192.31432)">section_id → sections</text>
+   </g>
+   <g id="text_51">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="702" y="211.75432" transform="rotate(-0 702 211.75432)">user_id → users</text>
+   </g>
+   <g id="text_52">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="702" y="231.19432" transform="rotate(-0 702 231.19432)">subject_name (unique per section)</text>
+   </g>
+   <g id="text_53">
+    <text style="font-style: italic; font-size: 7.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #9a3412" x="943.2" y="252.886781" transform="rotate(-0 943.2 252.886781)">was: teacherassignment</text>
+   </g>
+   <g id="text_54">
+    <text style="font-weight: 700; font-size: 10.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #ffffff" x="1040.4" y="498.087949" transform="rotate(-0 1040.4 498.087949)">document_submissions</text>
+   </g>
+   <g id="text_55">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="1040.4" y="527.11432" transform="rotate(-0 1040.4 527.11432)">enrollment_id → enrollments</text>
+   </g>
+   <g id="text_56">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="1040.4" y="546.55432" transform="rotate(-0 1040.4 546.55432)">document_type (unique per enrollment)</text>
+   </g>
+   <g id="text_57">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="1040.4" y="565.99432" transform="rotate(-0 1040.4 565.99432)">is_submitted · is_verified</text>
+   </g>
+   <g id="text_58">
+    <text style="font-style: italic; font-size: 7.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #9a3412" x="1267.2" y="587.686781" transform="rotate(-0 1267.2 587.686781)">was: documentsubmission</text>
+   </g>
+   <g id="text_59">
+    <text style="font-weight: 700; font-size: 10.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #ffffff" x="1040.4" y="647.847949" transform="rotate(-0 1040.4 647.847949)">revision_requests</text>
+   </g>
+   <g id="text_60">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="1040.4" y="676.87432" transform="rotate(-0 1040.4 676.87432)">enrollment_id → enrollments</text>
+   </g>
+   <g id="text_61">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="1040.4" y="696.31432" transform="rotate(-0 1040.4 696.31432)">requested_by · reviewed_by</text>
+   </g>
+   <g id="text_62">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="1040.4" y="715.75432" transform="rotate(-0 1040.4 715.75432)">changes {field: old, new}</text>
+   </g>
+   <g id="text_63">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="1040.4" y="735.19432" transform="rotate(-0 1040.4 735.19432)">status · justification</text>
+   </g>
+   <g id="text_64">
+    <text style="font-style: italic; font-size: 7.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #9a3412" x="1267.2" y="756.886781" transform="rotate(-0 1267.2 756.886781)">was: studentrevisionrequest</text>
+   </g>
+   <g id="text_65">
+    <text style="font-weight: 700; font-size: 10.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #ffffff" x="46.8" y="669.447949" transform="rotate(-0 46.8 669.447949)">audit_logs</text>
+   </g>
+   <g id="text_66">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="46.8" y="698.47432" transform="rotate(-0 46.8 698.47432)">user_id → users</text>
+   </g>
+   <g id="text_67">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="46.8" y="717.91432" transform="rotate(-0 46.8 717.91432)">event (created, updated,</text>
+   </g>
+   <g id="text_68">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="46.8" y="737.35432" transform="rotate(-0 46.8 737.35432)">  deleted, viewed, exported)</text>
+   </g>
+   <g id="text_69">
+    <text style="font-size: 8.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1f2937" x="46.8" y="756.79432" transform="rotate(-0 46.8 756.79432)">record · old and new values</text>
+   </g>
+   <g id="text_70">
+    <text style="font-style: italic; font-size: 7.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #9a3412" x="259.2" y="778.486781" transform="rotate(-0 259.2 778.486781)">was: auditlog</text>
+   </g>
+   <g id="text_71">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0a4d1c" x="266.4" y="257.158008" transform="rotate(-0 266.4 257.158008)"> 1</text>
+   </g>
+   <g id="text_72">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0a4d1c" x="360" y="232.750008" transform="rotate(-0 360 232.750008)">N </text>
+   </g>
+   <g id="text_73">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0a4d1c" x="220.32" y="321.958008" transform="rotate(-0 220.32 321.958008)"> 1</text>
+   </g>
+   <g id="text_74">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0a4d1c" x="691.2" y="420.281208" transform="rotate(-0 691.2 420.281208)">N </text>
+   </g>
+   <g id="text_75">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0a4d1c" x="266.4" y="504.766008" transform="rotate(-0 266.4 504.766008)"> 1</text>
+   </g>
+   <g id="text_76">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0a4d1c" x="360" y="290.098008" transform="rotate(-0 360 290.098008)">N </text>
+   </g>
+   <g id="text_77">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0a4d1c" x="266.4" y="540.190008" transform="rotate(-0 266.4 540.190008)"> 1</text>
+   </g>
+   <g id="text_78">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0a4d1c" x="691.2" y="480.934008" transform="rotate(-0 691.2 480.934008)">N </text>
+   </g>
+   <g id="text_79">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0a4d1c" x="590.4" y="654.166008" transform="rotate(-0 590.4 654.166008)"> 1</text>
+   </g>
+   <g id="text_80">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0a4d1c" x="691.2" y="525.862008" transform="rotate(-0 691.2 525.862008)">N </text>
+   </g>
+   <g id="text_81">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0a4d1c" x="590.4" y="283.726008" transform="rotate(-0 590.4 283.726008)"> 1</text>
+   </g>
+   <g id="text_82">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0a4d1c" x="743.04" y="334.918008" transform="rotate(-0 743.04 334.918008)">N </text>
+   </g>
+   <g id="text_83">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0a4d1c" x="590.4" y="220.006008" transform="rotate(-0 590.4 220.006008)"> 1</text>
+   </g>
+   <g id="text_84">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0a4d1c" x="691.2" y="187.678008" transform="rotate(-0 691.2 187.678008)">N </text>
+   </g>
+   <g id="text_85">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0a4d1c" x="1029.6" y="253.234008" transform="rotate(-0 1029.6 253.234008)"> 1</text>
+   </g>
+   <g id="text_86">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0a4d1c" x="950.4" y="187.678008" transform="rotate(-0 950.4 187.678008)">N </text>
+   </g>
+   <g id="text_87">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0a4d1c" x="1098.72" y="234.118008" transform="rotate(-0 1098.72 234.118008)"> 1</text>
+   </g>
+   <g id="text_88">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0a4d1c" x="532.8" y="194.518008" transform="rotate(-0 532.8 194.518008)">N </text>
+   </g>
+   <g id="text_89">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0a4d1c" x="950.4" y="436.006008" transform="rotate(-0 950.4 436.006008)"> 1</text>
+   </g>
+   <g id="text_90">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0a4d1c" x="1029.6" y="522.478008" transform="rotate(-0 1029.6 522.478008)">N </text>
+   </g>
+   <g id="text_91">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0a4d1c" x="950.4" y="514.630008" transform="rotate(-0 950.4 514.630008)"> 1</text>
+   </g>
+   <g id="text_92">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0a4d1c" x="1029.6" y="671.158008" transform="rotate(-0 1029.6 671.158008)">N </text>
+   </g>
+   <g id="text_93">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #5b6472" transform="translate(36 797.058281)">Grade levels are a fixed list in the code (was the gradelevel table). Learners' parents are columns on students (was parentguardian). The section a learner is in is enrollments.section_id (was sectionassignment).</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #5b6472" transform="translate(36 809.658281)">Not drawn, to keep the picture readable: audit_logs.user_id, and the encoded_by / reviewed_by / requested_by columns, all point to users.</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="peeac7cfd27">
+   <rect x="0" y="0" width="1296" height="828"/>
+  </clipPath>
+ </defs>
+</svg>

@@ -173,6 +173,10 @@ npx tsc --noEmit && npx eslint resources/js && vendor/bin/pint --test
 npm run test:e2e
 ```
 
+## Diagrams
+
+[`docs/diagrams`](docs/diagrams) has the system context, how the system is built, the enrollment flow, the status lifecycle, what changed from the old system, and the data model, as PNG, SVG and one PDF. `docs/diagrams/generate.py` redraws them.
+
 ## Testing with real users
 
 [`docs/usability-test.md`](docs/usability-test.md) is a kit for watching the registrar encode about 10 learners: what to ask, an observation sheet and follow-up questions. It also lists what a simulated encoding session already found and fixed.
