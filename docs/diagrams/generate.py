@@ -2,7 +2,7 @@
 Draws the DJIHS Enrollment System figures with matplotlib, in standard
 notations:
 
-  Figure 1  System architecture      three-tier (presentation, application, data)
+  Figure 1  System architecture      layered stack with technology logos
   Figure 2  Context diagram          DFD level 0, Gane & Sarson
   Figure 3  Data flow diagram        DFD level 1, Gane & Sarson
   Figure 4  Enrollment activity      UML 2 activity diagram with partitions
@@ -136,96 +136,96 @@ def logo(ax, name, cx, cy, size, dpi=220):
 
 
 def architecture(pdf):
-    W, H = 16.0, 9.4
+    """A layered stack, top to bottom: who uses it, the browser, the server, the data, and where it runs."""
+    W, H = 16.0, 9.3
     fig, ax = figure(W, H, 1, "System architecture of the DJIHS Enrollment System")
-    top, bot, head = 9.05, 1.75, 0.66
-    cols = [(0.3, 4.75, "1", "PRESENTATION TIER", "what staff use, in the browser"),
-            (5.62, 4.75, "2", "APPLICATION TIER", "server, rules and modules"),
-            (10.94, 4.75, "3", "DATA TIER", "storage and where it runs")]
+    L, R, lab = 0.4, 15.6, 2.35  # band edges; width of the label column
 
-    def tier(x, w, num, title, sub):
-        ax.add_patch(FancyBboxPatch((x, bot), w, top - bot, boxstyle="round,pad=0,rounding_size=0.12", facecolor=SOFT, edgecolor=INK, lw=1.3, zorder=1))
-        ax.add_patch(FancyBboxPatch((x, top - head), w, head, boxstyle="round,pad=0,rounding_size=0.12", facecolor=WHITE, edgecolor="none", zorder=1.2))
-        ax.add_patch(Rectangle((x + 0.01, top - head), w - 0.02, 0.2, facecolor=WHITE, edgecolor="none", zorder=1.2))
-        ax.add_patch(FancyBboxPatch((x, bot), w, top - bot, boxstyle="round,pad=0,rounding_size=0.12", facecolor="none", edgecolor=INK, lw=1.3, zorder=1.4))
-        ax.plot([x, x + w], [top - head, top - head], color=INK, lw=1.3, zorder=1.5)
-        ax.add_patch(Circle((x + 0.36, top - head / 2), 0.2, facecolor=GREEN, edgecolor=GREEN, zorder=2))
-        ax.text(x + 0.36, top - head / 2, num, color=WHITE, fontsize=11.5, fontweight="bold", ha="center", va="center", zorder=3)
-        ax.text(x + 0.72, top - head / 2 + 0.11, title, fontsize=12, fontweight="bold", va="center", color=INK)
-        ax.text(x + 0.72, top - head / 2 - 0.15, sub, fontsize=8.8, va="center", color=MUTED)
+    def band(y, h, name, sub, dashed=False):
+        ls = (0, (5, 3)) if dashed else "-"
+        ax.add_patch(Rectangle((L, y), R - L, h, facecolor=WHITE, edgecolor=LINE, lw=LW, ls=ls, zorder=1))
+        ax.add_patch(Rectangle((L, y), lab, h, facecolor=TINT, edgecolor=LINE, lw=LW, ls=ls, zorder=1.2))
+        ax.text(L + 0.18, y + h / 2 + 0.13, name, fontsize=10.5, fontweight="bold", va="center", color=INK)
+        ax.text(L + 0.18, y + h / 2 - 0.15, sub, fontsize=8, va="center", color=MUTED)
 
-    def section(x, y, text):
-        ax.text(x, y, text, fontsize=8.2, fontweight="bold", color="#444444", va="center")
+    def item(x, y, icons, name, note=None, size=0.38):
+        """Logos inline, then the name and an optional note to their right. Returns the x after the item."""
+        for i, n in enumerate(icons):
+            logo(ax, n, x + size / 2 + i * (size + 0.08), y, size)
+        tx = x + len(icons) * (size + 0.08) + 0.06
+        ax.text(tx, y + (0.09 if note else 0), name, fontsize=9.4, fontweight="bold", va="center")
+        if note:
+            ax.text(tx, y - 0.16, note, fontsize=7.9, color=MUTED, va="center")
 
-    def tile(x, y, w, h, icons, title, sub, size=0.5, gap=0.14):
-        ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0,rounding_size=0.08", facecolor=WHITE, edgecolor="#bdbdbd", lw=1.0, zorder=2))
-        n = len(icons)
-        total = n * size + (n - 1) * gap
-        for i, name in enumerate(icons):
-            logo(ax, name, x + w / 2 - total / 2 + size / 2 + i * (size + gap), y + h - 0.12 - size / 2, size)
-        ax.text(x + w / 2, y + 0.42, title, ha="center", va="center", fontsize=9.6, fontweight="bold", zorder=3)
-        ax.text(x + w / 2, y + 0.18, sub, ha="center", va="center", fontsize=7.9, color=MUTED, zorder=3)
+    def link(y_from, y_to, x, text):
+        ax.annotate("", xy=(x, y_to), xytext=(x, y_from), arrowprops=dict(arrowstyle="<|-|>", color=INK, lw=1.3, mutation_scale=11, shrinkA=0, shrinkB=0))
+        ax.text(x + 0.12, (y_from + y_to) / 2, text, fontsize=8.2, va="center")
 
-    for c in cols:
-        tier(*c)
-    pad = 0.22
+    c0 = L + lab + 0.3  # first content column
 
-    # 1. Presentation
-    x, w = cols[0][0] + pad, cols[0][1] - 2 * pad
-    section(x, 8.05, "CLIENT")
-    tile(x, 6.55, w, 1.3, ["react", "typescript", "tailwindcss", "inertia", "chartdotjs"], "Web app in the browser",
-         "React 19 · TypeScript · Tailwind CSS · Inertia.js · Chart.js", size=0.5, gap=0.2)
-    section(x, 6.3, "DEVICES")
-    hw = (w - 0.2) / 2
-    tile(x, 4.95, hw, 1.15, ["monitor"], "Staff computers", "school offices", size=0.42)
-    tile(x + hw + 0.2, 4.95, hw, 1.15, ["smartphone"], "Phones and tablets", "same pages, phone layout", size=0.42)
-    section(x, 4.7, "USERS (SIX ROLES)")
-    roles = [("Administrator", "everything"), ("ICT Coordinator", "accounts, backups"), ("Registrar", "encode, review"),
-             ("Key Teacher", "sections"), ("Adviser", "encode, My Section"), ("Subject Teacher", "My Classes")]
-    for i, (r, d) in enumerate(roles):
-        cx = x + w / 6 + (i % 3) * w / 3
-        cy = 3.95 if i < 3 else 2.75
-        logo(ax, "user", cx, cy, 0.42)
-        ax.text(cx, cy - 0.42, r, ha="center", va="center", fontsize=8.6, fontweight="bold")
-        ax.text(cx, cy - 0.65, d, ha="center", va="center", fontsize=7.6, color=MUTED)
+    # Users
+    band(7.85, 1.05, "Users", "six roles, own accounts")
+    roles = ["Administrator", "ICT Coordinator", "Registrar", "Key Teacher", "Adviser", "Subject Teacher"]
+    x = c0
+    for r in roles:
+        wdt = 0.16 + len(r) * 0.075
+        ax.add_patch(FancyBboxPatch((x, 8.22), wdt, 0.34, boxstyle="round,pad=0,rounding_size=0.17", facecolor=WHITE, edgecolor="#9a9a9a", lw=0.9, zorder=2))
+        ax.text(x + wdt / 2, 8.39, r, fontsize=8.4, ha="center", va="center", zorder=3)
+        x += wdt + 0.14
+    item(12.05, 8.39, ["monitor", "smartphone"], "Computers, phones", "any modern browser", size=0.34)
 
-    # 2. Application
-    x, w = cols[1][0] + pad, cols[1][1] - 2 * pad
-    section(x, 8.05, "SERVER")
-    tile(x, 6.55, hw, 1.3, ["apache", "php"], "Web server", "Apache · PHP 8.3", size=0.52)
-    tile(x + hw + 0.2, 6.55, hw, 1.3, ["laravel"], "Laravel 12", "routes, validation, jobs", size=0.55)
-    section(x, 6.3, "ON EVERY REQUEST")
-    tile(x, 4.95, hw, 1.15, ["lock"], "Access control", "session and role abilities", size=0.42)
-    tile(x + hw + 0.2, 4.95, hw, 1.15, ["shield-check"], "Data privacy", "agreement, access log", size=0.42)
-    section(x, 4.7, "MODULES")
-    mods = ["Enrollment", "Review and revisions", "Documents checklist", "Sections and placement",
-            "Reports", "Import and export", "Accounts, school years", "Audit and access log"]
-    for i, m in enumerate(mods):
-        mx = x + (i % 2) * (hw + 0.2)
-        my = 4.05 - (i // 2) * 0.55
-        ax.add_patch(FancyBboxPatch((mx, my), hw, 0.42, boxstyle="round,pad=0,rounding_size=0.06", facecolor=WHITE, edgecolor="#bdbdbd", lw=1.0, zorder=2))
-        ax.text(mx + 0.14, my + 0.21, f"{i + 1}", fontsize=8.6, fontweight="bold", color=GREEN, va="center", zorder=3)
-        ax.text(mx + 0.36, my + 0.21, m, fontsize=8.6, va="center", zorder=3)
+    link(7.85, 7.35, 4.0, "uses")
 
-    # 3. Data
-    x, w = cols[2][0] + pad, cols[2][1] - 2 * pad
-    section(x, 8.05, "DATABASE")
-    tile(x, 6.55, w, 1.3, ["postgresql", "sqlite"], "PostgreSQL or SQLite",
-         "10 tables · unique keys and row locks stop duplicates", size=0.55, gap=0.35)
-    section(x, 6.3, "FILES")
-    tile(x, 4.95, w, 1.15, ["hard-drive", "file-spreadsheet"], "File storage",
-         "SF1 template · uploaded workbooks until confirmed", size=0.42, gap=0.3)
-    section(x, 4.7, "WHERE IT RUNS (EITHER)")
-    tile(x, 2.85, hw, 1.6, ["render", "docker"], "Render", "Docker image, managed\nPostgreSQL, HTTPS", size=0.45)
-    tile(x + hw + 0.2, 2.85, hw, 1.6, ["monitor"], "School computer", "one SQLite file,\nschool network", size=0.45)
-    ax.text(x + w / 2, 2.35, "Same code either way; only the settings differ.", ha="center", fontsize=7.8, color=MUTED, style="italic")
+    # Client
+    band(6.05, 1.3, "Client", "runs in the browser")
+    for i, (icons, name, note) in enumerate([(["react"], "React 19", "user interface"), (["typescript"], "TypeScript", "typed code"),
+                                              (["tailwindcss"], "Tailwind CSS", "styling"), (["inertia"], "Inertia.js", "pages from the server"),
+                                              (["chartdotjs"], "Chart.js", "report charts")]):
+        item(c0 + i * 2.6, 6.7, icons, name, note, size=0.46)
 
-    # Between tiers.
-    for xa, xb, text in ((cols[0][0] + cols[0][1], cols[1][0], "HTTPS\nJSON"), (cols[1][0] + cols[1][1], cols[2][0], "SQL\nfile I/O")):
-        mid = (xa + xb) / 2
-        ax.annotate("", xy=(xb - 0.03, 5.6), xytext=(xa + 0.03, 5.6), arrowprops=dict(arrowstyle="<|-|>", color=INK, lw=1.4, mutation_scale=12, shrinkA=0, shrinkB=0))
-        ax.text(mid, 5.88, text, ha="center", va="bottom", fontsize=8.4, linespacing=1.2)
-    trim_bottom(fig, ax, W, H, bot - 0.75)
+    link(6.05, 5.55, 4.0, "HTTPS · page data as JSON")
+
+    # Server
+    band(3.15, 2.4, "Server", "rules and business logic")
+    item(c0, 5.05, ["apache"], "Apache", "web server on Render", size=0.6)
+    item(c0 + 2.6, 5.05, ["php"], "PHP 8.3", "runtime", size=0.55)
+    item(c0 + 5.2, 5.05, ["laravel"], "Laravel 12", "application framework", size=0.46)
+    ax.text(c0, 4.4, "Every request passes", fontsize=8.2, color=MUTED, va="center")
+    steps = ["Signed in?", "Role allowed?", "Password changed?", "Agreement accepted?", "Run the action", "Write audit log"]
+    sx = c0 + 1.55
+    for i, st in enumerate(steps):
+        wdt = 0.24 + len(st) * 0.072
+        last = i >= 4
+        ax.add_patch(FancyBboxPatch((sx, 4.23), wdt, 0.34, boxstyle="round,pad=0,rounding_size=0.05", facecolor=TINT if last else WHITE,
+                                    edgecolor=LINE, lw=0.9, zorder=2))
+        ax.text(sx + wdt / 2, 4.4, st, fontsize=8.2, ha="center", va="center", zorder=3)
+        if i < len(steps) - 1:
+            ax.annotate("", xy=(sx + wdt + 0.2, 4.4), xytext=(sx + wdt + 0.02, 4.4), arrowprops=dict(arrowstyle="-|>", color=LINE, lw=1.0, mutation_scale=8))
+        sx += wdt + 0.22
+    ax.text(c0, 3.6, "Modules", fontsize=8.2, color=MUTED, va="center")
+    ax.text(c0 + 1.55, 3.6, "enrollment and duplicate checks  ·  review and revisions  ·  documents  ·  sections and placement  ·  reports and DepEd forms\n"
+            "import and export (Excel, CSV)  ·  accounts and school years  ·  audit and access log", fontsize=8.4, va="center", linespacing=1.6)
+
+    link(3.15, 2.65, 4.0, "SQL · file reads and writes")
+
+    # Data
+    band(1.45, 1.2, "Data", "kept on the server")
+    item(c0, 2.05, ["postgresql"], "PostgreSQL", "on Render", size=0.5)
+    ax.text(c0 + 2.25, 2.05, "or", fontsize=8.8, color=MUTED, va="center")
+    item(c0 + 2.55, 2.05, ["sqlite"], "SQLite", "on a school computer", size=0.46)
+    ax.text(c0 + 5.0, 2.05, "10 tables · unique keys and row locks\nstop duplicate learners and overfilled sections", fontsize=8.2, color=INK, va="center", linespacing=1.4)
+    item(c0 + 9.0, 2.05, ["hard-drive"], "File storage", "SF1 template, uploads until confirmed", size=0.42)
+
+    # Hosting, beside the stack in the label column's style but dashed: either option.
+    ax.add_patch(Rectangle((L, 0.62), R - L, 0.62, facecolor=WHITE, edgecolor=LINE, lw=LW, ls=(0, (5, 3)), zorder=1))
+    ax.text(L + 0.18, 0.93, "Runs on (either)", fontsize=9.5, fontweight="bold", va="center")
+    item(c0, 0.93, ["render", "docker"], "Render", "Docker image, managed PostgreSQL, HTTPS", size=0.32)
+    item(c0 + 5.3, 0.93, ["monitor"], "School computer", "composer run start, school network", size=0.32)
+    ax.text(R - 0.2, 0.93, "same code; only the settings differ", fontsize=7.9, color=MUTED, style="italic", ha="right", va="center")
+
+    trim_bottom(fig, ax, W, H, 0.0)
+    for t in ax.texts[:2]:
+        t.set_y(0.22)
     save(fig, "fig1-system-architecture", pdf)
 
 
