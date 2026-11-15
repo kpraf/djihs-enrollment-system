@@ -3,29 +3,50 @@ import { Toasts } from '@/components/toasts';
 import { type SharedData } from '@/types';
 import { usePage } from '@inertiajs/react';
 
-// The school's green, laid over the photo dark enough for white text to stay readable.
-const greenShade = 'linear-gradient(150deg, rgba(14,74,28,0.86) 0%, rgba(11,61,23,0.90) 45%, rgba(7,42,17,0.95) 100%)';
+import { cn } from '@/lib/utils';
 
 /**
  * The legacy sign-in card: green branding panel on the left, the form on
  * the right. Text-size buttons sit below so staff can enlarge the screen
- * before signing in.
+ * before signing in. With a school photo in public/images, the photo fills
+ * the page behind the card, softened and tinted green so the card stands out.
  */
 export default function GuestLayout({ children }: { children: React.ReactNode }) {
     const photo = usePage<SharedData>().props.loginBackground;
 
     return (
-        <div className="bg-background-light flex min-h-dvh flex-col items-center justify-center gap-6 p-4 sm:p-6">
-            <div className="flex w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl md:flex-row">
+        <div
+            className={cn(
+                'relative isolate flex min-h-dvh flex-col items-center justify-center gap-6 overflow-hidden p-4 sm:p-6',
+                photo ? 'bg-[#072a11]' : 'bg-background-light',
+            )}
+        >
+            {photo && (
+                <>
+                    <div
+                        aria-hidden
+                        className="absolute inset-0 -z-20 scale-105 bg-cover bg-center blur-[3px]"
+                        style={{ backgroundImage: `url("${photo}")` }}
+                    />
+                    <div
+                        aria-hidden
+                        className="absolute inset-0 -z-10"
+                        style={{ background: 'linear-gradient(160deg, rgba(8,48,20,0.55) 0%, rgba(7,42,17,0.70) 55%, rgba(4,26,10,0.85) 100%)' }}
+                    />
+                </>
+            )}
+            <div
+                className={cn(
+                    'flex w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl md:flex-row',
+                    photo && 'ring-1 ring-white/25',
+                )}
+            >
                 <div
                     className="relative flex flex-col p-8 text-white sm:p-10 md:w-1/2 lg:p-12"
                     style={{
                         backgroundColor: '#0b3d17',
-                        backgroundImage: photo
-                            ? `${greenShade}, url("${photo}")`
-                            : 'radial-gradient(circle at 20% 15%, rgba(255,255,255,0.10), transparent 45%), radial-gradient(circle at 85% 90%, rgba(0,0,0,0.35), transparent 55%), linear-gradient(150deg, #0e4a1c 0%, #0b3d17 45%, #072a11 100%)',
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
+                        backgroundImage:
+                            'radial-gradient(circle at 20% 15%, rgba(255,255,255,0.10), transparent 45%), radial-gradient(circle at 85% 90%, rgba(0,0,0,0.35), transparent 55%), linear-gradient(150deg, #0e4a1c 0%, #0b3d17 45%, #072a11 100%)',
                     }}
                 >
                     <div className="flex flex-grow flex-col items-center justify-center py-6 text-center">
@@ -49,7 +70,7 @@ export default function GuestLayout({ children }: { children: React.ReactNode })
 
                 <div className="flex flex-col justify-center p-8 sm:p-10 md:w-1/2 lg:p-12">{children}</div>
             </div>
-            <TextSizeControl />
+            <TextSizeControl tone={photo ? 'dark' : 'light'} />
             <Toasts />
         </div>
     );

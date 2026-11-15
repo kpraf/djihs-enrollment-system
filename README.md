@@ -131,7 +131,7 @@ Then, on the other computers, open `http://<this computer's IP address>:8000`. O
 
 ### Sign-in photo
 
-Put a photo of the school at `public/images/login-background.jpg` (or `.webp` / `.png`) and it appears behind the green panel on the sign-in screen, tinted so the white text stays readable. Use a wide photo at least 1200 pixels across that the school owns or has permission to use. Without one, the plain green gradient is shown.
+Put a photo of the school at `public/images/login-background.jpg` (or `.webp` / `.png`) and it fills the sign-in page behind the card, softened and tinted green. A photo of the campus or gate works best. Avoid photos where learners' faces can be recognised, and use one the school owns or has permission to use. Without one, the plain green gradient is shown.
 
 ## Local development
 
