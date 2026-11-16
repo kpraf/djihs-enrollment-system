@@ -62,6 +62,38 @@ if (-not $ready) {
     Write-Host 'First run: installing and setting up. This takes a few minutes.' -ForegroundColor Green
     composer run setup
     if ($LASTEXITCODE -ne 0) { Fail 'Setup stopped with an error. Copy the messages above and ask for help.' }
+} else {
+    # After a "git pull", bring this copy up to date: only the steps whose
+    # files changed run, so a normal start stays quick.
+    function Newer($file, $than) { (Test-Path $file) -and ((-not (Test-Path $than)) -or ((Get-Item $file).LastWriteTime -gt (Get-Item $than).LastWriteTime)) }
+
+    if (Newer 'composer.lock' 'vendor\autoload.php') {
+        Write-Host 'Updating PHP packages...' -ForegroundColor Green
+        composer install --no-interaction
+        if ($LASTEXITCODE -ne 0) { Fail 'Updating PHP packages failed. Copy the messages above and ask for help.' }
+    }
+
+    $nodeStamp = 'node_modules\.package-lock.json'
+    $packagesChanged = Newer 'package-lock.json' $nodeStamp
+    if ($packagesChanged) {
+        Write-Host 'Updating JavaScript packages...' -ForegroundColor Green
+        npm install
+        if ($LASTEXITCODE -ne 0) { Fail 'Updating JavaScript packages failed. Copy the messages above and ask for help.' }
+    }
+
+    $built = (Get-Item 'public\build\manifest.json').LastWriteTime
+    $sources = Get-ChildItem -Path 'resources\js', 'resources\css', 'vite.config.js', 'package.json' -Recurse -File -ErrorAction SilentlyContinue
+    if ($packagesChanged -or ($sources | Where-Object { $_.LastWriteTime -gt $built } | Select-Object -First 1)) {
+        Write-Host 'Building the updated screens...' -ForegroundColor Green
+        npm run build
+        if ($LASTEXITCODE -ne 0) { Fail 'Building failed. Copy the messages above and ask for help.' }
+    }
+
+    # New database changes, if any; does nothing when there are none.
+    php artisan migrate --force
+    if ($LASTEXITCODE -ne 0) { Fail 'Updating the database failed. Copy the messages above and ask for help.' }
+    # Forget settings saved under an old folder location.
+    php artisan optimize:clear | Out-Null
 }
 
 if ($Network) {
