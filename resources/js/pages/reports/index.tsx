@@ -2,9 +2,11 @@ import { LineChart } from '@/components/charts';
 import { Icon } from '@/components/icon';
 import { type IconName } from '@/components/icons';
 import { PageHeader } from '@/components/page-header';
+import { ChartSkeleton, TableSkeleton, TilesSkeleton } from '@/components/skeleton';
+import { useCan } from '@/hooks/use-can';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
-import { Head, Link, router } from '@inertiajs/react';
+import { Deferred, Head, Link, router } from '@inertiajs/react';
 
 interface Summary {
     enrolled: number;
@@ -49,12 +51,13 @@ interface Props {
     filters: { school_year: number | null; compare: number | null };
     compareName: string | null;
     summary: { now: Summary; before: Summary | null } | null;
-    table: TableRow[];
-    trends: { year: string; total: number; male: number; female: number }[];
-    strandTrends: { code: string; name: string; years: { year: string; total: number }[] }[];
     profile: { learner_types: { type: string; label: string; total: number }[]; inclusion: { label: string; total: number }[] } | null;
-    attention: { label: string; count: number; href: string | null }[];
-    rates: Rates | null;
+    // Loaded right after the page; undefined until then.
+    table?: TableRow[];
+    trends?: { year: string; total: number; male: number; female: number }[];
+    strandTrends?: { code: string; name: string; years: { year: string; total: number }[] }[];
+    attention?: { label: string; count: number; href: string | null }[];
+    rates?: Rates | null;
 }
 
 const pct = (v: number | null) => (v === null ? 'n/a' : `${v}%`);
@@ -72,6 +75,7 @@ const statusStyle = {
  * bottom like the questions the school asks.
  */
 export default function Reports({ schoolYears, filters, compareName, summary, table, trends, strandTrends, profile, attention, rates }: Props) {
+    const can = useCan();
     const yearName = schoolYears.find((y) => y.id === filters.school_year)?.name;
     const go = (next: Partial<Props['filters']>) =>
         router.get(
@@ -164,28 +168,24 @@ export default function Reports({ schoolYears, filters, compareName, summary, ta
                     </Section>
 
                     <Section title="Where learners are" note="Enrolled learners by grade and strand, like the workbook's MONITORING tab.">
-                        <GradeStrandTable rows={table} compareName={compareName} />
+                        <Deferred data="table" fallback={<TableSkeleton what="the grade and strand table" rows={8} columns={compareName ? 5 : 4} />}>
+                            <GradeStrandTable rows={table ?? []} compareName={compareName} />
+                        </Deferred>
                     </Section>
 
                     <Section title="How enrollment is changing">
-                        {trends.length < 2 ? (
-                            <p className="panel p-5 text-sm text-slate-500">Trends appear once there are two or more school years.</p>
-                        ) : (
-                            <div className="space-y-4">
-                                <div className="panel p-5">
-                                    <h3 className="mb-3 font-semibold text-slate-900">Enrolled learners per school year</h3>
-                                    <LineChart
-                                        labels={trends.map((t) => t.year)}
-                                        series={[{ label: 'Enrolled', data: trends.map((t) => t.total) }]}
-                                        height={220}
-                                        label="Enrolled learners per school year"
-                                    />
+                        <Deferred
+                            data={['trends', 'strandTrends']}
+                            fallback={
+                                <div className="space-y-4">
+                                    <ChartSkeleton what="enrollment trends" />
+                                    <ChartSkeleton what="trends by strand" height={130} />
                                 </div>
-                                {strandTrends.length > 0 && <StrandTrends strands={strandTrends} />}
-                            </div>
-                        )}
+                            }
+                        >
+                            <Trends trends={trends ?? []} strandTrends={strandTrends ?? []} />
+                        </Deferred>
                     </Section>
-
                     {profile && (
                         <Section title="Who the learners are">
                             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -200,30 +200,67 @@ export default function Reports({ schoolYears, filters, compareName, summary, ta
                     )}
 
                     <Section title="Needs attention">
-                        <ul className="panel divide-y divide-slate-100">
-                            {attention.map((a) => (
-                                <li key={a.label} className="flex flex-wrap items-center gap-3 px-5 py-3.5">
-                                    {a.count > 0 ? (
-                                        <Icon name="warning" className="text-amber-600" />
-                                    ) : (
-                                        <Icon name="check_circle" className="text-emerald-600" />
-                                    )}
-                                    <span className="flex-1 text-slate-700">{a.label}</span>
-                                    <span className="font-semibold text-slate-900 tabular-nums">{a.count > 0 ? a.count : 'None'}</span>
-                                    {a.href && a.count > 0 && (
-                                        <Link href={a.href} className="text-primary text-sm font-semibold underline print:hidden">
-                                            View
-                                        </Link>
-                                    )}
-                                </li>
-                            ))}
-                        </ul>
+                        <Deferred data="attention" fallback={<TableSkeleton what="the list of things that need attention" rows={5} columns={2} />}>
+                            <AttentionList items={attention ?? []} />
+                        </Deferred>
                     </Section>
 
-                    {rates && <RatesSection rates={rates} />}
+                    {can('view-metrics') && (
+                        <Deferred
+                            data="rates"
+                            fallback={
+                                <section>
+                                    <h2 className="text-xl font-bold text-slate-900">DepEd indicators</h2>
+                                    <TilesSkeleton what="the DepEd indicators" className="mt-3" />
+                                </section>
+                            }
+                        >
+                            <>{rates && <RatesSection rates={rates} />}</>
+                        </Deferred>
+                    )}
                 </div>
             )}
         </AppLayout>
+    );
+}
+
+function Trends({ trends, strandTrends }: { trends: NonNullable<Props['trends']>; strandTrends: NonNullable<Props['strandTrends']> }) {
+    if (trends.length < 2) {
+        return <p className="panel p-5 text-sm text-slate-500">Trends appear once there are two or more school years.</p>;
+    }
+
+    return (
+        <div className="space-y-4">
+            <div className="panel p-5">
+                <h3 className="mb-3 font-semibold text-slate-900">Enrolled learners per school year</h3>
+                <LineChart
+                    labels={trends.map((t) => t.year)}
+                    series={[{ label: 'Enrolled', data: trends.map((t) => t.total) }]}
+                    height={220}
+                    label="Enrolled learners per school year"
+                />
+            </div>
+            {strandTrends.length > 0 && <StrandTrends strands={strandTrends} />}
+        </div>
+    );
+}
+
+function AttentionList({ items }: { items: NonNullable<Props['attention']> }) {
+    return (
+        <ul className="panel divide-y divide-slate-100">
+            {items.map((a) => (
+                <li key={a.label} className="flex flex-wrap items-center gap-3 px-5 py-3.5">
+                    {a.count > 0 ? <Icon name="warning" className="text-amber-600" /> : <Icon name="check_circle" className="text-emerald-600" />}
+                    <span className="flex-1 text-slate-700">{a.label}</span>
+                    <span className="font-semibold text-slate-900 tabular-nums">{a.count > 0 ? a.count : 'None'}</span>
+                    {a.href && a.count > 0 && (
+                        <Link href={a.href} className="text-primary text-sm font-semibold underline print:hidden">
+                            View
+                        </Link>
+                    )}
+                </li>
+            ))}
+        </ul>
     );
 }
 
@@ -324,7 +361,7 @@ function GradeStrandTable({ rows, compareName }: { rows: TableRow[]; compareName
 }
 
 /** One small chart per strand, all on the same scale so they can be compared. */
-function StrandTrends({ strands }: { strands: Props['strandTrends'] }) {
+function StrandTrends({ strands }: { strands: NonNullable<Props['strandTrends']> }) {
     const top = Math.max(...strands.flatMap((s) => s.years.map((y) => y.total)));
     const max = Math.ceil((top * 1.1) / 5) * 5 || 5;
 

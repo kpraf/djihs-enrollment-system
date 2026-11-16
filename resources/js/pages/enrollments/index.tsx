@@ -4,7 +4,9 @@ import { Pagination } from '@/components/pagination';
 import { RowActionLink } from '@/components/row-action';
 import { StatusBadge } from '@/components/status-badge';
 import { useCan } from '@/hooks/use-can';
+import { useReloading } from '@/hooks/use-reloading';
 import AppLayout from '@/layouts/app-layout';
+import { cn } from '@/lib/utils';
 import { type Option, type Paginated } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
@@ -49,6 +51,7 @@ interface Props {
 }
 
 export default function EnrollmentsIndex({ enrollments, filters, options }: Props) {
+    const reloading = useReloading();
     const can = useCan();
     const [search, setSearch] = useState(filters.search ?? '');
     const skipFirst = useRef(true);
@@ -155,7 +158,10 @@ export default function EnrollmentsIndex({ enrollments, filters, options }: Prop
                 </div>
             </div>
 
-            <div className="panel overflow-hidden">
+            <div
+                className={cn('panel overflow-hidden transition-opacity duration-150', reloading && 'pointer-events-none opacity-50')}
+                aria-busy={reloading}
+            >
                 <div className="relative overflow-x-auto">
                     <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
                         <thead className="bg-slate-50 text-sm font-semibold text-slate-900">

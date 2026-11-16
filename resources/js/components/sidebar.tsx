@@ -16,6 +16,12 @@ export interface NavItem {
     match?: RegExp;
     /** Shows the number of items waiting for this user's review. */
     pendingCount?: boolean;
+    /**
+     * Load the page's data on hover, so it opens at once. Only for pages
+     * that are read more than worked in; never for live queues such as
+     * Review Enrollments or Assign to Sections, where numbers must be fresh.
+     */
+    prefetch?: boolean;
 }
 
 export interface NavGroup {
@@ -31,10 +37,10 @@ export interface NavGroup {
 export const navGroups: NavGroup[] = [
     {
         items: [
-            { title: 'Dashboard', href: '/dashboard', icon: 'dashboard' },
-            { title: 'Reports', href: '/reports', icon: 'analytics', ability: ['view-analytics', 'view-metrics'] },
-            { title: 'My Section', href: '/my-section', icon: 'co_present', ability: 'view-own-section' },
-            { title: 'My Classes', href: '/my-students', icon: 'school', ability: 'view-own-classes' },
+            { title: 'Dashboard', href: '/dashboard', icon: 'dashboard', prefetch: true },
+            { title: 'Reports', href: '/reports', icon: 'analytics', ability: ['view-analytics', 'view-metrics'], prefetch: true },
+            { title: 'My Section', href: '/my-section', icon: 'co_present', ability: 'view-own-section', prefetch: true },
+            { title: 'My Classes', href: '/my-students', icon: 'school', ability: 'view-own-classes', prefetch: true },
         ],
     },
     {
@@ -42,23 +48,23 @@ export const navGroups: NavGroup[] = [
         items: [
             { title: 'New Enrollment', href: '/enrollments/create', icon: 'how_to_reg', ability: 'encode-enrollments', match: /^\/imports/ },
             { title: 'Review Enrollments', href: '/reviews', icon: 'rate_review', ability: 'review-enrollments', pendingCount: true },
-            { title: 'Learners', href: '/enrollments', icon: 'groups', ability: 'view-enrollments', match: /^\/enrollments\/\d+/ },
+            { title: 'Learners', href: '/enrollments', icon: 'groups', ability: 'view-enrollments', match: /^\/enrollments\/\d+/, prefetch: true },
         ],
     },
     {
         title: 'Sections',
         items: [
-            { title: 'Sections', href: '/sections', icon: 'meeting_room', ability: 'manage-sections' },
+            { title: 'Sections', href: '/sections', icon: 'meeting_room', ability: 'manage-sections', prefetch: true },
             { title: 'Assign to Sections', href: '/section-assignments', icon: 'group_add', ability: 'manage-sections' },
-            { title: 'Strands', href: '/strands', icon: 'category', ability: 'manage-sections' },
+            { title: 'Strands', href: '/strands', icon: 'category', ability: 'manage-sections', prefetch: true },
         ],
     },
     {
         title: 'Administration',
         items: [
-            { title: 'School Years', href: '/school-years', icon: 'calendar_month', ability: 'manage-school-years' },
-            { title: 'User Accounts', href: '/users', icon: 'person_add', ability: 'manage-users' },
-            { title: 'Audit Log', href: '/audit-log', icon: 'fact_check', ability: 'view-audit-log' },
+            { title: 'School Years', href: '/school-years', icon: 'calendar_month', ability: 'manage-school-years', prefetch: true },
+            { title: 'User Accounts', href: '/users', icon: 'person_add', ability: 'manage-users', prefetch: true },
+            { title: 'Audit Log', href: '/audit-log', icon: 'fact_check', ability: 'view-audit-log', prefetch: true },
         ],
     },
 ];
@@ -118,6 +124,8 @@ export function Sidebar({ onNavigate, onLogout }: { onNavigate?: () => void; onL
                                             <Link
                                                 key={item.href}
                                                 href={item.href}
+                                                prefetch={item.prefetch}
+                                                cacheFor="15s"
                                                 onClick={onNavigate}
                                                 aria-current={active ? 'page' : undefined}
                                                 className={cn(

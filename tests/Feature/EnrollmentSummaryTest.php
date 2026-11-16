@@ -70,6 +70,8 @@ class EnrollmentSummaryTest extends TestCase
         $this->actingAs(User::factory()->create())
             ->get('/dashboard')
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->component('dashboard')->has('monitoring.grades')->where('selectedYear.id', $year->id));
+            ->assertInertia(fn ($page) => $page->component('dashboard')->where('selectedYear.id', $year->id)
+                ->missing('monitoring')
+                ->loadDeferredProps('monitoring', fn ($r) => $r->has('monitoring.grades')->has('daily')));
     }
 }

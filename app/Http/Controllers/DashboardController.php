@@ -37,8 +37,10 @@ class DashboardController extends Controller
         return Inertia::render('dashboard', [
             'schoolYears' => $years->map->only(['id', 'name', 'is_active'])->values(),
             'selectedYear' => $year?->only(['id', 'name']),
-            'monitoring' => $year && $canViewReports ? $summary->monitoring($year) : null,
-            'daily' => $year && $canViewReports ? $summary->daily($year) : [],
+            // The enrollment tables load right after the page, with grey
+            // placeholders meanwhile, so the role blocks show at once.
+            'monitoring' => Inertia::defer(fn () => $year && $canViewReports ? $summary->monitoring($year) : null, 'monitoring'),
+            'daily' => Inertia::defer(fn () => $year && $canViewReports ? $summary->daily($year) : [], 'monitoring'),
             'review' => $year && $user->hasAbility(Ability::ReviewEnrollments) ? $this->review($year, $user) : null,
             'mySections' => $year && $user->hasAbility(Ability::ViewOwnSection) ? $this->adviserSections($year, $user) : null,
             'sectionOverview' => $year && $user->hasAbility(Ability::ManageSections) ? $this->sectionOverview($year) : null,
