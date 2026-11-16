@@ -13,20 +13,25 @@ use App\Services\Sections\SectionAssigner;
 use Illuminate\Database\Seeder;
 
 /**
- * Fake learners and one account per role, for local development only.
- * Every demo account uses the password "password".
+ * Fake learners and one account per role, for local development and, with
+ * DEMO_DATA=true, for demonstrating a live site. Every demo account uses the
+ * password "password". Safe to run on every deploy.
  */
 class DemoSeeder extends Seeder
 {
     public function run(): void
     {
         foreach (Role::cases() as $role) {
-            User::firstOrCreate(['username' => 'demo.'.$role->value], [
+            $user = User::firstOrCreate(['username' => 'demo.'.$role->value], [
                 'first_name' => 'Demo',
                 'last_name' => $role->label(),
                 'role' => $role,
                 'password' => 'password',
             ]);
+            // Back on if demo data was turned off and on again.
+            if (! $user->is_active) {
+                $user->update(['is_active' => true]);
+            }
         }
 
         $year = SchoolYear::active();
