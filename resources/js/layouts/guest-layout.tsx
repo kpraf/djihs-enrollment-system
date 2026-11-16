@@ -1,4 +1,4 @@
-import { TextSizeControl } from '@/components/text-size-control';
+import { TextSizeWidget } from '@/components/text-size-widget';
 import { Toasts } from '@/components/toasts';
 import { type SharedData } from '@/types';
 import { usePage } from '@inertiajs/react';
@@ -7,8 +7,8 @@ import { cn } from '@/lib/utils';
 
 /**
  * The legacy sign-in card: green branding panel on the left, the form on
- * the right. Text-size buttons sit below so staff can enlarge the screen
- * before signing in. With a school photo in public/images, the photo fills
+ * the right. A floating Text size button in the corner lets staff enlarge the
+ * screen before signing in. With a school photo in public/images, the photo fills
  * the page behind the card, softened and tinted green so the card stands out.
  */
 export default function GuestLayout({ children }: { children: React.ReactNode }) {
@@ -17,7 +17,7 @@ export default function GuestLayout({ children }: { children: React.ReactNode })
     return (
         <div
             className={cn(
-                'relative isolate flex min-h-dvh flex-col items-center justify-center gap-6 overflow-hidden p-4 sm:p-6',
+                'relative isolate flex min-h-dvh flex-col items-center justify-center gap-6 overflow-hidden p-4 pb-20 sm:p-6 sm:pb-20',
                 photo ? 'bg-[#072a11]' : 'bg-background-light',
             )}
         >
@@ -70,7 +70,7 @@ export default function GuestLayout({ children }: { children: React.ReactNode })
 
                 <div className="flex flex-col justify-center p-8 sm:p-10 md:w-1/2 lg:p-12">{children}</div>
             </div>
-            <TextSizeControl tone={photo ? 'dark' : 'light'} />
+            <TextSizeWidget />
             <Toasts />
         </div>
     );

@@ -5,6 +5,7 @@ const rootSize = (page: import('@playwright/test').Page) => page.evaluate(() => 
 
 test('larger text can be chosen on the login page and is kept after signing in', async ({ page }) => {
     await page.goto('/login');
+    await page.getByRole('button', { name: 'Text size' }).click();
     await page.getByRole('button', { name: 'Extra large text' }).click();
     await expect.poll(() => rootSize(page)).toBe('130%');
 
