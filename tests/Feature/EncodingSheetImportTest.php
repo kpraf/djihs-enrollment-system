@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\EnrollmentStatus;
 use App\Enums\LearnerType;
+use App\Models\AuditLog;
 use App\Models\Enrollment;
 use App\Models\SchoolYear;
 use App\Models\Student;
@@ -50,6 +51,43 @@ class EncodingSheetImportTest extends TestCase
         $this->assertSame(LearnerType::Transferee, $ana->learner_type);
         $this->assertTrue($ana->is_irregular);
         $this->assertSame('2024-07-03', $ana->encoded_on->toDateString());
+    }
+
+    public function test_a_big_file_writes_every_audit_entry_and_a_check_writes_none(): void
+    {
+        // More rows than one batch of audit entries (200), with a learner
+        // repeated and one without an LRN, so the in-memory lookups are used.
+        $book = EncodingWorkbook::make();
+        for ($i = 0; $i < 260; $i++) {
+            $book->learner(['lrn' => 980000000000 + $i, 'first' => 'BULK '.$i]);
+        }
+        $book->learner(['lrn' => 980000000005, 'first' => 'BULK 5']);
+        $book->learner(['lrn' => '', 'first' => 'NO LRN']);
+        $path = $book->save();
+
+        $before = AuditLog::count();
+        $check = $this->import($path, dryRun: true);
+        $this->assertSame(262, $check->rowsRead);
+        $this->assertSame(0, Student::count(), 'A check saves nothing.');
+        $this->assertSame($before, AuditLog::count(), 'A check writes no audit entries.');
+
+        $result = $this->import($path);
+        $this->assertSame(261, $result->studentsCreated, 'The repeated learner is one learner.');
+        $this->assertSame(261, Enrollment::count());
+
+        // One "created" entry per learner and per enrollment, plus the
+        // repeated row's update, exactly as saving them one by one would.
+        $this->assertSame(261, AuditLog::where('auditable_type', (new Student)->getMorphClass())->where('event', 'created')->count());
+        $this->assertSame(261, AuditLog::where('auditable_type', (new Enrollment)->getMorphClass())->where('event', 'created')->count());
+        $entry = AuditLog::where('auditable_type', (new Student)->getMorphClass())->where('event', 'created')->first();
+        $this->assertSame('BULK 0', $entry->new_values['first_name']);
+        $this->assertNotNull($entry->created_at);
+
+        // Importing the same file again updates instead of adding.
+        $again = $this->import($path);
+        $this->assertSame(0, $again->studentsCreated);
+        $this->assertSame(261, Student::count());
+        $this->assertSame(261, Enrollment::count());
     }
 
     public function test_it_cleans_values_excel_mangled(): void

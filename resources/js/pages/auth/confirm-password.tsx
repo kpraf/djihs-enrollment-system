@@ -1,4 +1,5 @@
 import { Field, TextInput } from '@/components/form';
+import { BusyLabel } from '@/components/spinner';
 import GuestLayout from '@/layouts/guest-layout';
 import { Head, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
@@ -30,7 +31,9 @@ export default function ConfirmPassword() {
                     )}
                 </Field>
                 <button className="btn-primary w-full py-3.5 text-base" disabled={processing}>
-                    Confirm
+                    <BusyLabel busy={processing} busyText="Checking…">
+                        Confirm
+                    </BusyLabel>
                 </button>
             </form>
         </GuestLayout>

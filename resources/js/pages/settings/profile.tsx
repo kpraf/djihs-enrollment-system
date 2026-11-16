@@ -1,4 +1,5 @@
 import { Field, TextInput } from '@/components/form';
+import { BusyLabel } from '@/components/spinner';
 import SettingsLayout from '@/layouts/settings-layout';
 import { type AuthedData } from '@/types';
 import { Head, useForm, usePage } from '@inertiajs/react';
@@ -53,7 +54,9 @@ export default function Profile() {
                     )}
                 </Field>
                 <button className="btn-primary" disabled={processing}>
-                    Save
+                    <BusyLabel busy={processing} busyText="Saving…">
+                        Save
+                    </BusyLabel>
                 </button>
             </form>
         </SettingsLayout>

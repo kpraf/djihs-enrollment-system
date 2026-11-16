@@ -11,6 +11,7 @@ use App\Models\SchoolYear;
 use App\Models\Strand;
 use App\Models\Student;
 use App\Models\User;
+use App\Services\Audit\AuditBuffer;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -80,30 +81,54 @@ class EncodingSheetImporter
     /** @var array<string, int> LRN => first row it appeared on */
     private array $seenLrns = [];
 
+    /**
+     * Learners and enrollments this file may touch, looked up once before
+     * the rows instead of one query per row, and kept current as rows save.
+     *
+     * @var array<string, Student> LRN => learner
+     */
+    private array $byLrn = [];
+
+    /** @var array<string, Student> "LAST|FIRST|birthdate" => learner saved without an LRN */
+    private array $withoutLrn = [];
+
+    /** @var array<int, Enrollment> student id => enrollment in the school year being imported */
+    private array $enrollments = [];
+
     public function import(string $path, SchoolYear $schoolYear, ?User $actor = null, bool $dryRun = false): ImportResult
     {
         $result = new ImportResult($dryRun);
         $sheet = $this->openSheet($path);
         [$columns, $firstDataRow] = $this->locateColumns($sheet);
+        // Worked out once: asking on every row rescans the whole sheet, which
+        // made a 3,000-row file take minutes instead of seconds.
+        $lastRow = $sheet->getHighestDataRow();
         $this->strands = Strand::all();
         $this->seenLrns = [];
 
         DB::beginTransaction();
 
         try {
-            for ($row = $firstDataRow; $row <= $sheet->getHighestDataRow(); $row++) {
-                $values = [];
-                foreach ($columns as $field => $column) {
-                    $values[$field] = $sheet->getCell($column.$row)->getValue();
-                }
+            $this->loadExisting($sheet, $columns['lrn'], $firstDataRow, $lastRow, $schoolYear);
 
-                if ($this->blank($values['grade']) && $this->blank($values['last_name'])) {
-                    continue;
-                }
+            // Checking a file is rolled back, so it writes no audit entries;
+            // a real import writes them in batches.
+            $work = function () use ($sheet, $columns, $firstDataRow, $lastRow, $schoolYear, $actor, $result) {
+                for ($row = $firstDataRow; $row <= $lastRow; $row++) {
+                    $values = [];
+                    foreach ($columns as $field => $column) {
+                        $values[$field] = $sheet->getCell($column.$row)->getValue();
+                    }
 
-                $result->rowsRead++;
-                $this->importRow($row, $values, $schoolYear, $actor, $result);
-            }
+                    if ($this->blank($values['grade']) && $this->blank($values['last_name'])) {
+                        continue;
+                    }
+
+                    $result->rowsRead++;
+                    $this->importRow($row, $values, $schoolYear, $actor, $result);
+                }
+            };
+            $dryRun ? AuditBuffer::skipped($work) : AuditBuffer::batched($work);
 
             $dryRun ? DB::rollBack() : DB::commit();
         } catch (\Throwable $e) {
@@ -269,12 +294,15 @@ class EncodingSheetImporter
 
         $student = $this->findStudent($studentData, $row, $result);
         if ($student) {
+            $keyBefore = $student->lrn === null ? $this->nameKey($student->last_name, $student->first_name, $student->birthdate?->toDateString()) : null;
             $student->update($studentData);
             $result->studentsUpdated++;
         } else {
+            $keyBefore = null;
             $student = Student::create($studentData);
             $result->studentsCreated++;
         }
+        $this->remember($student, $keyBefore);
 
         if ($studentData['lrn'] !== null) {
             if (isset($this->seenLrns[$studentData['lrn']])) {
@@ -293,10 +321,12 @@ class EncodingSheetImporter
             ? EnrollmentStatus::Cancelled
             : EnrollmentStatus::Enrolled;
 
-        $enrollment = Enrollment::firstOrNew([
-            'student_id' => $student->id,
-            'school_year_id' => $schoolYear->id,
-        ]);
+        $enrollment = $this->enrollments[$student->id] ?? null;
+        if ($enrollment === null) {
+            $enrollment = new Enrollment;
+            $enrollment->student_id = $student->id;
+            $enrollment->school_year_id = $schoolYear->id;
+        }
         $isNew = ! $enrollment->exists;
 
         $enrollment->fill([
@@ -326,7 +356,43 @@ class EncodingSheetImporter
         }
 
         $enrollment->save();
+        $this->enrollments[$student->id] = $enrollment;
         $isNew ? $result->enrollmentsCreated++ : $result->enrollmentsUpdated++;
+    }
+
+    /**
+     * Looks up, in a few queries, every existing learner whose LRN is in the
+     * file, every learner saved without an LRN, and this school year's
+     * enrollments. Runs inside the import's transaction.
+     */
+    private function loadExisting(Worksheet $sheet, string $lrnColumn, int $firstRow, int $lastRow, SchoolYear $schoolYear): void
+    {
+        $lrns = [];
+        for ($row = $firstRow; $row <= $lastRow; $row++) {
+            $digits = preg_replace('/\D/', '', (string) $sheet->getCell($lrnColumn.$row)->getValue());
+            if ($digits !== '') {
+                $lrns[$digits] = true;
+            }
+        }
+
+        $this->byLrn = [];
+        foreach (array_chunk(array_keys($lrns), 1000) as $chunk) {
+            foreach (Student::whereIn('lrn', array_map('strval', $chunk))->get() as $student) {
+                $this->byLrn[$student->lrn] = $student;
+            }
+        }
+
+        $this->withoutLrn = [];
+        foreach (Student::whereNull('lrn')->get() as $student) {
+            $this->withoutLrn[$this->nameKey($student->last_name, $student->first_name, $student->birthdate?->toDateString())] = $student;
+        }
+
+        $this->enrollments = Enrollment::where('school_year_id', $schoolYear->id)->get()->keyBy('student_id')->all();
+    }
+
+    private function nameKey(?string $last, ?string $first, ?string $birthdate): string
+    {
+        return $last."\x1F".$first."\x1F".$birthdate;
     }
 
     /**
@@ -337,8 +403,10 @@ class EncodingSheetImporter
      */
     private function findStudent(array &$data, int $row, ImportResult $result): ?Student
     {
+        $withoutLrn = $this->withoutLrn[$this->nameKey($data['last_name'], $data['first_name'], $data['birthdate'])] ?? null;
+
         if ($data['lrn'] !== null) {
-            $byLrn = Student::where('lrn', $data['lrn'])->first();
+            $byLrn = $this->byLrn[$data['lrn']] ?? null;
 
             if ($byLrn !== null && $this->samePerson($byLrn, $data)) {
                 return $byLrn;
@@ -347,11 +415,7 @@ class EncodingSheetImporter
             if ($byLrn === null) {
                 // A learner first imported without an LRN (because it was
                 // missing or clashed) gets it once the sheet is corrected.
-                return Student::whereNull('lrn')
-                    ->where('last_name', $data['last_name'])
-                    ->where('first_name', $data['first_name'])
-                    ->where('birthdate', $data['birthdate'])
-                    ->first();
+                return $withoutLrn;
             }
 
             $owner = isset($this->seenLrns[$data['lrn']]) ? 'row '.$this->seenLrns[$data['lrn']] : 'an existing learner';
@@ -359,11 +423,24 @@ class EncodingSheetImporter
             $data['lrn'] = null;
         }
 
-        return Student::whereNull('lrn')
-            ->where('last_name', $data['last_name'])
-            ->where('first_name', $data['first_name'])
-            ->where('birthdate', $data['birthdate'])
-            ->first();
+        return $withoutLrn;
+    }
+
+    /**
+     * Keeps the lookups in step after a row saves its learner, so a later
+     * row for the same learner finds them, just as a fresh query would.
+     */
+    private function remember(Student $student, ?string $keyBefore): void
+    {
+        if ($keyBefore !== null) {
+            unset($this->withoutLrn[$keyBefore]);
+        }
+
+        if ($student->lrn !== null) {
+            $this->byLrn[$student->lrn] = $student;
+        } else {
+            $this->withoutLrn[$this->nameKey($student->last_name, $student->first_name, $student->birthdate?->toDateString())] = $student;
+        }
     }
 
     /**
