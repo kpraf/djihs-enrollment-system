@@ -12,6 +12,7 @@ use App\Models\Strand;
 use App\Models\Student;
 use App\Models\User;
 use App\Services\Import\EncodingSheetImporter;
+use App\Services\Import\TemplateGuide;
 use Database\Seeders\StrandSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use Tests\TestCase;
 use ZipArchive;
 
@@ -132,6 +134,18 @@ class TeacherPagesAndExportsTest extends TestCase
         }
         $this->assertSame('list', $sheet->getCell('B3')->getDataValidation()->getType());
 
+        // A how-to tab, a tip on every column, and LRNs kept as text.
+        $this->assertSame(['MAIN_ENCODING_SHEET', 'HOW TO FILL IN', 'LISTS'], $book->getSheetNames());
+        $status = $sheet->getCell('AE3')->getDataValidation();
+        $this->assertSame('list', $status->getType());
+        $this->assertTrue($status->getShowInputMessage());
+        $this->assertStringContainsString('ENROLLED or CANCELLED only', $status->getPrompt());
+        $this->assertStringContainsString('LRN', $sheet->getCell('J3')->getDataValidation()->getPrompt());
+        $this->assertSame(NumberFormat::FORMAT_TEXT, $sheet->getStyle('J3')->getNumberFormat()->getFormatCode());
+        $howTo = collect($book->getSheetByName('HOW TO FILL IN')->toArray())->flatten()->filter()->implode("\n");
+        $this->assertStringContainsString('ENROLLMENTSTATUS (column AE)', $howTo);
+        $this->assertStringContainsString("Don't type DROPPED or TRANSFERRED OUT", $howTo);
+
         // Every column has a header; FULL NAME and AGE fill themselves in.
         $this->assertSame('FULL NAME', $sheet->getCell('C1')->getValue());
         $this->assertSame('AGE', $sheet->getCell('L1')->getValue());
@@ -156,6 +170,29 @@ class TeacherPagesAndExportsTest extends TestCase
         $leo = Enrollment::whereHas('student', fn ($q) => $q->where('last_name', 'SANTOS'))->first();
         $this->assertSame(7, $leo->grade_level->value);
         $this->assertNull($leo->strand_id);
+    }
+
+    public function test_the_guide_covers_every_template_column_and_shows_on_the_import_page(): void
+    {
+        $registrar = User::factory()->role(Role::Registrar)->create();
+        $csv = $this->actingAs($registrar)->get('/imports/template?format=csv')->assertOk()->streamedContent();
+        $stream = fopen('php://temp', 'w+');
+        fwrite($stream, substr($csv, 3));
+        rewind($stream);
+        $headerColumns = count(fgetcsv($stream, escape: ''));
+        $expected = array_map(fn ($i) => Coordinate::stringFromColumnIndex($i), range(1, $headerColumns));
+
+        $this->assertSame($expected, array_column(TemplateGuide::columns(), 'column'), 'One guide entry per template column, in order.');
+        foreach (TemplateGuide::columns() as $column) {
+            $this->assertLessThanOrEqual(255, mb_strlen($column['tip']), "Excel cuts cell tips over 255 characters ({$column['column']}).");
+        }
+
+        $this->actingAs($registrar)->get('/imports')->assertInertia(fn ($page) => $page
+            ->component('imports/create')
+            ->has('guide.columns', $headerColumns)
+            ->where('guide.columns.30.column', 'AE')
+            ->has('guide.status.do')
+            ->has('guide.status.dont'));
     }
 
     public function test_the_csv_template_imports_back_with_every_digit_kept(): void

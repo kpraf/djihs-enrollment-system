@@ -151,6 +151,35 @@ class EncodingSheetImportTest extends TestCase
         $this->assertSame(1, Enrollment::count());
     }
 
+    public function test_a_row_without_both_names_is_skipped_instead_of_stopping_the_import(): void
+    {
+        $result = $this->import(EncodingWorkbook::make()
+            ->learner(['first' => ''])
+            ->learner(['lrn' => 123456789066, 'last' => ''])
+            ->learner(['lrn' => 123456789067, 'first' => 'OK'])
+            ->save());
+
+        $this->assertSame(['Missing last name or first name.', 'Missing last name or first name.'], array_column($result->skipped, 'message'));
+        $this->assertSame(1, Student::count());
+    }
+
+    public function test_a_strand_on_a_junior_high_row_is_left_blank(): void
+    {
+        $result = $this->import(EncodingWorkbook::make()->learner(['grade' => 'GRADE 9', 'track' => 'ACADEMIC', 'strand' => 'HUMANITIES AND SOCIAL SCIENCES (HUMSS)'])->save());
+
+        $this->assertNull(Enrollment::first()->strand_id);
+        $this->assertTrue(collect($result->warnings)->contains('message', 'Grade 9 has no strand. Strand left blank.'));
+    }
+
+    public function test_an_lrn_with_too_many_digits_is_not_saved(): void
+    {
+        // The LRN column holds 12 characters; a longer one would stop the import on PostgreSQL.
+        $result = $this->import(EncodingWorkbook::make()->learner(['lrn' => '1234567890123'])->save());
+
+        $this->assertNull(Student::first()->lrn);
+        $this->assertTrue(collect($result->warnings)->contains('message', 'LRN has 13 digits instead of 12. Saved without an LRN.'));
+    }
+
     public function test_a_dry_run_saves_nothing(): void
     {
         $result = $this->import(EncodingWorkbook::make()->learner()->save(), dryRun: true);

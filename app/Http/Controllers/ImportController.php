@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\SchoolYear;
 use App\Services\Import\EncodingSheetImporter;
+use App\Services\Import\TemplateGuide;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,6 +32,8 @@ class ImportController extends Controller
             'schoolYears' => SchoolYear::orderByDesc('start_year')->get()->map->only(['id', 'name', 'is_active'])->values(),
             'preview' => $pending ? [...$pending['result'], 'token' => $pending['token'], 'school_year_id' => $pending['school_year_id'], 'filename' => $pending['filename']] : null,
             'result' => $request->session()->get('import_result'),
+            // The same guide as the Excel template's HOW TO FILL IN tab.
+            'guide' => TemplateGuide::toArray(),
         ]);
     }
 

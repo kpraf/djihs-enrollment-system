@@ -1,5 +1,6 @@
 import { InputError } from '@/components/form';
 import { Icon } from '@/components/icon';
+import { ImportGuide, type ImportGuideData } from '@/components/import-guide';
 import { PageHeader } from '@/components/page-header';
 import { BusyLabel, Spinner } from '@/components/spinner';
 import AppLayout from '@/layouts/app-layout';
@@ -26,9 +27,10 @@ interface Props {
     schoolYears: { id: number; name: string; is_active: boolean }[];
     preview: (ImportSummary & { token: string; school_year_id: number; filename: string }) | null;
     result: ImportSummary | null;
+    guide: ImportGuideData;
 }
 
-export default function ImportCreate({ schoolYears, preview, result }: Props) {
+export default function ImportCreate({ schoolYears, preview, result, guide }: Props) {
     const upload = useForm<{ file: File | null; school_year_id: number | string }>({
         file: null,
         school_year_id: schoolYears.find((y) => y.is_active)?.id ?? schoolYears[0]?.id ?? '',
@@ -133,8 +135,11 @@ export default function ImportCreate({ schoolYears, preview, result }: Props) {
                                 </a>
                             </div>
                             <p className="mt-1 text-xs text-slate-500">
-                                A blank encoding sheet in the school's format. The Excel template has the same dropdowns; in the CSV, type the values
-                                exactly as in the workbook.
+                                A blank encoding sheet in the school's format. The Excel template has dropdowns, a tip on every column and a HOW TO
+                                FILL IN tab. In the CSV, type values exactly as the guide below shows.{' '}
+                                <a href="#import-guide" className="text-primary font-medium underline underline-offset-2">
+                                    How to fill in the template
+                                </a>
                             </p>
                         </div>
 
@@ -191,6 +196,15 @@ export default function ImportCreate({ schoolYears, preview, result }: Props) {
                         </div>
                         <Summary summary={preview} />
                         <Notes summary={preview} />
+                        {preview.skipped.length + preview.warnings.length > 0 && (
+                            <p className="text-sm text-slate-600">
+                                Not sure how to fix a row? See{' '}
+                                <a href="#import-guide" className="text-primary font-medium underline underline-offset-2">
+                                    how to fill in the template
+                                </a>{' '}
+                                below.
+                            </p>
+                        )}
                         <div className="flex flex-wrap justify-end gap-3 border-t border-slate-200 pt-4">
                             <button
                                 type="button"
@@ -221,6 +235,8 @@ export default function ImportCreate({ schoolYears, preview, result }: Props) {
                         </Link>
                     </div>
                 )}
+
+                <ImportGuide guide={guide} />
             </div>
         </AppLayout>
     );

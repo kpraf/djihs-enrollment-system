@@ -229,6 +229,13 @@ class EncodingSheetImporter
             return;
         }
 
+        // Without both names the learner can't be saved or found again.
+        if ($this->name($v['last_name']) === null || $this->name($v['first_name']) === null) {
+            $result->skip($row, 'Missing last name or first name.');
+
+            return;
+        }
+
         $learnerType = $this->learnerType((string) $v['learner_type']);
         if ($learnerType === null) {
             $result->skip($row, 'Unrecognised type of learner "'.$v['learner_type'].'".');
@@ -252,6 +259,12 @@ class EncodingSheetImporter
             $result->skip($row, 'Unrecognised strand "'.$v['strand'].'".');
 
             return;
+        }
+
+        // Strands are for Grades 11 and 12 only.
+        if (! $grade->isSeniorHigh() && ($strand !== null || ! $this->blank($v['strand']))) {
+            $result->warn($row, "Grade {$grade->value} has no strand. Strand left blank.");
+            $strand = null;
         }
 
         $track = strtoupper(trim((string) $v['track']));
@@ -516,6 +529,12 @@ class EncodingSheetImporter
 
         if ($digits === '') {
             $result->warn($row, 'No LRN.');
+
+            return null;
+        }
+
+        if (strlen($digits) > 12) {
+            $result->warn($row, 'LRN has '.strlen($digits).' digits instead of 12. Saved without an LRN.');
 
             return null;
         }

@@ -366,6 +366,15 @@ test('advisers download SF1 and class lists; reports draw charts', async ({ brow
         registrar.page.getByRole('link', { name: 'CSV Template' }).click(),
     ]);
     expect(template.suggestedFilename()).toBe('ENROLLMENT_ENCODING_TEMPLATE.csv');
+    // A guide to filling in either template, with what not to type in ENROLLMENTSTATUS.
+    const guide = registrar.page.getByRole('region', { name: 'How to fill in the template' });
+    await expect(guide.getByRole('heading', { name: 'Enrollment status (column AE)' })).toBeVisible();
+    await expect(guide.getByText(/Don't type DROPPED or TRANSFERRED OUT/)).toBeVisible();
+    await guide.getByText(/^Column by column/).click();
+    await expect(guide.getByText('GRADE LEVEL TO ENROLL')).toBeVisible();
+    await guide.getByRole('button', { name: 'Required only' }).click();
+    await expect(guide.getByText('REMARKS', { exact: true })).toHaveCount(0);
+    await expect(guide.getByText('ENROLLMENTSTATUS', { exact: true })).toBeVisible();
     await registrar.context.close();
 
     const subject = await staffBrowser(browser, 'subject');
