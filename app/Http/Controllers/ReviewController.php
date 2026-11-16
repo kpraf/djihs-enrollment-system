@@ -24,6 +24,9 @@ use Inertia\Response;
  */
 class ReviewController extends Controller
 {
+    /** Names listed in the Approve All confirmation; past this, it says how many more. */
+    private const APPROVE_ALL_LIST_LIMIT = 500;
+
     public function index(Request $request): Response
     {
         $filters = $request->validate([
@@ -61,6 +64,21 @@ class ReviewController extends Controller
 
         return Inertia::render('reviews/index', [
             'pending' => $pending,
+            // Everyone "Approve All" would approve, across every page. Loaded
+            // only when the confirmation opens, so the list can be checked first.
+            'approveAllList' => Inertia::optional(fn () => $this->pendingQuery($year, $filters)
+                ->with(['student:id,lrn,last_name,first_name,middle_name,extension_name', 'strand:id,code'])
+                ->orderBy('encoded_on')
+                ->orderBy('id')
+                ->limit(self::APPROVE_ALL_LIST_LIMIT)
+                ->get()
+                ->map(fn (Enrollment $e) => [
+                    'id' => $e->id,
+                    'lrn' => $e->student->lrn,
+                    'name' => $e->student->full_name,
+                    'grade_level' => $e->grade_level->value,
+                    'strand' => $e->strand?->code,
+                ])),
             'revisions' => $revisions,
             'filters' => $filters,
             'stats' => [

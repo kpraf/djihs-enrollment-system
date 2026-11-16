@@ -85,6 +85,23 @@ class ReviewWorkflowTest extends TestCase
         $this->assertSame(EnrollmentStatus::Pending, $g12->fresh()->status);
     }
 
+    public function test_approve_all_lists_everyone_it_will_approve_when_asked(): void
+    {
+        $this->pending(3);
+        $g12 = Enrollment::factory()->create(['school_year_id' => $this->year->id, 'strand_id' => Strand::first()->id, 'status' => EnrollmentStatus::Pending, 'grade_level' => 12]);
+        Enrollment::where('status', 'pending')->where('id', '!=', $g12->id)->update(['grade_level' => 11]);
+
+        // Not sent with the page; only when the confirmation asks for it.
+        $this->actingAs($this->registrar)->get('/reviews?grade=11')->assertInertia(fn ($p) => $p
+            ->missing('approveAllList')
+            ->reloadOnly('approveAllList', fn ($r) => $r
+                ->has('approveAllList', 3)
+                ->where('approveAllList.0.grade_level', 11)
+                ->has('approveAllList.0.name')
+                ->has('approveAllList.0.lrn')));
+        $this->actingAs($this->registrar)->get('/reviews')->assertInertia(fn ($p) => $p->reloadOnly('approveAllList', fn ($r) => $r->has('approveAllList', 4)));
+    }
+
     public function test_only_enrolled_learners_count_in_the_monitoring_report(): void
     {
         $this->pending(2);

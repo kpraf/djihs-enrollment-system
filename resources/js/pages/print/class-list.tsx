@@ -25,7 +25,7 @@ export default function ClassList({ title, documentTitle, subtitle, learners }: 
         <div className="mx-auto max-w-4xl bg-white p-8 text-slate-900 print:p-0">
             <Head title={documentTitle ?? title} />
             <div className="border-primary mb-6 flex items-center gap-4 border-b-2 pb-4">
-                <img src="/images/djihs-logo-large.png" alt="" className="size-16" />
+                <img src="/images/djihs-logo-large.png" alt="" className="h-16 w-auto object-contain" />
                 <div>
                     <p className="text-primary text-sm font-semibold tracking-wide uppercase">Don Jose Integrated High School</p>
                     <h1 className="text-2xl font-bold">{title}</h1>

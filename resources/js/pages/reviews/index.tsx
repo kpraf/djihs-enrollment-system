@@ -4,6 +4,7 @@ import { Icon } from '@/components/icon';
 import { PageHeader } from '@/components/page-header';
 import { Pagination } from '@/components/pagination';
 import { RevisionCard, type Revision } from '@/components/revision-card';
+import { Spinner } from '@/components/spinner';
 import { useReloading } from '@/hooks/use-reloading';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
@@ -24,8 +25,18 @@ interface PendingRow {
     encoder: string | null;
 }
 
+interface ApproveAllRow {
+    id: number;
+    lrn: string | null;
+    name: string;
+    grade_level: number;
+    strand: string | null;
+}
+
 interface Props {
     pending: Paginated<PendingRow>;
+    /** Everyone Approve All would approve; loaded when its confirmation opens. */
+    approveAllList?: ApproveAllRow[];
     revisions: Revision[];
     filters: { grade?: string; strand?: string; search?: string; tab?: string };
     stats: { pending: number; approved_today: number; enrolled: number; revisions: number };
@@ -33,13 +44,19 @@ interface Props {
     canApproveRevisions: boolean;
 }
 
-export default function Reviews({ pending, revisions, filters, stats, options, canApproveRevisions }: Props) {
+export default function Reviews({ pending, approveAllList, revisions, filters, stats, options, canApproveRevisions }: Props) {
     const reloading = useReloading();
     const [tab, setTab] = useState(filters.tab === 'revisions' && canApproveRevisions ? 'revisions' : 'enrollments');
     const [rejecting, setRejecting] = useState<PendingRow | null>(null);
     const [approving, setApproving] = useState<PendingRow | null>(null);
     const [reason, setReason] = useState('');
     const [confirmAll, setConfirmAll] = useState(false);
+    const [listLoading, setListLoading] = useState(false);
+    const openApproveAll = () => {
+        setConfirmAll(true);
+        setListLoading(true);
+        router.reload({ only: ['approveAllList'], onFinish: () => setListLoading(false) });
+    };
     const [busy, setBusy] = useState<number | 'all' | null>(null);
 
     const apply = (changes: Record<string, string>) =>
@@ -156,7 +173,7 @@ export default function Reviews({ pending, revisions, filters, stats, options, c
                         <button type="button" className="btn-primary" onClick={() => router.reload()}>
                             <Icon name="refresh" /> Refresh
                         </button>
-                        <button type="button" className="btn-accent ml-auto" disabled={pending.total === 0} onClick={() => setConfirmAll(true)}>
+                        <button type="button" className="btn-accent ml-auto" disabled={pending.total === 0} onClick={openApproveAll}>
                             <Icon name="task_alt" /> Approve All
                         </button>
                     </div>
@@ -303,13 +320,63 @@ export default function Reviews({ pending, revisions, filters, stats, options, c
                         onFinish: () => (setBusy(null), setConfirmAll(false)),
                     });
                 }}
-                processing={busy !== null}
+                processing={busy !== null || listLoading}
+                busyText={listLoading ? 'Loading the list…' : 'Approving…'}
                 title={`Approve all ${pending.total} pending enrollments?`}
-                message="Every enrollment matching the current filters will be approved. Any already reviewed by someone else are skipped."
-                confirmLabel="Approve All"
+                message="These learners will be counted as enrolled. Any already reviewed by someone else in the meantime are skipped."
+                confirmLabel={`Approve ${pending.total}`}
                 icon="task_alt"
                 tone="primary"
-            />
+            >
+                <ApproveAllList rows={listLoading ? undefined : approveAllList} total={pending.total} />
+            </ConfirmDialog>
         </AppLayout>
+    );
+}
+
+/** The learners Approve All will approve, so they can be checked first. */
+function ApproveAllList({ rows, total }: { rows: ApproveAllRow[] | undefined; total: number }) {
+    if (!rows) {
+        return (
+            <p className="mt-5 flex items-center justify-center gap-2 text-sm text-slate-500" role="status">
+                <Spinner className="text-primary" /> Loading the list…
+            </p>
+        );
+    }
+
+    return (
+        <div className="mt-5 text-left">
+            <div className="max-h-64 overflow-y-auto rounded-lg border border-slate-200">
+                <table className="w-full text-sm">
+                    <thead className="table-head sticky top-0">
+                        <tr>
+                            <th className="px-3 py-2 text-left font-medium">#</th>
+                            <th className="px-3 py-2 text-left font-medium">Learner</th>
+                            <th className="px-3 py-2 text-left font-medium">Grade</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {rows.map((r, i) => (
+                            <tr key={r.id}>
+                                <td className="px-3 py-2 text-slate-400 tabular-nums">{i + 1}</td>
+                                <td className="px-3 py-2">
+                                    <span className="block font-medium text-slate-900">{r.name}</span>
+                                    <span className="text-xs text-slate-500">{r.lrn ? `LRN ${r.lrn}` : 'No LRN'}</span>
+                                </td>
+                                <td className="px-3 py-2 whitespace-nowrap text-slate-600">
+                                    {r.grade_level}
+                                    {r.strand ? ` · ${r.strand}` : ''}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            {total > rows.length && (
+                <p className="mt-2 text-xs text-slate-500">
+                    Showing the first {rows.length} of {total}. Use the grade or strand filter to approve in smaller groups.
+                </p>
+            )}
+        </div>
     );
 }

@@ -94,9 +94,8 @@ export function Sidebar({ onNavigate, onLogout }: { onNavigate?: () => void; onL
         >
             <div>
                 <div className="p-6">
-                    <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-yellow-300 bg-yellow-100">
-                        <img alt="DJIHS logo" className="size-full object-cover" src="/images/djihs-logo.png" />
-                    </div>
+                    {/* The whole seal, flame included: never cropped into a circle. */}
+                    <img alt="DJIHS logo" className="h-14 w-auto object-contain" src="/images/djihs-logo.png" srcSet="/images/djihs-logo@2x.png 2x" />
                     <h1 className="mt-3 text-lg leading-tight font-bold">DJIHS {user.role_label}</h1>
                     <p className="text-xs text-green-100/80">Don Jose Integrated High School</p>
                 </div>

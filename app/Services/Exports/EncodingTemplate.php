@@ -19,6 +19,9 @@ class EncodingTemplate
 {
     private const LAST_COLUMN = 'AF';
 
+    /** Rows that get the FULL NAME and AGE formulas. */
+    private const FORMULA_ROWS = 1000;
+
     public function download(): BinaryFileResponse
     {
         $book = new Spreadsheet;
@@ -43,9 +46,10 @@ class EncodingTemplate
             ->map(fn (Strand $s) => $s->track->value === 'academic' ? strtoupper("{$s->name} ({$s->code})") : strtoupper("{$s->code} NCII"));
 
         $lists = [
-            'B' => ['GRADE 11', 'GRADE 12'],
-            'G' => ['REGULAR - OLD STUDENT (G10/11/12 DJIHS)', 'REGULAR - NEW STUDENT (INCOMING G11)', 'REGULAR - ALS', 'REGULAR - BALIK-ARAL (DJIHS/NON-DJIHS)',
-                'IRREGULAR - BALIK-ARAL (DJIHS/NON-DJIHS)', 'IRREGULAR - REPEATER', 'IRREGULAR - TRANSFEREE (INCOMING G11)', 'IRREGULAR - TRANSFEREE (INCOMING G12)'],
+            // A Grade 7 to 12 school. Track and strand stay blank for Grades 7 to 10.
+            'B' => ['GRADE 7', 'GRADE 8', 'GRADE 9', 'GRADE 10', 'GRADE 11', 'GRADE 12'],
+            'G' => ['REGULAR - OLD STUDENT (DJIHS)', 'REGULAR - NEW STUDENT', 'REGULAR - ALS', 'REGULAR - BALIK-ARAL (DJIHS/NON-DJIHS)',
+                'IRREGULAR - BALIK-ARAL (DJIHS/NON-DJIHS)', 'IRREGULAR - REPEATER', 'IRREGULAR - TRANSFEREE'],
             'H' => ['ACADEMIC', 'TVL'],
             'I' => $strands->all(),
             'M' => ['MALE', 'FEMALE'],
@@ -68,6 +72,14 @@ class EncodingTemplate
             $sheet->setDataValidation("{$col}3:{$col}2000", $validation);
         }
         $lookup->setSheetState(Worksheet::SHEETSTATE_HIDDEN);
+
+        // FULL NAME and AGE fill in by themselves as a row is typed.
+        for ($r = 3; $r <= self::FORMULA_ROWS + 2; $r++) {
+            $sheet->setCellValue("C{$r}", "=IF(D{$r}=\"\",\"\",TRIM(D{$r}&\", \"&E{$r}&\" \"&F{$r}))");
+            $sheet->setCellValue("L{$r}", "=IF(K{$r}=\"\",\"\",IFERROR(DATEDIF(K{$r},TODAY(),\"Y\"),\"\"))");
+        }
+        $sheet->getStyle('C3:C'.(self::FORMULA_ROWS + 2))->getFont()->getColor()->setRGB('475569');
+        $sheet->getStyle('L3:L'.(self::FORMULA_ROWS + 2))->getFont()->getColor()->setRGB('475569');
         $book->setActiveSheetIndex(0);
 
         $path = tempnam(sys_get_temp_dir(), 'tpl');
@@ -103,8 +115,10 @@ class EncodingTemplate
      */
     private static function headers(): array
     {
-        $top = ['A' => 'NO.', 'B' => 'GRADE LEVEL TO ENROLL', 'D' => "LEARNER'S NAME", 'G' => 'TYPE OF LEARNER', 'H' => 'TRACK', 'I' => 'STRAND', 'J' => 'LRN',
-            'K' => "BIRTH DATE\n(mm/dd/yyyy)", 'M' => 'SEX', 'N' => 'FOR SF8', 'P' => 'OTHER DETAILS', 'S' => 'CURRENT ADDRESS', 'Z' => "LEGAL GUARDIAN'S NAME",
+        // C (FULL NAME) and L (AGE) are worked out from other columns, as in the
+        // school's workbook; the importer reads the name and birth date instead.
+        $top = ['A' => 'NO.', 'B' => 'GRADE LEVEL TO ENROLL', 'C' => 'FULL NAME', 'D' => "LEARNER'S NAME", 'G' => 'TYPE OF LEARNER', 'H' => 'TRACK', 'I' => 'STRAND', 'J' => 'LRN',
+            'K' => "BIRTH DATE\n(mm/dd/yyyy)", 'L' => 'AGE', 'M' => 'SEX', 'N' => 'FOR SF8', 'P' => 'OTHER DETAILS', 'S' => 'CURRENT ADDRESS', 'Z' => "LEGAL GUARDIAN'S NAME",
             'AD' => "DATE ENCODED\n(mm/dd/yyyy)", 'AE' => 'ENROLLMENTSTATUS', 'AF' => 'REMARKS'];
         $sub = ['D' => 'LAST NAME', 'E' => 'FIRST NAME', 'F' => 'MIDDLE NAME', 'N' => "WEIGHT\n(kg)", 'O' => "HEIGHT\n(mtrs)",
             'P' => 'BELONGING TO ANY INDIGENOUS PEOPLES (IP)', 'Q' => 'IF YES, PLEASE SPECIFY', 'R' => "IS YOUR FAMILY A BENEFICIARY OF 4P'S?",

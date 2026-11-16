@@ -39,7 +39,7 @@ export default function LearnerDataRecord({ privacy, generatedAt, generatedBy, l
             <Head title={`DJIHS Learner Data Record - ${learner.name}`} />
             <article className="mx-auto max-w-4xl bg-white px-5 py-8 text-sm text-slate-800 sm:px-10 print:p-0">
                 <header className="border-primary mb-6 flex items-center gap-4 border-b-2 pb-4">
-                    <img src="/images/djihs-logo-large.png" alt="" className="size-14 shrink-0" />
+                    <img src="/images/djihs-logo-large.png" alt="" className="h-14 w-auto shrink-0 object-contain" />
                     <div>
                         <p className="text-primary text-xs font-semibold tracking-wide uppercase">{privacy.school_name}</p>
                         <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">Learner Data Record</h1>

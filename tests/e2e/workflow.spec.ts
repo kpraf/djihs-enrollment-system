@@ -68,6 +68,23 @@ test('two reviewers decide on the same learner at once: only one decision sticks
     await b.context.close();
 });
 
+test('Approve All lists every learner it will approve before anything is approved', async ({ browser }) => {
+    const reg = await staffBrowser(browser, 'registrar');
+    const lrn = uniqueLrn();
+    await encode(reg.page, { lrn, last: 'Listahan', first: `Bea ${tag(lrn)}` });
+
+    await reg.page.goto(`/reviews?search=${lrn}`);
+    await reg.page.getByRole('button', { name: 'Approve All' }).click();
+    const dialog = reg.page.getByRole('dialog');
+    await expect(dialog.getByRole('cell', { name: new RegExp(`LISTAHAN, BEA ${tag(lrn)}`) })).toBeVisible();
+    await expect(dialog).toContainText(`LRN ${lrn}`);
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    // Nothing was approved.
+    await expect(reg.page.getByRole('row').filter({ hasText: lrn })).toBeVisible();
+
+    await reg.context.close();
+});
+
 test('an adviser requests a change; the registrar approves it from Review Enrollments', async ({ browser }) => {
     const registrar = await staffBrowser(browser, 'registrar');
     const adviser = await staffBrowser(browser, 'adviser');

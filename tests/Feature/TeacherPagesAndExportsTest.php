@@ -19,6 +19,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 use Tests\TestCase;
 use ZipArchive;
 
@@ -130,12 +131,31 @@ class TeacherPagesAndExportsTest extends TestCase
             $sheet->setCellValue("{$col}3", $v);
         }
         $this->assertSame('list', $sheet->getCell('B3')->getDataValidation()->getType());
+
+        // Every column has a header; FULL NAME and AGE fill themselves in.
+        $this->assertSame('FULL NAME', $sheet->getCell('C1')->getValue());
+        $this->assertSame('AGE', $sheet->getCell('L1')->getValue());
+        $sheet->setCellValue('F3', 'CRUZ');
+        $sheet->setCellValue('K3', Date::PHPToExcel(new \DateTime('-15 years -2 days')));
+        $this->assertSame('REYES, ANA CRUZ', $sheet->getCell('C3')->getCalculatedValue());
+        $this->assertEquals(15, $sheet->getCell('L3')->getCalculatedValue());
+
+        // A Grade 7 learner: no track or strand.
+        $grades = $book->getSheetByName('LISTS')->rangeToArray('A1:A6');
+        $this->assertSame(['GRADE 7', 'GRADE 8', 'GRADE 9', 'GRADE 10', 'GRADE 11', 'GRADE 12'], array_column($grades, 0));
+        foreach (['B' => 'GRADE 7', 'D' => 'SANTOS', 'E' => 'LEO', 'G' => 'REGULAR - NEW STUDENT', 'J' => 123456789013, 'M' => 'MALE', 'AE' => 'ENROLLED'] as $col => $v) {
+            $sheet->setCellValue("{$col}4", $v);
+        }
+
         $copy = tempnam(sys_get_temp_dir(), 'tpl').'.xlsx';
         IOFactory::createWriter($book, 'Xlsx')->save($copy);
 
         $result = app(EncodingSheetImporter::class)->import($copy, $this->year);
-        $this->assertSame(1, $result->enrollmentsCreated);
-        $this->assertSame('HUMSS', Enrollment::where('school_year_id', $this->year->id)->latest('id')->first()->strand->code);
+        $this->assertSame(2, $result->enrollmentsCreated, 'The formula rows below the learners are not read as learners.');
+        $this->assertSame('HUMSS', Enrollment::whereHas('student', fn ($q) => $q->where('last_name', 'REYES'))->first()->strand->code);
+        $leo = Enrollment::whereHas('student', fn ($q) => $q->where('last_name', 'SANTOS'))->first();
+        $this->assertSame(7, $leo->grade_level->value);
+        $this->assertNull($leo->strand_id);
     }
 
     public function test_the_csv_template_imports_back_with_every_digit_kept(): void

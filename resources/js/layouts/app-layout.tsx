@@ -66,7 +66,7 @@ export default function AppLayout({ children, wide = false }: { children: React.
                     <button type="button" onClick={() => setDrawerOpen(true)} className="rounded-lg p-1.5 hover:bg-white/15" aria-label="Open menu">
                         <Icon name="menu" />
                     </button>
-                    <img src="/images/djihs-logo.png" alt="" className="size-8 rounded-full bg-white" />
+                    <img src="/images/djihs-logo.png" srcSet="/images/djihs-logo@2x.png 2x" alt="" className="h-9 w-auto object-contain" />
                     <span className="font-bold">DJIHS Enrollment</span>
                 </header>
 

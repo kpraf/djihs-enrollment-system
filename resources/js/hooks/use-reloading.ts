@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 /**
  * True while this page is reloading itself, for example after a search or
  * a filter change, so its list can show that new results are on the way.
- * Leaving for another page, and loading a page early on hover, don't count.
+ * Leaving for another page, loading a page early on hover, and fetching one
+ * extra piece of data (such as the Approve All list) don't count.
  */
 export function useReloading(): boolean {
     const [busy, setBusy] = useState(false);
@@ -13,7 +14,7 @@ export function useReloading(): boolean {
     useEffect(() => {
         const offStart = router.on('start', (event) => {
             const visit = event.detail.visit;
-            if (visit.method !== 'get' || visit.prefetch || visit.url.pathname !== window.location.pathname) return;
+            if (visit.method !== 'get' || visit.prefetch || visit.only.length > 0 || visit.url.pathname !== window.location.pathname) return;
             current.current = visit;
             setBusy(true);
         });
