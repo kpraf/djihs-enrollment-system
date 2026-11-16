@@ -52,6 +52,13 @@ services:
         value: warning
       - key: ADMIN_USERNAME
         value: admin
+      # Demo accounts (demo.registrar, demo.adviser, ... all with password
+      # "password") and 120 fake learners, for trying the system out.
+      # Set to "false" before real learner data goes in: the next deploy then
+      # switches the demo accounts off. Start real use on a fresh database
+      # so the fake learners are not mixed with real ones.
+      - key: DEMO_DATA
+        value: "true"
       # The school's Data Protection Officer, shown on the privacy notice.
       - key: PRIVACY_DPO_NAME
         sync: false

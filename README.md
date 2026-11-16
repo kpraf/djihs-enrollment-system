@@ -220,6 +220,13 @@ Everything below can be done from a phone, in the Render website.
 
 The Blueprint starts on Render's **free** plans so you can try it at no cost. On the free plans, the site sleeps after about 15 minutes without visitors and takes up to a minute to wake. Render also deletes a free database after 30 days, and free databases have no backups. Before real learner records go in, switch the database and the web service to paid plans in the Render dashboard, or change `plan:` in `render.yaml`. Check Render's current pricing first.
 
+### Demo data on the live site
+
+`DEMO_DATA` is `"true"` in `render.yaml`, so the live site has the demo accounts from [`docs/demo-accounts.pdf`](docs/demo-accounts.pdf) (`demo.registrar`, `demo.adviser` and so on, all with the password `password`) and 120 fake learners. Anyone who knows those names can sign in, so before real learner data goes in:
+
+1. Set `DEMO_DATA` to `false`, in `render.yaml` or under the web service's **Environment** in Render. The next deploy switches every demo account off.
+2. Start real use on a fresh paid database, so the fake learners are not mixed in with real ones.
+
 ## Data privacy
 
 The system stores personal data of minors, some of it sensitive, so it falls under the Data Privacy Act of 2012 (RA 10173). It includes:
