@@ -9,6 +9,7 @@ use App\Models\SchoolYear;
 use App\Models\User;
 use App\Services\Reports\AnalyticsReport;
 use App\Services\Reports\MetricsReport;
+use App\Support\ExportName;
 use App\Support\TableExport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -110,7 +111,7 @@ class ReportsController extends Controller
                 collect($m['grades'])->map(fn ($g) => [$g['label'], $g['enrollment'], $pct($g['promotion_rate']), $pct($g['retention_rate']), $pct($g['dropout_rate'])])];
         }
 
-        return TableExport::report($request->query('format') === 'csv' ? 'csv' : 'xlsx', "Reports_{$year->name}", $sheets);
+        return TableExport::report($request->query('format') === 'csv' ? 'csv' : 'xlsx', ExportName::make('Enrollment_Report', ExportName::schoolYear($year->name)), $sheets);
     }
 
     /**

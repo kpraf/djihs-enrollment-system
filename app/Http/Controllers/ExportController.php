@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\Audit\AuditTrail;
 use App\Services\Exports\EncodingTemplate;
 use App\Services\Privacy\AccessLog;
+use App\Support\ExportName;
 use App\Support\TableExport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +27,7 @@ class ExportController extends Controller
             ->latest('id')->limit(20000)->get();
         AccessLog::exported($request, AccessLog::AUDIT_LOG, 'Audit log (CSV)');
 
-        return TableExport::csv('Audit_Log_'.now()->format('Y-m-d').'.csv', ['Timestamp', 'User', 'Action', 'Record type', 'Record', 'Changes', 'IP address'],
+        return TableExport::csv(ExportName::make('Audit_Log').'.csv', ['Timestamp', 'User', 'Action', 'Record type', 'Record', 'Changes', 'IP address'],
             collect($trail->present($logs))->map(fn ($l) => [
                 $l['at'], $l['user'], $l['event'], $l['subject_type'], $l['subject'],
                 $l['detail'] ?? collect($l['changes'])->map(fn ($c) => "{$c['field']}: ".($c['old'] ?? '').' -> '.($c['new'] ?? ''))->join('; '),
@@ -38,7 +39,7 @@ class ExportController extends Controller
     {
         AccessLog::exported($request, AccessLog::USER_LIST, 'User accounts list (CSV)');
 
-        return TableExport::csv('User_Accounts_'.now()->format('Y-m-d').'.csv', ['Name', 'Username', 'Email', 'Role', 'Status', 'Last sign-in'],
+        return TableExport::csv(ExportName::make('User_Accounts').'.csv', ['Name', 'Username', 'Email', 'Role', 'Status', 'Last sign-in'],
             User::orderBy('last_name')->get()->map(fn (User $u) => [
                 $u->name, $u->username, $u->email, $u->role->label(), $u->is_active ? 'Active' : 'Inactive', $u->last_login_at?->format('Y-m-d H:i'),
             ]));

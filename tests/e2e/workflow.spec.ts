@@ -277,7 +277,7 @@ test('advisers download SF1 and class lists; reports draw charts', async ({ brow
     await adviser.page.goto('/my-section');
     await expect(adviser.page.getByRole('heading', { name: /Students List/ })).toBeVisible();
     const [sf1] = await Promise.all([adviser.page.waitForEvent('download'), adviser.page.getByRole('link', { name: 'Export SF1' }).click()]);
-    expect(sf1.suggestedFilename()).toMatch(/^SF1_Grade_11_Integrity_.*\.xlsx$/);
+    expect(sf1.suggestedFilename()).toMatch(/^DJIHS_SF1_Grade_11_.*Integrity_SY\d{4}-\d{4}_\d{4}-\d{2}-\d{2}\.xlsx$/);
     const [csv] = await Promise.all([adviser.page.waitForEvent('download'), adviser.page.getByRole('link', { name: 'Export CSV' }).click()]);
     expect(csv.suggestedFilename()).toMatch(/\.csv$/);
     await adviser.context.close();
@@ -290,6 +290,7 @@ test('advisers download SF1 and class lists; reports draw charts', async ({ brow
     }
     // The numbers are drawn as charts, each with its exact figures one click away.
     await expect(registrar.page.getByRole('img', { name: /^Male and female: Male \d+/ })).toBeVisible();
+    await expect(registrar.page.getByRole('img', { name: /^Learners by grade level: / })).toBeVisible();
     await expect(registrar.page.getByRole('img', { name: /^Grade 11 learners by strand: / })).toBeVisible();
     await expect(registrar.page.getByRole('img', { name: /^Type of learner: / })).toBeVisible();
     await expect(registrar.page.getByRole('cell', { name: 'All grades' })).toHaveCount(0);
@@ -300,11 +301,12 @@ test('advisers download SF1 and class lists; reports draw charts', async ({ brow
 
     // The dashboard leads with charts too.
     await registrar.page.goto('/dashboard');
-    await expect(registrar.page.getByRole('img', { name: /^Enrolled learners by strand: / })).toBeVisible();
+    await expect(registrar.page.getByRole('img', { name: /^Enrolled learners by grade level: / })).toBeVisible();
+    await expect(registrar.page.getByRole('img', { name: /^Senior high learners by strand: / })).toBeVisible();
     await registrar.page.goto('/reports');
     for (const [label, pattern] of [
-        ['Export Excel', /^Reports_.*\.xlsx$/],
-        ['Export CSV', /^Reports_.*\.csv$/],
+        ['Export Excel', /^DJIHS_Enrollment_Report_SY\d{4}-\d{4}_\d{4}-\d{2}-\d{2}\.xlsx$/],
+        ['Export CSV', /^DJIHS_Enrollment_Report_SY\d{4}-\d{4}_\d{4}-\d{2}-\d{2}\.csv$/],
     ] as const) {
         const [file] = await Promise.all([registrar.page.waitForEvent('download'), registrar.page.getByRole('link', { name: label }).click()]);
         expect(file.suggestedFilename()).toMatch(pattern);

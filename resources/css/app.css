@@ -121,15 +121,53 @@
         display: none !important;
     }
 
+    /* Chart colors, legend swatches and meters print even when the browser's
+       "Background graphics" option is off. */
+    * {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* Browsers repeat fixed elements on every printed page; none belong on paper. */
+    .fixed {
+        display: none !important;
+    }
+
+    /* Plain white page: no backgrounds, edges, shadows or focus rings from the
+       screen layout around the content. */
+    html,
     body,
+    #app,
+    #app > div,
+    #app > div > div,
     main {
         background: white !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        outline: none !important;
+    }
+
+    body,
+    main {
         padding: 0 !important;
+    }
+
+    *:focus,
+    *:focus-visible {
+        outline: none !important;
+        box-shadow: none !important;
     }
 
     .panel {
         border-color: #cbd5e1;
         break-inside: avoid;
+    }
+
+    /* A heading stays with what follows it. */
+    h1,
+    h2,
+    h3 {
+        break-after: avoid;
     }
 }
 

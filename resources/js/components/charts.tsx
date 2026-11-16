@@ -67,7 +67,7 @@ function rootPx(scale: number) {
     return Math.round(parseFloat(getComputedStyle(document.documentElement).fontSize || '16') * scale);
 }
 
-function useChart(config: () => ChartConfiguration, deps: unknown[]) {
+function useChart(config: () => ChartConfiguration, deps: unknown[], instance?: React.MutableRefObject<Chart | null>) {
     const canvas = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
@@ -76,7 +76,11 @@ function useChart(config: () => ChartConfiguration, deps: unknown[]) {
         Chart.defaults.font.size = rootPx(0.75);
         Chart.defaults.color = INK_SECONDARY;
         const chart = new Chart(canvas.current, config());
-        return () => chart.destroy();
+        if (instance) instance.current = chart;
+        return () => {
+            if (instance) instance.current = null;
+            chart.destroy();
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, deps);
 
@@ -343,6 +347,18 @@ export function DonutChart({ title, parts }: { title: string; parts: { label: st
     const description = `${title}: ${parts.map((p) => `${p.label} ${formatNumber(p.value)} (${share(p.value, total)})`).join(', ')}`;
     // The middle names the first part's share; the total is already in the tiles above.
     const lead = parts[0];
+    // A donut this small has no room for a tooltip, and the legend beside it
+    // already lists every number. Pointing at a slice highlights its legend
+    // row instead, and pointing at (or tabbing to) a row lifts its slice.
+    const [active, setActive] = useState<number | null>(null);
+    const chart = useRef<Chart | null>(null);
+    const highlight = (i: number | null) => {
+        setActive(i);
+        const c = chart.current;
+        if (!c || !total) return;
+        c.setActiveElements(i === null ? [] : [{ datasetIndex: 0, index: i }]);
+        c.update();
+    };
 
     const canvas = useChart(
         () => ({
@@ -366,29 +382,40 @@ export function DonutChart({ title, parts }: { title: string; parts: { label: st
                 animation: false,
                 cutout: '70%',
                 layout: { padding: 4 },
+                onHover: (_event, elements) => setActive(total && elements.length ? elements[0].index : null),
                 plugins: {
                     legend: { display: false },
-                    tooltip: total
-                        ? { ...tooltip, callbacks: { label: (c) => `${c.label}: ${formatNumber(Number(c.raw))} (${share(Number(c.raw), total)})` } }
-                        : { enabled: false },
+                    tooltip: { enabled: false },
                     donutCenter: total ? { value: `${Math.round((lead.value / total) * 100)}%`, caption: lead.label.toLowerCase() } : {},
                 },
             },
             plugins: [donutCenter as Plugin],
         }),
         [JSON.stringify(parts)],
+        chart,
     );
 
     return (
-        <figure className="panel p-5">
+        <figure className="panel p-5" onMouseLeave={() => highlight(null)}>
             <figcaption className="mb-3 text-sm font-medium text-slate-600">{title}</figcaption>
             <div className="flex items-center gap-5">
                 <div className="relative size-28 shrink-0">
                     <canvas ref={canvas} role="img" aria-label={description} />
                 </div>
-                <ul className="min-w-0 flex-1 space-y-2">
+                <ul className="min-w-0 flex-1 space-y-1" onMouseLeave={() => highlight(null)}>
                     {parts.map((p, i) => (
-                        <li key={p.label} className="flex items-start gap-2 text-sm">
+                        <li
+                            key={p.label}
+                            tabIndex={0}
+                            onMouseEnter={() => highlight(i)}
+                            onFocus={() => highlight(i)}
+                            onBlur={() => highlight(null)}
+                            className={cn(
+                                'focus-visible:ring-primary -mx-2 flex items-start gap-2 rounded-md px-2 py-1 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none',
+                                active === i && 'bg-slate-100',
+                                active !== null && active !== i && 'opacity-50',
+                            )}
+                        >
                             <span aria-hidden className="mt-1.5 size-2.5 shrink-0 rounded-sm" style={{ backgroundColor: colors[i] }} />
                             <span className="min-w-0 flex-1 text-slate-700">
                                 {p.label}

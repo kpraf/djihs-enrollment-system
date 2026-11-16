@@ -36,7 +36,7 @@ const when = new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeStyle: 
 export default function LearnerDataRecord({ privacy, generatedAt, generatedBy, learner, enrollments, changes, access }: Props) {
     return (
         <div className="min-h-dvh bg-slate-50 print:bg-white">
-            <Head title={`Data record: ${learner.name}`} />
+            <Head title={`DJIHS Learner Data Record - ${learner.name}`} />
             <article className="mx-auto max-w-4xl bg-white px-5 py-8 text-sm text-slate-800 sm:px-10 print:p-0">
                 <header className="border-primary mb-6 flex items-center gap-4 border-b-2 pb-4">
                     <img src="/images/djihs-logo-large.png" alt="" className="size-14 shrink-0" />

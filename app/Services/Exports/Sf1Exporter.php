@@ -7,6 +7,7 @@ use App\Enums\LearnerType;
 use App\Enums\Sex;
 use App\Models\Enrollment;
 use App\Models\Section;
+use App\Support\ExportName;
 use Carbon\CarbonImmutable;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -98,7 +99,7 @@ class Sf1Exporter
 
         $path = tempnam(sys_get_temp_dir(), 'sf1');
         (new Xlsx($book))->save($path);
-        $name = preg_replace('/[^A-Za-z0-9_-]+/', '_', "SF1_{$section->grade_level->label()}_{$section->name}_{$section->schoolYear->name}").'.xlsx';
+        $name = ExportName::make('SF1', $section->label(), ExportName::schoolYear($section->schoolYear->name)).'.xlsx';
 
         return response()->download($path, $name)->deleteFileAfterSend();
     }

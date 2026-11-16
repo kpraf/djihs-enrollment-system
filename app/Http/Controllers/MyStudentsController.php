@@ -7,6 +7,7 @@ use App\Models\Enrollment;
 use App\Models\SchoolYear;
 use App\Models\TeacherAssignment;
 use App\Services\Privacy\AccessLog;
+use App\Support\ExportName;
 use App\Support\TableExport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -49,11 +50,11 @@ class MyStudentsController extends Controller
     public function export(Request $request, TeacherAssignment $assignment): StreamedResponse
     {
         abort_unless($assignment->user_id === $request->user()->id, 403);
-        $assignment->load('section.strand');
+        $assignment->load(['section.strand', 'section.schoolYear']);
         AccessLog::exported($request, $assignment, 'Class list (CSV)');
 
         return TableExport::csv(
-            preg_replace('/[^A-Za-z0-9_-]+/', '_', "{$assignment->subject_name}_{$assignment->section->label()}").'.csv',
+            ExportName::make('Class_List', $assignment->subject_name, $assignment->section->label(), ExportName::schoolYear($assignment->section->schoolYear?->name)).'.csv',
             ['Student Name', 'LRN', 'Sex'],
             $this->learners($assignment)->map(fn (Enrollment $e) => [$e->student->full_name, $e->student->lrn, $e->student->sex->label()]),
         );

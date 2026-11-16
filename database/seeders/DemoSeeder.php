@@ -42,11 +42,15 @@ class DemoSeeder extends Seeder
         $encoder = User::where('username', 'demo.registrar')->first();
         $strands = Strand::all();
 
+        // A Grade 7 to 12 school: most learners are in junior high, and only
+        // senior high (Grades 11 and 12) has strands.
         Enrollment::factory()
-            ->count(120)
+            ->count(200)
             ->sequence(fn () => [
+                ...(($grade = fake()->randomElement([7, 7, 8, 8, 9, 9, 10, 10, 11, 12])) >= 11
+                    ? ['grade_level' => $grade, 'strand_id' => $strands->random()->id]
+                    : ['grade_level' => $grade, 'strand_id' => null]),
                 'school_year_id' => $year->id,
-                'strand_id' => $strands->random()->id,
                 'encoded_by' => $encoder?->id,
                 'status' => fake()->randomElement([...array_fill(0, 8, EnrollmentStatus::Enrolled), EnrollmentStatus::Pending, EnrollmentStatus::Cancelled]),
             ])
@@ -57,6 +61,16 @@ class DemoSeeder extends Seeder
         $adviser = User::where('username', 'demo.adviser')->first();
         $teacher = User::where('username', 'demo.subject_teacher')->first();
         $names = ['Integrity', 'Honesty', 'Curiosity', 'Assertive', 'Diligence'];
+        $juniorNames = ['Sampaguita', 'Narra'];
+        foreach ([7, 8, 9, 10] as $grade) {
+            foreach ($juniorNames as $name) {
+                Section::create([
+                    'school_year_id' => $year->id, 'grade_level' => $grade, 'strand_id' => null,
+                    'name' => $name, 'capacity' => 20,
+                ]);
+            }
+            app(SectionAssigner::class)->autoAssign($year->id, $grade, null);
+        }
         foreach ([11, 12] as $grade) {
             foreach ($strands->values() as $i => $strand) {
                 $section = Section::create([

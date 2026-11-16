@@ -15,6 +15,7 @@ use App\Services\Import\EncodingSheetImporter;
 use Database\Seeders\StrandSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -191,6 +192,25 @@ class TeacherPagesAndExportsTest extends TestCase
         $this->assertStringContainsString('"Rates by grade"', $csv, 'Administrators also get the DepEd rates.');
         $registrarCsv = $this->actingAs(User::factory()->role(Role::Registrar)->create())->get('/reports/export?format=csv')->streamedContent();
         $this->assertStringNotContainsString('Rates by grade', $registrarCsv, 'Registrars do not see the rates.');
+    }
+
+    public function test_export_file_names_say_what_and_when(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-16 09:30'));
+        $this->seat(2);
+        $admin = User::factory()->role(Role::Admin)->create();
+        $teacher = User::factory()->role(Role::SubjectTeacher)->create();
+        $assignment = $this->section->teacherAssignments()->create(['user_id' => $teacher->id, 'subject_name' => 'General Mathematics']);
+        $name = fn ($response) => preg_match('/filename="?([^";]+)"?/', (string) $response->headers->get('content-disposition'), $m) ? $m[1] : '';
+
+        $this->assertSame('DJIHS_Enrollment_Report_SY2026-2027_2026-11-16.xlsx', $name($this->actingAs($admin)->get('/reports/export?format=xlsx')));
+        $this->assertSame('DJIHS_Enrollment_Report_SY2026-2027_2026-11-16.csv', $name($this->actingAs($admin)->get('/reports/export?format=csv')));
+        $this->assertSame('DJIHS_Class_List_Grade_11_HUMSS_Integrity_SY2026-2027_2026-11-16.csv', $name($this->actingAs($this->adviser)->get("/sections/{$this->section->id}/export/csv")));
+        $this->assertSame('DJIHS_Class_List_Grade_11_HUMSS_Integrity_SY2026-2027_2026-11-16.xlsx', $name($this->actingAs($this->adviser)->get("/sections/{$this->section->id}/export/xlsx")));
+        $this->assertSame('DJIHS_SF1_Grade_11_HUMSS_Integrity_SY2026-2027_2026-11-16.xlsx', $name($this->actingAs($this->adviser)->get("/sections/{$this->section->id}/sf1")));
+        $this->assertSame('DJIHS_Class_List_General_Mathematics_Grade_11_HUMSS_Integrity_SY2026-2027_2026-11-16.csv', $name($this->actingAs($teacher)->get("/my-students/{$assignment->id}/export")));
+        $this->assertSame('DJIHS_Audit_Log_2026-11-16.csv', $name($this->actingAs($admin)->get('/audit-log/export')));
+        $this->assertSame('DJIHS_User_Accounts_2026-11-16.csv', $name($this->actingAs($admin)->get('/users/export')));
     }
 
     public function test_backup_has_every_table_and_no_passwords(): void

@@ -20,6 +20,21 @@ class EnrollmentSummaryTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_junior_high_grades_have_no_strands(): void
+    {
+        $this->seed(StrandSeeder::class);
+        $year = SchoolYear::factory()->create();
+        Enrollment::factory()->count(3)->enrolled()->create(['school_year_id' => $year->id, 'grade_level' => GradeLevel::Grade7, 'strand_id' => null]);
+        Enrollment::factory()->count(2)->enrolled()->create(['school_year_id' => $year->id, 'grade_level' => GradeLevel::Grade11, 'strand_id' => Strand::first()->id]);
+
+        $grades = collect(app(EnrollmentSummary::class)->monitoring($year)['grades'])->keyBy('grade_level');
+
+        $this->assertSame([7, 11], $grades->keys()->all());
+        $this->assertSame([], $grades[7]['strands'], 'Grade 7 lists no senior high strands.');
+        $this->assertSame(3, $grades[7]['total']['total']);
+        $this->assertNotEmpty($grades[11]['strands']);
+    }
+
     public function test_it_counts_like_the_monitoring_sheet(): void
     {
         $this->seed(StrandSeeder::class);

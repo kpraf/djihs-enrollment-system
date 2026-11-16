@@ -3,6 +3,8 @@ import { useEffect } from 'react';
 
 interface Props {
     title: string;
+    /** The browser tab and saved-PDF name, e.g. "DJIHS Class List - Grade 11 HUMSS Integrity - SY 2026-2027". */
+    documentTitle?: string;
     subtitle: string;
     learners: { lrn: string | null; name: string; sex: string; contact_number: string | null }[];
 }
@@ -11,7 +13,7 @@ interface Props {
  * A plain class list that opens the print dialog, so it can be printed or
  * saved as PDF (the legacy "Export PDF").
  */
-export default function ClassList({ title, subtitle, learners }: Props) {
+export default function ClassList({ title, documentTitle, subtitle, learners }: Props) {
     useEffect(() => {
         const t = setTimeout(() => window.print(), 400);
         return () => clearTimeout(t);
@@ -21,7 +23,7 @@ export default function ClassList({ title, subtitle, learners }: Props) {
 
     return (
         <div className="mx-auto max-w-4xl bg-white p-8 text-slate-900 print:p-0">
-            <Head title={title} />
+            <Head title={documentTitle ?? title} />
             <div className="border-primary mb-6 flex items-center gap-4 border-b-2 pb-4">
                 <img src="/images/djihs-logo-large.png" alt="" className="size-16" />
                 <div>

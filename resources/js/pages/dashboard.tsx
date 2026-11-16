@@ -173,6 +173,8 @@ function MonitoringTiles({ monitoring }: { monitoring: Monitoring | null | undef
 
     const t = monitoring.total;
     const returning = (t.learner_types.old_student ?? 0) + (t.learner_types.repeater ?? 0);
+    const junior = monitoring.grades.filter((g) => g.grade_level <= 10).reduce((n, g) => n + g.total.total, 0);
+    const senior = t.total - junior;
     const tracks = monitoring.grades.reduce((sum, g) => ({ academic: sum.academic + g.tracks.academic.total, tvl: sum.tvl + g.tracks.tvl.total }), {
         academic: 0,
         tvl: 0,
@@ -182,15 +184,8 @@ function MonitoringTiles({ monitoring }: { monitoring: Monitoring | null | undef
         <>
             <div className="mb-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
                 <StatCard label="Total Enrolled" value={number.format(t.total)} hint={`${t.male} male · ${t.female} female`} />
-                {monitoring.grades.slice(0, 2).map((g) => (
-                    <StatCard
-                        key={g.grade_level}
-                        label={g.label}
-                        value={number.format(g.total.total)}
-                        hint={`Academic ${g.tracks.academic.total} · TVL ${g.tracks.tvl.total}`}
-                        tone="indigo"
-                    />
-                ))}
+                <StatCard label="Junior High" value={number.format(junior)} hint="Grades 7 to 10" tone="indigo" />
+                <StatCard label="Senior High" value={number.format(senior)} hint={`Academic ${tracks.academic} · TVL ${tracks.tvl}`} tone="indigo" />
                 <StatCard label="Cancelled" value={number.format(monitoring.cancelled)} hint="Not counted as enrolled" tone="orange" />
             </div>
             {t.total > 0 && (
@@ -204,7 +199,7 @@ function MonitoringTiles({ monitoring }: { monitoring: Monitoring | null | undef
                     />
                     {tracks.academic + tracks.tvl > 0 && (
                         <DonutChart
-                            title="Academic and TVL track"
+                            title="Senior high track"
                             parts={[
                                 { label: 'Academic', value: tracks.academic },
                                 { label: 'TVL', value: tracks.tvl },
@@ -251,10 +246,28 @@ function MonitoringDetails({ monitoring, daily }: { monitoring: Monitoring | nul
             ) : null}
 
             <div className="mb-8 grid grid-cols-1 gap-6 2xl:grid-cols-2">
+                <section className="panel p-6">
+                    <h2 className="text-lg font-bold text-slate-900">Enrolled learners by grade level</h2>
+                    <p className="mb-4 text-sm text-slate-500">Junior high (Grades 7 to 10) and senior high (Grades 11 and 12).</p>
+                    <BarChart
+                        values
+                        height={240}
+                        labels={monitoring.grades.map((g) => g.label)}
+                        series={[{ label: 'Enrolled', data: monitoring.grades.map((g) => g.total.total) }]}
+                        label={`Enrolled learners by grade level: ${monitoring.grades.map((g) => `${g.label} ${g.total.total}`).join(', ')}`}
+                    />
+                    <TableToggle label="Show the full table, like the workbook's MONITORING tab">
+                        <div className="space-y-6">
+                            {monitoring.grades.map((grade) => (
+                                <GradeTable key={grade.grade_level} grade={grade} types={monitoring.learner_types} />
+                            ))}
+                        </div>
+                    </TableToggle>
+                </section>
                 {strands.length > 0 && (
                     <section className="panel p-6">
-                        <h2 className="text-lg font-bold text-slate-900">Enrolled learners by strand</h2>
-                        <p className="mb-4 text-sm text-slate-500">Each strand's learners in each grade.</p>
+                        <h2 className="text-lg font-bold text-slate-900">Senior high learners by strand</h2>
+                        <p className="mb-4 text-sm text-slate-500">Each strand's learners in Grades 11 and 12.</p>
                         <BarChart
                             horizontal
                             values
@@ -263,16 +276,12 @@ function MonitoringDetails({ monitoring, daily }: { monitoring: Monitoring | nul
                                 label: g.label,
                                 data: strands.map((code) => g.strands.find((s) => s.code === code)?.total ?? 0),
                             }))}
-                            label={`Enrolled learners by strand: ${withStrands
+                            label={`Senior high learners by strand: ${withStrands
                                 .map((g) => `${g.label}: ${g.strands.map((s) => `${s.code} ${s.total}`).join(', ')}`)
                                 .join('; ')}`}
                         />
-                        <TableToggle label="Show the full table, like the workbook's MONITORING tab">
-                            <div className="space-y-6">
-                                {monitoring.grades.map((grade) => (
-                                    <GradeTable key={grade.grade_level} grade={grade} types={monitoring.learner_types} />
-                                ))}
-                            </div>
+                        <TableToggle>
+                            <StrandTable grades={withStrands} strands={strands} />
                         </TableToggle>
                     </section>
                 )}
@@ -361,6 +370,42 @@ function TallyCells({ tally, types }: { tally: Tally; types: Option[] }) {
     );
 }
 
+function StrandTable({ grades, strands }: { grades: GradeSummary[]; strands: string[] }) {
+    return (
+        <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <table className="w-full text-left text-sm text-slate-500">
+                <thead className="table-head">
+                    <tr>
+                        <th className="px-4 py-3 font-medium">Strand</th>
+                        {grades.map((g) => (
+                            <th key={g.grade_level} className={th}>
+                                {g.label}
+                            </th>
+                        ))}
+                        <th className={th}>Total</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                    {strands.map((code) => {
+                        const counts = grades.map((g) => g.strands.find((s) => s.code === code)?.total ?? 0);
+                        return (
+                            <tr key={code}>
+                                <td className="px-4 py-3 font-medium text-slate-900">{code}</td>
+                                {counts.map((c, i) => (
+                                    <td key={grades[i].grade_level} className={td}>
+                                        {c}
+                                    </td>
+                                ))}
+                                <td className={cn(td, 'font-bold text-slate-900')}>{counts.reduce((n, c) => n + c, 0)}</td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
 function GradeTable({ grade, types }: { grade: GradeSummary; types: Option[] }) {
     return (
         <div>
@@ -396,14 +441,18 @@ function GradeTable({ grade, types }: { grade: GradeSummary; types: Option[] }) 
                             ))}
                         </tbody>
                         <tfoot className="divide-y divide-slate-100 border-t border-slate-200">
-                            <tr className="bg-slate-50/60">
-                                <td className="px-4 py-3 whitespace-nowrap text-slate-700">Academic track</td>
-                                <TallyCells tally={grade.tracks.academic} types={types} />
-                            </tr>
-                            <tr className="bg-slate-50/60">
-                                <td className="px-4 py-3 whitespace-nowrap text-slate-700">TVL track</td>
-                                <TallyCells tally={grade.tracks.tvl} types={types} />
-                            </tr>
+                            {grade.strands.length > 0 && (
+                                <>
+                                    <tr className="bg-slate-50/60">
+                                        <td className="px-4 py-3 whitespace-nowrap text-slate-700">Academic track</td>
+                                        <TallyCells tally={grade.tracks.academic} types={types} />
+                                    </tr>
+                                    <tr className="bg-slate-50/60">
+                                        <td className="px-4 py-3 whitespace-nowrap text-slate-700">TVL track</td>
+                                        <TallyCells tally={grade.tracks.tvl} types={types} />
+                                    </tr>
+                                </>
+                            )}
                             <tr className="bg-slate-100 font-semibold text-slate-900">
                                 <td className="px-4 py-3">Total</td>
                                 <TallyCells tally={grade.total} types={types} />

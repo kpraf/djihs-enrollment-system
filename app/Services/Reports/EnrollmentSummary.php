@@ -48,8 +48,10 @@ class EnrollmentSummary
 
         foreach ($rows->groupBy('grade_level') as $grade => $gradeRows) {
             $strandRows = [];
+            $level = GradeLevel::from((int) $grade);
 
-            foreach ($strands as $strand) {
+            // Strands belong to senior high; Grades 7 to 10 have none.
+            foreach ($level->isSeniorHigh() ? $strands : [] as $strand) {
                 $mine = $gradeRows->where('strand_id', $strand->id);
                 if ($mine->isEmpty() && ! $strand->is_active) {
                     continue;
@@ -61,7 +63,7 @@ class EnrollmentSummary
 
             $grades[] = [
                 'grade_level' => (int) $grade,
-                'label' => GradeLevel::from((int) $grade)->label(),
+                'label' => $level->label(),
                 'strands' => $strandRows,
                 'tracks' => [
                     'academic' => $byTrack(Track::Academic),

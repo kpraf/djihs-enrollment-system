@@ -10,6 +10,7 @@ use App\Models\Section;
 use App\Models\User;
 use App\Services\Exports\Sf1Exporter;
 use App\Services\Privacy\AccessLog;
+use App\Support\ExportName;
 use App\Support\TableExport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -64,7 +65,8 @@ class MySectionController extends Controller
             $i + 1, $e->student->lrn, $e->student->full_name, $e->student->sex->label(), $e->student->contact_number, $e->status->label(),
         ]);
         $headers = ['#', 'LRN', 'Student Name', 'Sex', 'Contact Number', 'Status'];
-        $name = preg_replace('/[^A-Za-z0-9_-]+/', '_', $section->label());
+        $section->loadMissing('schoolYear');
+        $name = ExportName::make('Class_List', $section->label(), ExportName::schoolYear($section->schoolYear?->name));
         AccessLog::exported($request, $section, 'Class list ('.($format === 'xlsx' ? 'Excel' : 'CSV').')');
 
         return $format === 'xlsx'
@@ -88,6 +90,7 @@ class MySectionController extends Controller
 
         return Inertia::render('print/class-list', [
             'title' => $section->label(),
+            'documentTitle' => 'DJIHS Class List - '.str_replace(' - ', ' ', $section->label()).' - SY '.$section->schoolYear->name,
             'subtitle' => 'School year '.$section->schoolYear->name.($section->adviser ? ' · Adviser: '.$section->adviser->name : ''),
             'learners' => $this->learners($section)->values()->map(fn (Enrollment $e) => [
                 'lrn' => $e->student->lrn, 'name' => $e->student->full_name, 'sex' => $e->student->sex->label(), 'contact_number' => $e->student->contact_number,

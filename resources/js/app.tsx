@@ -13,7 +13,9 @@ declare global {
 const appName = import.meta.env.VITE_APP_NAME || 'DJIHS Enrollment';
 
 createInertiaApp({
-    title: (title) => (title ? `${title} | ${appName}` : appName),
+    // Printable pages carry a full title such as "DJIHS Enrollment Report - SY 2026-2027",
+    // which the browser also uses as the name of a PDF saved from the print dialog.
+    title: (title) => (title ? (title.startsWith('DJIHS') ? title : `${title} | ${appName}`) : appName),
     resolve: (name) => resolvePageComponent(`./pages/${name}.tsx`, import.meta.glob('./pages/**/*.tsx')),
     setup({ el, App, props }) {
         createRoot(el).render(<App {...props} />);

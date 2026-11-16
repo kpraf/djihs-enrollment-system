@@ -1,4 +1,4 @@
-import { BarChart, CONTEXT, DonutChart, LineChart, Meter, TableToggle } from '@/components/charts';
+import { BarChart, CONTEXT, DonutChart, formatNumber, LineChart, Meter, TableToggle } from '@/components/charts';
 import { Icon } from '@/components/icon';
 import { type IconName } from '@/components/icons';
 import { PageHeader } from '@/components/page-header';
@@ -93,7 +93,12 @@ export default function Reports({ schoolYears, filters, compareName, summary, ta
 
     return (
         <AppLayout>
-            <Head title="Reports" />
+            <Head title={yearName ? `DJIHS Enrollment Report - SY ${yearName}` : 'Reports'} />
+            {/* Only on paper: whose report this is and when it was printed. */}
+            <p className="mb-2 hidden text-sm text-slate-600 print:block">
+                Don Jose Integrated High School · Enrollment report{yearName ? ` for school year ${yearName}` : ''} · printed{' '}
+                {new Intl.DateTimeFormat('en-PH', { dateStyle: 'long' }).format(new Date())}
+            </p>
             <PageHeader
                 title="Reports"
                 description={
@@ -225,7 +230,9 @@ export default function Reports({ schoolYears, filters, compareName, summary, ta
                                 </div>
                                 <div className="panel p-5">
                                     <h3 className="mb-1 font-semibold text-slate-900">Inclusion</h3>
-                                    <p className="mb-4 text-sm text-slate-500">Share of the {summary.now.enrolled} enrolled learners.</p>
+                                    <p className="mb-4 text-sm text-slate-500">
+                                        Share of the {formatNumber(summary.now.enrolled)} enrolled learners.
+                                    </p>
                                     <div className="space-y-5">
                                         {profile.inclusion.map((r) => (
                                             <Meter key={r.label} label={r.label} value={r.total} of={summary.now.enrolled} />
@@ -306,9 +313,12 @@ function AttentionList({ items }: { items: NonNullable<Props['attention']> }) {
 
 function Section({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
     return (
-        <section className="break-inside-avoid-page">
-            <h2 className="text-xl font-bold text-slate-900">{title}</h2>
-            {note && <p className="mt-0.5 text-sm text-slate-500">{note}</p>}
+        <section>
+            {/* On paper the heading never sits alone at the bottom of a page. */}
+            <div className="break-after-avoid">
+                <h2 className="text-xl font-bold text-slate-900">{title}</h2>
+                {note && <p className="mt-0.5 text-sm text-slate-500">{note}</p>}
+            </div>
             <div className="mt-3">{children}</div>
         </section>
     );
@@ -328,7 +338,7 @@ function Tile({ label, value, before, compareName }: { label: string; value: num
     return (
         <div className="panel p-5">
             <p className="text-sm font-medium text-slate-600">{label}</p>
-            <p className="mt-1 text-3xl font-bold text-slate-900 tabular-nums">{value}</p>
+            <p className="mt-1 text-3xl font-bold text-slate-900">{formatNumber(value)}</p>
             <p className="mt-1">
                 <Change now={value} before={before} compareName={compareName} />
             </p>
@@ -336,38 +346,65 @@ function Tile({ label, value, before, compareName }: { label: string; value: num
     );
 }
 
-/** Learners per strand, one chart per grade; this year in green beside the compared year in grey. */
+/**
+ * Learners per grade level (7 to 12), then senior high strands per grade;
+ * this year in green beside the compared year in grey.
+ */
 function WhereLearnersAre({ rows, yearName, compareName }: { rows: TableRow[]; yearName: string; compareName: string | null }) {
     if (rows.length === 0) return <p className="panel p-5 text-sm text-slate-500">No enrolled learners yet.</p>;
     const grades = [...new Set(rows.map((r) => r.grade))];
+    const perGrade = (g: number, key: 'total' | 'before') => rows.filter((r) => r.grade === g).reduce((n, r) => n + (r[key] ?? 0), 0);
+    const seniorGrades = grades.filter((g) => rows.some((r) => r.grade === g && r.strand !== null));
+    const pair = (now: number[], before: number[]) =>
+        compareName
+            ? [
+                  { label: yearName, data: now },
+                  { label: compareName, data: before, color: CONTEXT },
+              ]
+            : [{ label: yearName, data: now }];
 
     return (
         <div className="panel p-5">
-            <div className="grid grid-cols-1 gap-x-8 gap-y-6 xl:grid-cols-2">
-                {grades.map((g) => {
-                    const list = rows.filter((r) => r.grade === g);
-                    const labels = list.map((r) => r.strand ?? 'Junior High');
-                    const now = { label: yearName, data: list.map((r) => r.total) };
-                    return (
-                        <div key={g}>
-                            <h3 className="mb-3 font-semibold text-slate-900">
-                                Grade {g} <span className="font-normal text-slate-500">· {list.reduce((n, r) => n + r.total, 0)} learners</span>
-                            </h3>
-                            <BarChart
-                                horizontal
-                                values
-                                labels={labels}
-                                series={compareName ? [now, { label: compareName, data: list.map((r) => r.before ?? 0), color: CONTEXT }] : [now]}
-                                label={`Grade ${g} learners by strand: ${list
-                                    .map(
-                                        (r) => `${r.strand ?? 'Junior High'} ${r.total}${compareName ? ` (${r.before ?? 0} in ${compareName})` : ''}`,
-                                    )
-                                    .join(', ')}`}
-                            />
-                        </div>
-                    );
-                })}
-            </div>
+            <h3 className="mb-3 font-semibold text-slate-900">By grade level</h3>
+            <BarChart
+                values
+                height={240}
+                labels={grades.map((g) => `Grade ${g}`)}
+                series={pair(
+                    grades.map((g) => perGrade(g, 'total')),
+                    grades.map((g) => perGrade(g, 'before')),
+                )}
+                label={`Learners by grade level: ${grades
+                    .map((g) => `Grade ${g} ${perGrade(g, 'total')}${compareName ? ` (${perGrade(g, 'before')} in ${compareName})` : ''}`)
+                    .join(', ')}`}
+            />
+
+            {seniorGrades.length > 0 && (
+                <div className="mt-8 grid grid-cols-1 gap-x-8 gap-y-6 xl:grid-cols-2">
+                    {seniorGrades.map((g) => {
+                        const list = rows.filter((r) => r.grade === g && r.strand !== null);
+                        return (
+                            <div key={g}>
+                                <h3 className="mb-3 font-semibold text-slate-900">
+                                    Grade {g} by strand <span className="font-normal text-slate-500">· {perGrade(g, 'total')} learners</span>
+                                </h3>
+                                <BarChart
+                                    horizontal
+                                    values
+                                    labels={list.map((r) => r.strand as string)}
+                                    series={pair(
+                                        list.map((r) => r.total),
+                                        list.map((r) => r.before ?? 0),
+                                    )}
+                                    label={`Grade ${g} learners by strand: ${list
+                                        .map((r) => `${r.strand} ${r.total}${compareName ? ` (${r.before ?? 0} in ${compareName})` : ''}`)
+                                        .join(', ')}`}
+                                />
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
             <TableToggle label="Show the full table, like the workbook's MONITORING tab">
                 <GradeStrandTable rows={rows} compareName={compareName} />
             </TableToggle>
@@ -381,7 +418,7 @@ function TrackDonut({ rows }: { rows: TableRow[] }) {
     if (academic + tvl === 0) return <></>;
     return (
         <DonutChart
-            title="Academic and TVL track"
+            title="Senior high track"
             parts={[
                 { label: 'Academic', value: academic },
                 { label: 'TVL', value: tvl },
