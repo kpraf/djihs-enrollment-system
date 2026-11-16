@@ -21,7 +21,11 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class EncodingTemplate
 {
-    private const LAST_COLUMN = 'AF';
+    /**
+     * A to AF are the school's own ENROLLMENT_ENCODING layout, so rows copied
+     * from that workbook paste straight in. AG onwards were added for SF1.
+     */
+    private const LAST_COLUMN = 'AM';
 
     /** Rows that get the FULL NAME and AGE formulas. */
     private const FORMULA_ROWS = 1000;
@@ -39,11 +43,11 @@ class EncodingTemplate
         foreach ($sub as $col => $text) {
             $sheet->setCellValue("{$col}2", $text);
         }
-        foreach (['D1:F1', 'N1:O1', 'P1:R1', 'S1:Y1', 'Z1:AC1'] as $range) {
+        foreach (['D1:F1', 'N1:O1', 'P1:R1', 'S1:Y1', 'Z1:AC1', 'AG1:AI1', 'AJ1:AL1'] as $range) {
             $sheet->mergeCells($range);
         }
-        $sheet->getStyle('A1:AF2')->getFont()->setBold(true);
-        $sheet->getStyle('A1:AF2')->getAlignment()->setWrapText(true);
+        $sheet->getStyle('A1:'.self::LAST_COLUMN.'2')->getFont()->setBold(true);
+        $sheet->getStyle('A1:'.self::LAST_COLUMN.'2')->getAlignment()->setWrapText(true);
         $sheet->freezePane('D3');
 
         $strands = Strand::where('is_active', true)->orderBy('sort_order')->get()
@@ -99,8 +103,12 @@ class EncodingTemplate
             $sheet->setCellValue("C{$r}", "=IF(D{$r}=\"\",\"\",TRIM(D{$r}&\", \"&E{$r}&\" \"&F{$r}))");
             $sheet->setCellValue("L{$r}", "=IF(K{$r}=\"\",\"\",IFERROR(DATEDIF(K{$r},TODAY(),\"Y\"),\"\"))");
         }
-        $sheet->getStyle('C3:C'.(self::FORMULA_ROWS + 2))->getFont()->getColor()->setRGB('475569');
-        $sheet->getStyle('L3:L'.(self::FORMULA_ROWS + 2))->getFont()->getColor()->setRGB('475569');
+        // Shaded grey, header included, so they read as "not for typing".
+        foreach (['C', 'L'] as $col) {
+            $sheet->getStyle("{$col}3:{$col}".(self::FORMULA_ROWS + 2))->getFont()->getColor()->setRGB('475569');
+            $sheet->getStyle("{$col}1:{$col}".(self::FORMULA_ROWS + 2))->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('E2E8F0');
+            $sheet->getStyle("{$col}2")->getFont()->setBold(false)->setItalic(true);
+        }
         self::guideSheet($book);
         $book->setActiveSheetIndex(0);
 
@@ -179,7 +187,6 @@ class EncodingTemplate
         }
         $guide->getStyle("A{$head}:F".($row - 1))->getAlignment()->setVertical('top')->setWrapText(true);
         $guide->setAutoFilter("A{$head}:F".($row - 1));
-        $guide->freezePane('A'.($head + 1));
 
         foreach (['A' => 9, 'B' => 30, 'C' => 11, 'D' => 46, 'E' => 26, 'F' => 52] as $col => $width) {
             $guide->getColumnDimension($col)->setWidth($width);
@@ -223,11 +230,13 @@ class EncodingTemplate
         // school's workbook; the importer reads the name and birth date instead.
         $top = ['A' => 'NO.', 'B' => 'GRADE LEVEL TO ENROLL', 'C' => 'FULL NAME', 'D' => "LEARNER'S NAME", 'G' => 'TYPE OF LEARNER', 'H' => 'TRACK', 'I' => 'STRAND', 'J' => 'LRN',
             'K' => "BIRTH DATE\n(mm/dd/yyyy)", 'L' => 'AGE', 'M' => 'SEX', 'N' => 'FOR SF8', 'P' => 'OTHER DETAILS', 'S' => 'CURRENT ADDRESS', 'Z' => "LEGAL GUARDIAN'S NAME",
-            'AD' => "DATE ENCODED\n(mm/dd/yyyy)", 'AE' => 'ENROLLMENTSTATUS', 'AF' => 'REMARKS'];
-        $sub = ['D' => 'LAST NAME', 'E' => 'FIRST NAME', 'F' => 'MIDDLE NAME', 'N' => "WEIGHT\n(kg)", 'O' => "HEIGHT\n(mtrs)",
+            'AD' => "DATE ENCODED\n(mm/dd/yyyy)", 'AE' => 'ENROLLMENTSTATUS', 'AF' => 'REMARKS',
+            'AG' => "FATHER'S NAME", 'AJ' => "MOTHER'S MAIDEN NAME", 'AM' => "LEGAL GUARDIAN'S RELATIONSHIP TO LEARNER"];
+        $sub = ['C' => '(fills in by itself)', 'L' => '(fills in by itself)', 'D' => 'LAST NAME', 'E' => 'FIRST NAME', 'F' => 'MIDDLE NAME', 'N' => "WEIGHT\n(kg)", 'O' => "HEIGHT\n(mtrs)",
             'P' => 'BELONGING TO ANY INDIGENOUS PEOPLES (IP)', 'Q' => 'IF YES, PLEASE SPECIFY', 'R' => "IS YOUR FAMILY A BENEFICIARY OF 4P'S?",
             'S' => 'HOUSE NO.', 'T' => 'STREET NAME', 'U' => 'BARANGAY', 'V' => 'MUNICIPALITY / CITY', 'W' => 'PROVINCE', 'X' => 'COUNTRY', 'Y' => 'ZIP CODE',
-            'Z' => 'LAST NAME', 'AA' => 'FIRST NAME', 'AB' => 'MIDDLE NAME', 'AC' => 'CONTACT NO.'];
+            'Z' => 'LAST NAME', 'AA' => 'FIRST NAME', 'AB' => 'MIDDLE NAME', 'AC' => 'CONTACT NO.',
+            'AG' => 'LAST NAME', 'AH' => 'FIRST NAME', 'AI' => 'MIDDLE NAME', 'AJ' => 'LAST NAME', 'AK' => 'FIRST NAME', 'AL' => 'MIDDLE NAME'];
 
         return [$top, $sub];
     }

@@ -128,7 +128,8 @@ class TeacherPagesAndExportsTest extends TestCase
         $book = IOFactory::load($file);
         $sheet = $book->getSheetByName('MAIN_ENCODING_SHEET');
         $row = ['B' => 'GRADE 11', 'D' => 'REYES', 'E' => 'ANA', 'G' => 'REGULAR - NEW STUDENT (INCOMING G11)', 'H' => 'ACADEMIC',
-            'I' => 'HUMANITIES AND SOCIAL SCIENCES (HUMSS)', 'J' => 123456789012, 'M' => 'FEMALE', 'AE' => 'ENROLLED', 'AC' => 9171234567];
+            'I' => 'HUMANITIES AND SOCIAL SCIENCES (HUMSS)', 'J' => 123456789012, 'M' => 'FEMALE', 'AE' => 'ENROLLED', 'AC' => 9171234567,
+            'AG' => 'Reyes', 'AH' => 'Pedro', 'AJ' => 'Santos', 'AK' => 'Rosa', 'AM' => 'Grandmother'];
         foreach ($row as $col => $v) {
             $sheet->setCellValue("{$col}3", $v);
         }
@@ -142,6 +143,9 @@ class TeacherPagesAndExportsTest extends TestCase
         $this->assertStringContainsString('ENROLLED or CANCELLED only', $status->getPrompt());
         $this->assertStringContainsString('LRN', $sheet->getCell('J3')->getDataValidation()->getPrompt());
         $this->assertSame(NumberFormat::FORMAT_TEXT, $sheet->getStyle('J3')->getNumberFormat()->getFormatCode());
+        $this->assertSame("FATHER'S NAME", $sheet->getCell('AG1')->getValue());
+        $this->assertSame("MOTHER'S MAIDEN NAME", $sheet->getCell('AJ1')->getValue());
+        $this->assertSame('(fills in by itself)', $sheet->getCell('C2')->getValue());
         $howTo = collect($book->getSheetByName('HOW TO FILL IN')->toArray())->flatten()->filter()->implode("\n");
         $this->assertStringContainsString('ENROLLMENTSTATUS (column AE)', $howTo);
         $this->assertStringContainsString("Don't type DROPPED or TRANSFERRED OUT", $howTo);
@@ -167,6 +171,11 @@ class TeacherPagesAndExportsTest extends TestCase
         $result = app(EncodingSheetImporter::class)->import($copy, $this->year);
         $this->assertSame(2, $result->enrollmentsCreated, 'The formula rows below the learners are not read as learners.');
         $this->assertSame('HUMSS', Enrollment::whereHas('student', fn ($q) => $q->where('last_name', 'REYES'))->first()->strand->code);
+
+        // Parents' names and the guardian's relationship, for SF1.
+        $ana = Student::where('last_name', 'REYES')->firstOrFail();
+        $this->assertSame(['REYES', 'PEDRO', 'SANTOS', 'ROSA', 'GRANDMOTHER'],
+            [$ana->father_last_name, $ana->father_first_name, $ana->mother_last_name, $ana->mother_first_name, $ana->guardian_relationship]);
         $leo = Enrollment::whereHas('student', fn ($q) => $q->where('last_name', 'SANTOS'))->first();
         $this->assertSame(7, $leo->grade_level->value);
         $this->assertNull($leo->strand_id);

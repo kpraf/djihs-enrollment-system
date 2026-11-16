@@ -71,7 +71,7 @@ interface Props {
         roles: { label: string; count: number }[];
         activity_today: number;
         privacy_contact_missing: boolean;
-        recent: { id: number; at: string; user: string; event: string; subject_type: string; subject: string }[];
+        recent: { id: number; at: string; user: string; event: string; subject_type: string; subject: string; times: number }[];
     } | null;
 }
 
@@ -531,6 +531,7 @@ function RoleBlocks({
     teaching,
     system,
 }: Pick<Props, 'review' | 'mySections' | 'sectionOverview' | 'teaching' | 'system'>) {
+    const can = useCan();
     if (!review && !mySections && !sectionOverview && !teaching && !system) return null;
 
     return (
@@ -736,10 +737,19 @@ function RoleBlocks({
                                 {system.recent.map((a) => (
                                     <li key={a.id}>
                                         <span className="font-medium">{a.user}</span> {a.event} {a.subject_type.toLowerCase()} {a.subject}
+                                        {a.times > 1 && <span className="text-slate-500"> · {a.times} times</span>}
                                         <span className="block text-xs text-slate-500">{when.format(new Date(a.at))}</span>
                                     </li>
                                 ))}
                             </ul>
+                            {can('view-audit-log') && (
+                                <Link
+                                    href="/audit-log"
+                                    className="text-primary mt-3 inline-flex items-center gap-1 text-sm font-medium hover:underline"
+                                >
+                                    See all in the Audit Log <Icon name="arrow_forward" />
+                                </Link>
+                            )}
                         </div>
                     </div>
                 </Block>

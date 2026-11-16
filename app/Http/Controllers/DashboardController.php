@@ -112,6 +112,37 @@ class DashboardController extends Controller
         ];
     }
 
+    /** Lines shown under Recent Activity; the Audit Log has the rest. */
+    private const RECENT_ACTIVITY = 5;
+
+    /**
+     * The latest changes, with back-to-back repeats of the same change (such
+     * as one learner's document saved three times) folded into one line.
+     *
+     * @return list<array{id: int, at: ?string, user: string, event: string, subject_type: string, subject: string, times: int}>
+     */
+    private function recentActivity(): array
+    {
+        $logs = AuditLog::with('user:id,first_name,last_name')->whereNotIn('event', AuditTrail::ACCESS_EVENTS)->latest('id')->limit(40)->get();
+        $lines = [];
+
+        foreach ((new AuditTrail)->present($logs) as $entry) {
+            $last = array_key_last($lines);
+            if ($last !== null && array_intersect_key($lines[$last], array_flip(['user', 'event', 'subject_type', 'subject']))
+                === array_intersect_key($entry, array_flip(['user', 'event', 'subject_type', 'subject']))) {
+                $lines[$last]['times']++;
+
+                continue;
+            }
+            if (count($lines) === self::RECENT_ACTIVITY) {
+                break;
+            }
+            $lines[] = [...array_intersect_key($entry, array_flip(['id', 'at', 'user', 'event', 'subject_type', 'subject'])), 'times' => 1];
+        }
+
+        return $lines;
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -124,7 +155,7 @@ class DashboardController extends Controller
             'active_users' => User::where('is_active', true)->count(),
             'roles' => array_map(fn (Role $r) => ['label' => $r->label(), 'count' => (int) ($byRole[$r->value] ?? 0)], Role::cases()),
             'activity_today' => AuditLog::where('created_at', '>=', now()->startOfDay())->whereNotIn('event', AuditTrail::ACCESS_EVENTS)->count(),
-            'recent' => (new AuditTrail)->present(AuditLog::with('user:id,first_name,last_name')->whereNotIn('event', AuditTrail::ACCESS_EVENTS)->latest('id')->limit(8)->get()),
+            'recent' => $this->recentActivity(),
             // The privacy notice needs the school's Data Protection Officer.
             'privacy_contact_missing' => ! config('privacy.dpo_name') && ! config('privacy.dpo_email') && ! config('privacy.dpo_phone'),
         ];

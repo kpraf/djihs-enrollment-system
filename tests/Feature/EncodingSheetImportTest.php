@@ -180,6 +180,19 @@ class EncodingSheetImportTest extends TestCase
         $this->assertTrue(collect($result->warnings)->contains('message', 'LRN has 13 digits instead of 12. Saved without an LRN.'));
     }
 
+    public function test_a_file_without_the_parent_columns_keeps_parents_already_saved(): void
+    {
+        // The school's own workbook has no parents' names; they were typed in on the app.
+        $path = EncodingWorkbook::make()->learner()->save();
+        $this->import($path);
+        Student::first()->update(['father_first_name' => 'PEDRO', 'mother_last_name' => 'SANTOS', 'guardian_relationship' => 'MOTHER']);
+
+        $this->import($path);
+
+        $student = Student::first();
+        $this->assertSame(['PEDRO', 'SANTOS', 'MOTHER'], [$student->father_first_name, $student->mother_last_name, $student->guardian_relationship]);
+    }
+
     public function test_a_dry_run_saves_nothing(): void
     {
         $result = $this->import(EncodingWorkbook::make()->learner()->save(), dryRun: true);

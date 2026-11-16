@@ -67,6 +67,13 @@ class EncodingSheetImporter
         'guardian_first_name' => ['GUARDIAN', 'FIRST NAME'],
         'guardian_middle_name' => ['GUARDIAN', 'MIDDLE NAME'],
         'guardian_contact' => ['GUARDIAN', 'CONTACT'],
+        'guardian_relationship' => ['GUARDIAN', 'RELATIONSHIP'],
+        'father_last_name' => ['FATHER', 'LAST NAME'],
+        'father_first_name' => ['FATHER', 'FIRST NAME'],
+        'father_middle_name' => ['FATHER', 'MIDDLE NAME'],
+        'mother_last_name' => ['MOTHER', 'LAST NAME'],
+        'mother_first_name' => ['MOTHER', 'FIRST NAME'],
+        'mother_middle_name' => ['MOTHER', 'MIDDLE NAME'],
         'encoded_on' => ['DATE ENCODED'],
         'status' => ['ENROLLMENTSTATUS'],
         'remarks' => ['REMARKS'],
@@ -75,8 +82,21 @@ class EncodingSheetImporter
     /** @var list<string> */
     private const REQUIRED = ['grade', 'last_name', 'first_name', 'learner_type', 'strand', 'lrn', 'sex', 'status'];
 
+    /**
+     * Columns added to the template after the school's own workbook. Files
+     * without them must not blank what was already saved, such as parents'
+     * names typed in on the app.
+     *
+     * @var list<string>
+     */
+    private const ADDED_COLUMNS = ['guardian_relationship', 'father_last_name', 'father_first_name', 'father_middle_name',
+        'mother_last_name', 'mother_first_name', 'mother_middle_name'];
+
     /** @var Collection<int, Strand> */
     private Collection $strands;
+
+    /** @var list<string> fields from ADDED_COLUMNS that this file has */
+    private array $addedPresent = [];
 
     /** @var array<string, int> LRN => first row it appeared on */
     private array $seenLrns = [];
@@ -205,6 +225,8 @@ class EncodingSheetImporter
             throw new InvalidArgumentException('Could not find these columns in the sheet: '.implode(', ', $missing).'.');
         }
 
+        $this->addedPresent = array_values(array_intersect(self::ADDED_COLUMNS, array_keys($columns)));
+
         // Optional columns may be absent; read them as empty.
         foreach (array_keys(self::COLUMNS) as $field) {
             $columns[$field] ??= 'XFD';
@@ -300,6 +322,10 @@ class EncodingSheetImporter
             'guardian_middle_name' => $this->name($v['guardian_middle_name']),
             'contact_number' => $this->contact($v['guardian_contact'], $row, $result),
         ];
+
+        foreach ($this->addedPresent as $field) {
+            $studentData[$field] = $this->name($v[$field]);
+        }
 
         if (AddressNormalizer::looksLikeProvince($studentData['municipality'])) {
             $result->warn($row, "Municipality is \"{$studentData['municipality']}\", which is a province.");

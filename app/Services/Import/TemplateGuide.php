@@ -39,7 +39,7 @@ class TemplateGuide
                 "Don't type the grade they just finished. Don't write words like \"eleven\". A row without a grade from 7 to 12 is not imported.",
                 'Required. GRADE 7 to GRADE 12: the grade they are enrolling in.'),
             self::column('C', 'FULL NAME', self::AUTOMATIC,
-                'Nothing. It fills in from the last, first and middle name.', 'DELA CRUZ, JUAN SANTOS',
+                'Nothing. It fills in from the last, first and middle name, so the list is easy to read and sort, as in the school\'s workbook.', 'DELA CRUZ, JUAN SANTOS',
                 "Don't type over it. The system reads the three name columns, not this one.",
                 'Fills in by itself from columns D to F.'),
             self::column('D', "LEARNER'S NAME: LAST NAME", self::REQUIRED,
@@ -143,6 +143,26 @@ class TemplateGuide
                 'Short notes for the registrar.', 'Shifted from HUMSS to ABM',
                 "Don't use remarks to set a status. Write CANCELLED in ENROLLMENTSTATUS instead.",
                 'Short notes. Not used to set a status.'),
+            self::column('AG', "FATHER'S NAME: LAST NAME", self::OPTIONAL,
+                "Father's surname. Shown on SF1.", 'DELA CRUZ',
+                "Don't put the whole name in one cell. Leave the three father columns blank if unknown.",
+                "Father's surname. Shown on SF1."),
+            self::column('AH', "FATHER'S NAME: FIRST NAME", self::OPTIONAL,
+                "Father's given name.", 'PEDRO', '', "Father's given name."),
+            self::column('AI', "FATHER'S NAME: MIDDLE NAME", self::OPTIONAL,
+                "Father's middle name.", 'GARCIA', '', "Father's middle name."),
+            self::column('AJ', "MOTHER'S MAIDEN NAME: LAST NAME", self::OPTIONAL,
+                "Mother's surname before marriage. Shown on SF1.", 'SANTOS',
+                "Don't type her married surname; SF1 asks for her maiden name.",
+                "Mother's MAIDEN surname (before marriage). Shown on SF1."),
+            self::column('AK', "MOTHER'S MAIDEN NAME: FIRST NAME", self::OPTIONAL,
+                "Mother's given name.", 'ROSA', '', "Mother's given name."),
+            self::column('AL', "MOTHER'S MAIDEN NAME: MIDDLE NAME", self::OPTIONAL,
+                "Mother's middle name.", 'LOPEZ', '', "Mother's middle name."),
+            self::column('AM', "LEGAL GUARDIAN'S RELATIONSHIP TO LEARNER", self::OPTIONAL,
+                'How the guardian in columns Z to AB is related to the learner. Shown on SF1.', 'GRANDMOTHER',
+                "Don't leave it blank when the guardian is not a parent.",
+                'How the guardian is related: MOTHER, FATHER, GRANDMOTHER, AUNT...'),
         ];
     }
 
@@ -178,6 +198,7 @@ class TemplateGuide
         return [
             'do' => [
                 'Start typing learners on row 3. Rows 1 and 2 are the headers.',
+                "Columns A to AF are laid out like the school's ENROLLMENT_ENCODING workbook, so rows copied from it paste straight in. Parents' names and the guardian's relationship (AG to AM) were added for SF1.",
                 'Use one row per learner.',
                 'Use the dropdowns in the Excel template. In a CSV, type values exactly as the dropdowns show them.',
                 'In a CSV opened in Excel, type the LRN and contact number with an apostrophe first (\'123456789012) so Excel keeps every digit. The Excel template does this for you.',
