@@ -1,4 +1,5 @@
 import { Field, TextInput } from '@/components/form';
+import { BusyLabel } from '@/components/spinner';
 import SettingsLayout from '@/layouts/settings-layout';
 import { Head, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
@@ -66,7 +67,9 @@ export default function Password({ mustChangePassword }: { mustChangePassword: b
                     )}
                 </Field>
                 <button className="btn-primary" disabled={processing}>
-                    Save Password
+                    <BusyLabel busy={processing} busyText="Saving…">
+                        Save Password
+                    </BusyLabel>
                 </button>
             </form>
         </SettingsLayout>

@@ -1,5 +1,6 @@
 import { InputError } from '@/components/form';
 import { Icon } from '@/components/icon';
+import { BusyLabel } from '@/components/spinner';
 import GuestLayout from '@/layouts/guest-layout';
 import { Head, useForm } from '@inertiajs/react';
 import { FormEventHandler, useState } from 'react';
@@ -91,8 +92,9 @@ export default function Login() {
                 </label>
 
                 <button type="submit" disabled={processing} className="btn-primary w-full py-3.5 text-base">
-                    {processing ? 'Signing in…' : 'Sign In'}
-                    {!processing && <Icon name="arrow_forward" />}
+                    <BusyLabel busy={processing} busyText="Signing in…">
+                        Sign In <Icon name="arrow_forward" />
+                    </BusyLabel>
                 </button>
 
                 <p className="pt-2 text-center text-xs text-slate-400">

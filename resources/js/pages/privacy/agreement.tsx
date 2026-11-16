@@ -1,4 +1,5 @@
 import { Icon } from '@/components/icon';
+import { BusyLabel } from '@/components/spinner';
 import GuestLayout from '@/layouts/guest-layout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { type PrivacyDetails } from './types';
@@ -64,7 +65,9 @@ export default function ConfidentialityAgreement({ privacy }: { privacy: Privacy
                 </label>
                 {errors.agree && <p className="text-sm text-red-600">{errors.agree}</p>}
                 <button type="submit" disabled={processing} className="btn-primary w-full py-3">
-                    Accept and Continue <Icon name="arrow_forward" />
+                    <BusyLabel busy={processing} busyText="Saving…">
+                        Accept and Continue <Icon name="arrow_forward" />
+                    </BusyLabel>
                 </button>
                 <Link href={route('logout')} method="post" as="button" className="w-full text-center text-sm text-slate-500 hover:text-slate-700">
                     Not now, sign out

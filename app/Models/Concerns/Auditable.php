@@ -3,6 +3,7 @@
 namespace App\Models\Concerns;
 
 use App\Models\AuditLog;
+use App\Services\Audit\AuditBuffer;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
@@ -42,7 +43,7 @@ trait Auditable
             return;
         }
 
-        AuditLog::create([
+        $entry = [
             'user_id' => Auth::id(),
             'event' => $event,
             'auditable_type' => $model->getMorphClass(),
@@ -50,6 +51,11 @@ trait Auditable
             'old_values' => $old ?: null,
             'new_values' => $new ?: null,
             'ip_address' => app()->runningInConsole() ? null : request()->ip(),
-        ]);
+        ];
+
+        // A big import hands its entries to the buffer to write in batches.
+        if (! AuditBuffer::take($entry)) {
+            AuditLog::create($entry);
+        }
     }
 }

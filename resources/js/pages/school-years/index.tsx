@@ -3,6 +3,7 @@ import { Field, TextInput } from '@/components/form';
 import { Icon } from '@/components/icon';
 import { Modal } from '@/components/modal';
 import { PageHeader } from '@/components/page-header';
+import { BusyLabel } from '@/components/spinner';
 import { StatusBadge } from '@/components/status-badge';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
@@ -247,7 +248,9 @@ function CreateYear({ open, suggestedStart, onClose }: { open: boolean; suggeste
                         Cancel
                     </button>
                     <button type="submit" className="btn-primary flex-1 py-3" disabled={processing}>
-                        Create
+                        <BusyLabel busy={processing} busyText="Creating…">
+                            Create
+                        </BusyLabel>
                     </button>
                 </div>
             </form>

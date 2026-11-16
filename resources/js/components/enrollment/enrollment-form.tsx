@@ -1,6 +1,7 @@
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Field, InputError, SelectInput, TextInput, YesNo } from '@/components/form';
 import { Icon } from '@/components/icon';
+import { BusyLabel, Spinner } from '@/components/spinner';
 import { describeDate, formatWhileTyping, parseTypedDate, toTypedDate } from '@/lib/typed-date';
 import { cn } from '@/lib/utils';
 import { Link, useForm } from '@inertiajs/react';
@@ -496,7 +497,9 @@ export function EnrollmentForm({ mode, schoolYear, options, initial, action, can
                     </button>
                 )}
                 <button type="submit" className={cn('btn-primary')} disabled={processing}>
-                    {processing ? 'Saving…' : mode === 'create' ? 'Submit Enrollment' : asRevision ? 'Send for Approval' : 'Save Changes'}
+                    <BusyLabel busy={processing} busyText={asRevision ? 'Sending…' : 'Saving…'}>
+                        {mode === 'create' ? 'Submit Enrollment' : asRevision ? 'Send for Approval' : 'Save Changes'}
+                    </BusyLabel>
                 </button>
             </div>
             <ConfirmDialog
@@ -591,7 +594,11 @@ function LookupBanner({
     if (!/^\d{12}$/.test(lrn)) return null;
 
     if (state === 'checking') {
-        return <p className="text-sm text-slate-500">Checking LRN…</p>;
+        return (
+            <p className="flex items-center gap-2 text-sm text-slate-500" role="status">
+                <Spinner className="text-primary" /> Checking LRN…
+            </p>
+        );
     }
 
     if (state === 'error') {

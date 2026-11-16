@@ -5,6 +5,7 @@ import { Icon } from '@/components/icon';
 import { Modal } from '@/components/modal';
 import { PageHeader } from '@/components/page-header';
 import { RowActionButton, RowActionLink } from '@/components/row-action';
+import { BusyLabel } from '@/components/spinner';
 import { StatusBadge } from '@/components/status-badge';
 import AppLayout from '@/layouts/app-layout';
 import { type Option } from '@/types';
@@ -287,7 +288,9 @@ function SectionDialog({
                         Cancel
                     </button>
                     <button type="submit" className="btn-primary flex-1 py-3" disabled={processing}>
-                        Save Section
+                        <BusyLabel busy={processing} busyText="Saving…">
+                            Save Section
+                        </BusyLabel>
                     </button>
                 </div>
             </form>
@@ -383,7 +386,9 @@ function TeachersDialog({
                     )}
                 </Field>
                 <button type="submit" className="btn-primary sm:col-span-2" disabled={processing}>
-                    <Icon name="add" /> Assign Subject Teacher
+                    <BusyLabel busy={processing} busyText="Assigning…">
+                        <Icon name="add" /> Assign Subject Teacher
+                    </BusyLabel>
                 </button>
             </form>
         </Modal>

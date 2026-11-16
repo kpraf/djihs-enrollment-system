@@ -1,9 +1,10 @@
 import { InputError } from '@/components/form';
 import { Icon } from '@/components/icon';
 import { PageHeader } from '@/components/page-header';
+import { BusyLabel, Spinner } from '@/components/spinner';
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { FormEventHandler, useRef, useState } from 'react';
+import { FormEventHandler, useEffect, useRef, useState } from 'react';
 
 interface RowNote {
     row: number;
@@ -50,6 +51,15 @@ export default function ImportCreate({ schoolYears, preview, result }: Props) {
     };
 
     const yearName = (id: number) => schoolYears.find((y) => y.id === id)?.name;
+    const busy = upload.processing || importing;
+
+    // Closing the tab mid-way would lose the check or stop the import.
+    useEffect(() => {
+        if (!busy) return;
+        const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+        window.addEventListener('beforeunload', warn);
+        return () => window.removeEventListener('beforeunload', warn);
+    }, [busy]);
 
     return (
         <AppLayout>
@@ -63,6 +73,23 @@ export default function ImportCreate({ schoolYears, preview, result }: Props) {
                     </Link>
                 }
             />
+
+            {upload.processing && (
+                <Working
+                    title="Checking your file"
+                    detail={
+                        upload.progress?.percentage !== undefined && upload.progress.percentage < 100
+                            ? `Uploading… ${upload.progress.percentage}%`
+                            : 'Reading every row and checking it. Nothing is saved yet.'
+                    }
+                />
+            )}
+            {importing && preview && (
+                <Working
+                    title={`Importing ${(preview.rows_read - preview.skipped.length).toLocaleString()} learners`}
+                    detail="Saving learners and their enrollments. If anything goes wrong, nothing is saved."
+                />
+            )}
 
             <div className="max-w-4xl space-y-6">
                 {!preview && (
@@ -146,7 +173,9 @@ export default function ImportCreate({ schoolYears, preview, result }: Props) {
 
                         <div className="flex justify-end">
                             <button type="submit" className="btn-primary" disabled={upload.processing || !upload.data.file}>
-                                <Icon name="fact_check" /> {upload.processing ? 'Checking…' : 'Check File'}
+                                <BusyLabel busy={upload.processing} busyText="Checking…">
+                                    <Icon name="fact_check" /> Check File
+                                </BusyLabel>
                             </button>
                         </div>
                     </form>
@@ -172,7 +201,9 @@ export default function ImportCreate({ schoolYears, preview, result }: Props) {
                                 Cancel
                             </button>
                             <button type="button" className="btn-primary" disabled={importing} onClick={confirmImport}>
-                                {importing ? 'Importing…' : `Import ${preview.rows_read - preview.skipped.length} learners`}
+                                <BusyLabel busy={importing} busyText="Importing…">
+                                    Import {preview.rows_read - preview.skipped.length} learners
+                                </BusyLabel>
                             </button>
                         </div>
                     </div>
@@ -255,6 +286,23 @@ function NoteList({ title, notes, tone }: { title: string; notes: RowNote[]; ton
                     </li>
                 ))}
             </ul>
+        </div>
+    );
+}
+
+/**
+ * Covers the page while a file is checked or imported, so nobody presses
+ * anything twice. A large file can take a minute on a slow server.
+ */
+function Working({ title, detail }: { title: string; detail: string }) {
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-[2px]">
+            <div role="status" aria-live="polite" className="panel w-full max-w-sm p-8 text-center shadow-2xl">
+                <Spinner className="text-primary mx-auto size-12" />
+                <h2 className="mt-5 text-lg font-bold text-slate-900">{title}</h2>
+                <p className="mt-2 text-sm text-slate-600">{detail}</p>
+                <p className="mt-4 text-xs text-slate-500">A large file can take a minute. Please keep this page open.</p>
+            </div>
         </div>
     );
 }

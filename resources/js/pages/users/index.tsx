@@ -4,6 +4,7 @@ import { Icon } from '@/components/icon';
 import { Modal } from '@/components/modal';
 import { PageHeader } from '@/components/page-header';
 import { RowActionButton } from '@/components/row-action';
+import { BusyLabel } from '@/components/spinner';
 import { StatCard } from '@/components/stat-card';
 import { StatusBadge } from '@/components/status-badge';
 import AppLayout from '@/layouts/app-layout';
@@ -284,7 +285,9 @@ function UserDialog({ user, roles, onClose }: { user: UserRow | 'new' | null; ro
                         Cancel
                     </button>
                     <button type="submit" className="btn-primary flex-1 py-3" disabled={processing}>
-                        {isNew ? 'Create Account' : 'Save Changes'}
+                        <BusyLabel busy={processing} busyText={isNew ? 'Creating…' : 'Saving…'}>
+                            {isNew ? 'Create Account' : 'Save Changes'}
+                        </BusyLabel>
                     </button>
                 </div>
             </form>

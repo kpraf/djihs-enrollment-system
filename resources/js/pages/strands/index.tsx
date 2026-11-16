@@ -4,6 +4,7 @@ import { Icon } from '@/components/icon';
 import { Modal } from '@/components/modal';
 import { PageHeader } from '@/components/page-header';
 import { RowActionButton } from '@/components/row-action';
+import { BusyLabel } from '@/components/spinner';
 import { Switch } from '@/components/switch';
 import AppLayout from '@/layouts/app-layout';
 import { type Option } from '@/types';
@@ -177,7 +178,9 @@ function StrandDialog({ strand, tracks, onClose }: { strand: StrandRow | 'new' |
                         Cancel
                     </button>
                     <button type="submit" className="btn-primary flex-1 py-3" disabled={processing}>
-                        Save Strand
+                        <BusyLabel busy={processing} busyText="Saving…">
+                            Save Strand
+                        </BusyLabel>
                     </button>
                 </div>
             </form>
