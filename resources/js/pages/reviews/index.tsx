@@ -4,6 +4,7 @@ import { Icon } from '@/components/icon';
 import { PageHeader } from '@/components/page-header';
 import { Pagination } from '@/components/pagination';
 import { RevisionCard, type Revision } from '@/components/revision-card';
+import { useReloading } from '@/hooks/use-reloading';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { type Option, type Paginated } from '@/types';
@@ -33,6 +34,7 @@ interface Props {
 }
 
 export default function Reviews({ pending, revisions, filters, stats, options, canApproveRevisions }: Props) {
+    const reloading = useReloading();
     const [tab, setTab] = useState(filters.tab === 'revisions' && canApproveRevisions ? 'revisions' : 'enrollments');
     const [rejecting, setRejecting] = useState<PendingRow | null>(null);
     const [approving, setApproving] = useState<PendingRow | null>(null);
@@ -159,7 +161,10 @@ export default function Reviews({ pending, revisions, filters, stats, options, c
                         </button>
                     </div>
 
-                    <div className="panel overflow-hidden">
+                    <div
+                        className={cn('panel overflow-hidden transition-opacity duration-150', reloading && 'pointer-events-none opacity-50')}
+                        aria-busy={reloading}
+                    >
                         <div className="relative overflow-x-auto">
                             <table className="w-full text-left text-sm">
                                 <thead className="table-head">

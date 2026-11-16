@@ -3,6 +3,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Icon } from '@/components/icon';
 import { PageHeader } from '@/components/page-header';
 import { RowActionButton } from '@/components/row-action';
+import { useReloading } from '@/hooks/use-reloading';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { type Option } from '@/types';
@@ -38,6 +39,7 @@ interface Props {
 }
 
 export default function AssignStudents({ schoolYear, unassigned, sections, filters, options }: Props) {
+    const reloading = useReloading();
     const [selected, setSelected] = useState<number[]>([]);
     const [target, setTarget] = useState<string>('');
     const [search, setSearch] = useState(filters.search ?? '');
@@ -145,7 +147,13 @@ export default function AssignStudents({ schoolYear, unassigned, sections, filte
             </div>
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <section className="panel flex flex-col overflow-hidden">
+                <section
+                    className={cn(
+                        'panel flex flex-col overflow-hidden transition-opacity duration-150',
+                        reloading && 'pointer-events-none opacity-50',
+                    )}
+                    aria-busy={reloading}
+                >
                     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-4">
                         <h2 className="text-lg font-semibold text-slate-900">Unassigned Students ({unassigned.length})</h2>
                         <label className="flex items-center gap-2 text-sm text-slate-600">
@@ -206,7 +214,10 @@ export default function AssignStudents({ schoolYear, unassigned, sections, filte
                     </div>
                 </section>
 
-                <section className="space-y-4">
+                <section
+                    className={cn('space-y-4 transition-opacity duration-150', reloading && 'pointer-events-none opacity-50')}
+                    aria-busy={reloading}
+                >
                     {sections.length === 0 && (
                         <div className="panel px-6 py-10 text-center text-sm text-slate-500">
                             No sections for this grade yet.{' '}

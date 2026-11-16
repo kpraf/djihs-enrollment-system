@@ -31,19 +31,18 @@ class ReportsController extends Controller
 
         $current = $year ? $analytics->forYear($year) : null;
         $previous = $compare ? $analytics->forYear($compare) : null;
-        $previousTable = $compare ? collect($analytics->byGradeAndStrand($compare)) : collect();
 
+        // The headline numbers come with the page. The table, the trends and
+        // the "needs attention" list load right after it, each in its own
+        // request, while the page shows grey placeholders in their place.
         return Inertia::render('reports/index', [
             'schoolYears' => $years->map->only(['id', 'name', 'is_active'])->values(),
             'filters' => ['school_year' => $year?->id, 'compare' => $compare?->id],
             'compareName' => $compare?->name,
             'summary' => $current ? ['now' => self::summary($current), 'before' => $previous ? self::summary($previous) : null] : null,
-            'table' => $year ? collect($analytics->byGradeAndStrand($year))->map(fn ($r) => [
-                ...$r,
-                'before' => $compare ? (int) ($previousTable->first(fn ($p) => $p['grade'] === $r['grade'] && $p['strand'] === $r['strand'])['total'] ?? 0) : null,
-            ])->values() : [],
-            'trends' => $analytics->trends(),
-            'strandTrends' => $analytics->strandTrends(),
+            'table' => Inertia::defer(fn () => $year ? $this->table($analytics, $year, $compare) : [], 'table'),
+            'trends' => Inertia::defer(fn () => $analytics->trends(), 'trends'),
+            'strandTrends' => Inertia::defer(fn () => $analytics->strandTrends(), 'trends'),
             'profile' => $current ? [
                 'learner_types' => $current['by_learner_type'],
                 'inclusion' => [
@@ -52,9 +51,25 @@ class ReportsController extends Controller
                     ['label' => 'Learners with disability', 'total' => $current['overview']['pwd']],
                 ],
             ] : null,
-            'attention' => $year ? $this->attention($year, $user, $metrics) : [],
-            'rates' => $year && $user->hasAbility(Ability::ViewMetrics) ? $metrics->forYear($year) : null,
+            'attention' => Inertia::defer(fn () => $year ? $this->attention($year, $user, $metrics) : [], 'attention'),
+            'rates' => Inertia::defer(fn () => $year && $user->hasAbility(Ability::ViewMetrics) ? $metrics->forYear($year) : null, 'attention'),
         ]);
+    }
+
+    /**
+     * Enrolled learners by grade and strand, with the compared year's total
+     * beside each row.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function table(AnalyticsReport $analytics, SchoolYear $year, ?SchoolYear $compare): array
+    {
+        $before = $compare ? collect($analytics->byGradeAndStrand($compare)) : collect();
+
+        return collect($analytics->byGradeAndStrand($year))->map(fn ($r) => [
+            ...$r,
+            'before' => $compare ? (int) ($before->first(fn ($p) => $p['grade'] === $r['grade'] && $p['strand'] === $r['strand'])['total'] ?? 0) : null,
+        ])->values()->all();
     }
 
     public function export(Request $request, AnalyticsReport $analytics, MetricsReport $metrics): DownloadResponse

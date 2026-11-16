@@ -4,7 +4,9 @@ import { PageHeader } from '@/components/page-header';
 import { Pagination } from '@/components/pagination';
 import { StatCard } from '@/components/stat-card';
 import { useCan } from '@/hooks/use-can';
+import { useReloading } from '@/hooks/use-reloading';
 import AppLayout from '@/layouts/app-layout';
+import { cn } from '@/lib/utils';
 import { type HistoryEntry } from '@/pages/enrollments/show';
 import { type Option, type Paginated } from '@/types';
 import { Head, router } from '@inertiajs/react';
@@ -29,6 +31,7 @@ const tones = {
 };
 
 export default function AuditLog({ logs, filters, stats, users, types }: Props) {
+    const reloading = useReloading();
     const [draft, setDraft] = useState(filters);
     const [backupOpen, setBackupOpen] = useState(false);
     const can = useCan();
@@ -152,7 +155,10 @@ export default function AuditLog({ logs, filters, stats, users, types }: Props) 
                 </div>
             </div>
 
-            <div className="panel overflow-hidden">
+            <div
+                className={cn('panel overflow-hidden transition-opacity duration-150', reloading && 'pointer-events-none opacity-50')}
+                aria-busy={reloading}
+            >
                 <div className="relative overflow-x-auto">
                     <table className="w-full text-left text-sm">
                         <thead className="table-head">

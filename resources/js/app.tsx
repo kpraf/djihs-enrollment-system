@@ -23,6 +23,12 @@ createInertiaApp({
     },
 });
 
+// Sidebar links load a page's data a moment early, on hover. After anything
+// is saved, drop those early copies so no page shows numbers from before.
+router.on('finish', (event) => {
+    if (event.detail.visit.method !== 'get') router.flushAll();
+});
+
 // The server sets the text size on first load. Keep it in sync when a
 // different user signs in, or the size is changed, without a full reload.
 router.on('navigate', (event) => {

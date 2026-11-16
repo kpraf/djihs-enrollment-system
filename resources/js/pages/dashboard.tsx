@@ -2,12 +2,13 @@ import { CapacityBar } from '@/components/capacity-bar';
 import { Icon } from '@/components/icon';
 import { type IconName } from '@/components/icons';
 import { PageHeader } from '@/components/page-header';
+import { TableSkeleton, TilesSkeleton } from '@/components/skeleton';
 import { StatCard } from '@/components/stat-card';
 import { useCan } from '@/hooks/use-can';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { type Ability, type AuthedData, type Option } from '@/types';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Deferred, Head, Link, router, usePage } from '@inertiajs/react';
 
 interface Tally {
     male: number;
@@ -46,8 +47,9 @@ interface DailyRow {
 interface Props {
     schoolYears: { id: number; name: string; is_active: boolean }[];
     selectedYear: { id: number; name: string } | null;
-    monitoring: Monitoring | null;
-    daily: DailyRow[];
+    // Loaded right after the page; undefined until then.
+    monitoring?: Monitoring | null;
+    daily?: DailyRow[];
     review: {
         pending: number;
         recent: { id: number; name: string; grade_level: number; strand: string | null; encoded_on: string | null }[];
@@ -119,50 +121,26 @@ export default function Dashboard({ schoolYears, selectedYear, monitoring, daily
                 }
             />
 
-            {monitoring && (
-                <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                    <StatCard
-                        label="Total Enrolled"
-                        value={number.format(monitoring.total.total)}
-                        hint={`${monitoring.total.male} male · ${monitoring.total.female} female`}
-                    />
-                    {monitoring.grades.slice(0, 2).map((g) => (
-                        <StatCard
-                            key={g.grade_level}
-                            label={g.label}
-                            value={number.format(g.total.total)}
-                            hint={`Academic ${g.tracks.academic.total} · TVL ${g.tracks.tvl.total}`}
-                            tone="indigo"
-                        />
-                    ))}
-                    <StatCard label="Cancelled" value={number.format(monitoring.cancelled)} hint="Not counted as enrolled" tone="orange" />
-                </div>
+            {can('view-reports') && (
+                <Deferred data="monitoring" fallback={<TilesSkeleton what="enrollment totals" className="mb-8 gap-6 lg:grid-cols-4" />}>
+                    <MonitoringTiles monitoring={monitoring} />
+                </Deferred>
             )}
 
             <RoleBlocks review={review} mySections={mySections} sectionOverview={sectionOverview} teaching={teaching} system={system} />
 
-            {monitoring && monitoring.grade_11_retention !== null && (
-                <div className="panel mb-8 flex flex-wrap items-center gap-4 p-6">
-                    <div className="text-primary flex size-12 items-center justify-center rounded-lg bg-green-50">
-                        <Icon name="school" />
-                    </div>
-                    <div>
-                        <p className="text-base font-medium text-slate-700">Grade 10 completers who stayed for Grade 11</p>
-                        <p className="text-sm text-slate-500">
-                            <span className="text-2xl font-bold text-slate-900">{(monitoring.grade_11_retention * 100).toFixed(1)}%</span> of{' '}
-                            {monitoring.grade_10_completers} completers enrolled as old students
-                        </p>
-                    </div>
-                </div>
+            {can('view-reports') && (
+                <Deferred
+                    data={['monitoring', 'daily']}
+                    fallback={
+                        <div className="mb-8 space-y-6">
+                            <TableSkeleton what="enrollment by grade" rows={6} columns={6} />
+                        </div>
+                    }
+                >
+                    <MonitoringDetails monitoring={monitoring} daily={daily ?? []} />
+                </Deferred>
             )}
-
-            {monitoring?.grades.map((grade) => <GradeTable key={grade.grade_level} grade={grade} types={monitoring.learner_types} />)}
-
-            {monitoring && monitoring.grades.length === 0 && (
-                <div className="panel mb-8 px-6 py-12 text-center text-slate-500">No learners have been encoded for this school year yet.</div>
-            )}
-
-            {daily.length > 0 && <DailyTable rows={daily} grades={monitoring?.grades.map((g) => g.grade_level) ?? []} />}
 
             {actions.length > 0 && (
                 <section>
@@ -187,6 +165,63 @@ export default function Dashboard({ schoolYears, selectedYear, monitoring, daily
 
 const th = 'px-4 py-3 text-right font-medium whitespace-nowrap';
 const td = 'px-4 py-3 text-right tabular-nums';
+
+function MonitoringTiles({ monitoring }: { monitoring: Monitoring | null | undefined }) {
+    if (!monitoring) return <></>;
+
+    return (
+        <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+                label="Total Enrolled"
+                value={number.format(monitoring.total.total)}
+                hint={`${monitoring.total.male} male · ${monitoring.total.female} female`}
+            />
+            {monitoring.grades.slice(0, 2).map((g) => (
+                <StatCard
+                    key={g.grade_level}
+                    label={g.label}
+                    value={number.format(g.total.total)}
+                    hint={`Academic ${g.tracks.academic.total} · TVL ${g.tracks.tvl.total}`}
+                    tone="indigo"
+                />
+            ))}
+            <StatCard label="Cancelled" value={number.format(monitoring.cancelled)} hint="Not counted as enrolled" tone="orange" />
+        </div>
+    );
+}
+
+function MonitoringDetails({ monitoring, daily }: { monitoring: Monitoring | null | undefined; daily: DailyRow[] }) {
+    if (!monitoring) return <></>;
+
+    return (
+        <>
+            {monitoring.grade_11_retention !== null && (
+                <div className="panel mb-8 flex flex-wrap items-center gap-4 p-6">
+                    <div className="text-primary flex size-12 items-center justify-center rounded-lg bg-green-50">
+                        <Icon name="school" />
+                    </div>
+                    <div>
+                        <p className="text-base font-medium text-slate-700">Grade 10 completers who stayed for Grade 11</p>
+                        <p className="text-sm text-slate-500">
+                            <span className="text-2xl font-bold text-slate-900">{(monitoring.grade_11_retention * 100).toFixed(1)}%</span> of{' '}
+                            {monitoring.grade_10_completers} completers enrolled as old students
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {monitoring.grades.map((grade) => (
+                <GradeTable key={grade.grade_level} grade={grade} types={monitoring.learner_types} />
+            ))}
+
+            {monitoring.grades.length === 0 && (
+                <div className="panel mb-8 px-6 py-12 text-center text-slate-500">No learners have been encoded for this school year yet.</div>
+            )}
+
+            {daily.length > 0 && <DailyTable rows={daily} grades={monitoring.grades.map((g) => g.grade_level)} />}
+        </>
+    );
+}
 
 function TallyCells({ tally, types }: { tally: Tally; types: Option[] }) {
     return (
