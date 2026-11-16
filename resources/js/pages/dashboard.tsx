@@ -1,4 +1,5 @@
 import { CapacityBar } from '@/components/capacity-bar';
+import { BarChart, DonutChart, LineChart, Meter, TableToggle } from '@/components/charts';
 import { Icon } from '@/components/icon';
 import { type IconName } from '@/components/icons';
 import { PageHeader } from '@/components/page-header';
@@ -75,6 +76,7 @@ interface Props {
 }
 
 const number = new Intl.NumberFormat('en-PH');
+const shortDate = new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric' });
 const dateFormat = new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', year: 'numeric', weekday: 'short' });
 
 const quickActions: { label: string; href: string; icon: IconName; ability: Ability }[] = [
@@ -127,8 +129,6 @@ export default function Dashboard({ schoolYears, selectedYear, monitoring, daily
                 </Deferred>
             )}
 
-            <RoleBlocks review={review} mySections={mySections} sectionOverview={sectionOverview} teaching={teaching} system={system} />
-
             {can('view-reports') && (
                 <Deferred
                     data={['monitoring', 'daily']}
@@ -141,6 +141,8 @@ export default function Dashboard({ schoolYears, selectedYear, monitoring, daily
                     <MonitoringDetails monitoring={monitoring} daily={daily ?? []} />
                 </Deferred>
             )}
+
+            <RoleBlocks review={review} mySections={mySections} sectionOverview={sectionOverview} teaching={teaching} system={system} />
 
             {actions.length > 0 && (
                 <section>
@@ -169,58 +171,177 @@ const td = 'px-4 py-3 text-right tabular-nums';
 function MonitoringTiles({ monitoring }: { monitoring: Monitoring | null | undefined }) {
     if (!monitoring) return <></>;
 
+    const t = monitoring.total;
+    const returning = (t.learner_types.old_student ?? 0) + (t.learner_types.repeater ?? 0);
+    const tracks = monitoring.grades.reduce((sum, g) => ({ academic: sum.academic + g.tracks.academic.total, tvl: sum.tvl + g.tracks.tvl.total }), {
+        academic: 0,
+        tvl: 0,
+    });
+
     return (
-        <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-                label="Total Enrolled"
-                value={number.format(monitoring.total.total)}
-                hint={`${monitoring.total.male} male · ${monitoring.total.female} female`}
-            />
-            {monitoring.grades.slice(0, 2).map((g) => (
-                <StatCard
-                    key={g.grade_level}
-                    label={g.label}
-                    value={number.format(g.total.total)}
-                    hint={`Academic ${g.tracks.academic.total} · TVL ${g.tracks.tvl.total}`}
-                    tone="indigo"
-                />
-            ))}
-            <StatCard label="Cancelled" value={number.format(monitoring.cancelled)} hint="Not counted as enrolled" tone="orange" />
-        </div>
+        <>
+            <div className="mb-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                <StatCard label="Total Enrolled" value={number.format(t.total)} hint={`${t.male} male · ${t.female} female`} />
+                {monitoring.grades.slice(0, 2).map((g) => (
+                    <StatCard
+                        key={g.grade_level}
+                        label={g.label}
+                        value={number.format(g.total.total)}
+                        hint={`Academic ${g.tracks.academic.total} · TVL ${g.tracks.tvl.total}`}
+                        tone="indigo"
+                    />
+                ))}
+                <StatCard label="Cancelled" value={number.format(monitoring.cancelled)} hint="Not counted as enrolled" tone="orange" />
+            </div>
+            {t.total > 0 && (
+                <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+                    <DonutChart
+                        title="Male and female"
+                        parts={[
+                            { label: 'Male', value: t.male },
+                            { label: 'Female', value: t.female },
+                        ]}
+                    />
+                    {tracks.academic + tracks.tvl > 0 && (
+                        <DonutChart
+                            title="Academic and TVL track"
+                            parts={[
+                                { label: 'Academic', value: tracks.academic },
+                                { label: 'TVL', value: tracks.tvl },
+                            ]}
+                        />
+                    )}
+                    <DonutChart
+                        title="New and returning learners"
+                        parts={[
+                            { label: 'Returning', value: returning },
+                            { label: 'New to the school', value: t.total - returning },
+                        ]}
+                    />
+                </div>
+            )}
+        </>
     );
 }
 
 function MonitoringDetails({ monitoring, daily }: { monitoring: Monitoring | null | undefined; daily: DailyRow[] }) {
     if (!monitoring) return <></>;
 
+    if (monitoring.grades.length === 0) {
+        return <div className="panel mb-8 px-6 py-12 text-center text-slate-500">No learners have been encoded for this school year yet.</div>;
+    }
+
+    // Strands across the senior high grades, in the order they first appear.
+    const withStrands = monitoring.grades.filter((g) => g.strands.length > 0);
+    const strands = [...new Set(withStrands.flatMap((g) => g.strands.map((s) => s.code)))];
+    const timeline = encodingTimeline(daily);
+    const completers = monitoring.grade_10_completers;
+
     return (
         <>
-            {monitoring.grade_11_retention !== null && (
-                <div className="panel mb-8 flex flex-wrap items-center gap-4 p-6">
-                    <div className="text-primary flex size-12 items-center justify-center rounded-lg bg-green-50">
-                        <Icon name="school" />
-                    </div>
-                    <div>
-                        <p className="text-base font-medium text-slate-700">Grade 10 completers who stayed for Grade 11</p>
-                        <p className="text-sm text-slate-500">
-                            <span className="text-2xl font-bold text-slate-900">{(monitoring.grade_11_retention * 100).toFixed(1)}%</span> of{' '}
-                            {monitoring.grade_10_completers} completers enrolled as old students
-                        </p>
-                    </div>
+            {monitoring.grade_11_retention !== null && completers ? (
+                <div className="panel mb-8 p-6">
+                    <Meter
+                        label="Grade 10 completers who stayed for Grade 11"
+                        value={Math.round(monitoring.grade_11_retention * completers)}
+                        of={completers}
+                        note="Counted from learners enrolled in Grade 11 as old students."
+                    />
                 </div>
-            )}
+            ) : null}
 
-            {monitoring.grades.map((grade) => (
-                <GradeTable key={grade.grade_level} grade={grade} types={monitoring.learner_types} />
-            ))}
+            <div className="mb-8 grid grid-cols-1 gap-6 2xl:grid-cols-2">
+                {strands.length > 0 && (
+                    <section className="panel p-6">
+                        <h2 className="text-lg font-bold text-slate-900">Enrolled learners by strand</h2>
+                        <p className="mb-4 text-sm text-slate-500">Each strand's learners in each grade.</p>
+                        <BarChart
+                            horizontal
+                            values
+                            labels={strands}
+                            series={withStrands.map((g) => ({
+                                label: g.label,
+                                data: strands.map((code) => g.strands.find((s) => s.code === code)?.total ?? 0),
+                            }))}
+                            label={`Enrolled learners by strand: ${withStrands
+                                .map((g) => `${g.label}: ${g.strands.map((s) => `${s.code} ${s.total}`).join(', ')}`)
+                                .join('; ')}`}
+                        />
+                        <TableToggle label="Show the full table, like the workbook's MONITORING tab">
+                            <div className="space-y-6">
+                                {monitoring.grades.map((grade) => (
+                                    <GradeTable key={grade.grade_level} grade={grade} types={monitoring.learner_types} />
+                                ))}
+                            </div>
+                        </TableToggle>
+                    </section>
+                )}
 
-            {monitoring.grades.length === 0 && (
-                <div className="panel mb-8 px-6 py-12 text-center text-slate-500">No learners have been encoded for this school year yet.</div>
-            )}
-
-            {daily.length > 0 && <DailyTable rows={daily} grades={monitoring.grades.map((g) => g.grade_level)} />}
+                {daily.length > 0 && (
+                    <section className="panel p-6">
+                        <h2 className="text-lg font-bold text-slate-900">Learners encoded {timeline.weekly ? 'per week' : 'per day'}</h2>
+                        <p className="mb-4 text-sm text-slate-500">
+                            Including ones later cancelled.
+                            {timeline.weekly ? ' Enrollment ran for more than three months, so days are added up by week.' : ''}
+                        </p>
+                        {timeline.labels.length > 1 ? (
+                            <LineChart
+                                labels={timeline.labels}
+                                series={[{ label: timeline.weekly ? 'Encoded that week' : 'Encoded', data: timeline.totals }]}
+                                points={timeline.labels.length <= 31}
+                                height={220}
+                                label={`Learners encoded per ${timeline.weekly ? 'week' : 'day'}, from ${timeline.labels[0]} to ${timeline.labels[timeline.labels.length - 1]}, at most ${Math.max(...timeline.totals)}`}
+                            />
+                        ) : (
+                            <p className="text-sm text-slate-500">The chart appears once learners are encoded on two or more days.</p>
+                        )}
+                        <TableToggle>
+                            <DailyTable rows={daily} grades={monitoring.grades.map((g) => g.grade_level)} />
+                        </TableToggle>
+                    </section>
+                )}
+            </div>
         </>
     );
+}
+
+/**
+ * Every day from the first to the last day anything was encoded, with zero
+ * on days nothing was, so gaps show as gaps. Past about three months the
+ * days are added up by week (weeks start on Monday) to stay readable.
+ */
+function encodingTimeline(daily: DailyRow[]): { labels: string[]; totals: number[]; weekly: boolean } {
+    const byDate = new Map(daily.filter((d) => d.date).map((d) => [d.date as string, d.total]));
+    const dates = [...byDate.keys()].sort();
+    if (dates.length === 0) return { labels: [], totals: [], weekly: false };
+
+    const day = 86_400_000;
+    const start = Date.parse(dates[0] + 'T00:00:00Z');
+    const end = Date.parse(dates[dates.length - 1] + 'T00:00:00Z');
+    const iso = (t: number) => new Date(t).toISOString().slice(0, 10);
+    const label = (t: number) => shortDate.format(new Date(iso(t) + 'T00:00:00'));
+    const weekly = (end - start) / day > 92;
+
+    if (!weekly) {
+        const labels: string[] = [];
+        const totals: number[] = [];
+        for (let t = start; t <= end; t += day) {
+            labels.push(label(t));
+            totals.push(byDate.get(iso(t)) ?? 0);
+        }
+        return { labels, totals, weekly };
+    }
+
+    const monday = (t: number) => t - ((new Date(t).getUTCDay() + 6) % 7) * day;
+    const labels: string[] = [];
+    const totals: number[] = [];
+    for (let w = monday(start); w <= end; w += 7 * day) {
+        let sum = 0;
+        for (let t = w; t < w + 7 * day; t += day) sum += byDate.get(iso(t)) ?? 0;
+        labels.push(label(w));
+        totals.push(sum);
+    }
+    return { labels, totals, weekly };
 }
 
 function TallyCells({ tally, types }: { tally: Tally; types: Option[] }) {
@@ -242,9 +363,9 @@ function TallyCells({ tally, types }: { tally: Tally; types: Option[] }) {
 
 function GradeTable({ grade, types }: { grade: GradeSummary; types: Option[] }) {
     return (
-        <section className="mb-8">
-            <h2 className="mb-4 text-xl font-bold tracking-tight text-slate-900">{grade.label}</h2>
-            <div className="panel overflow-hidden">
+        <div>
+            <h3 className="mb-2 font-semibold text-slate-900">{grade.label}</h3>
+            <div className="overflow-hidden rounded-lg border border-slate-200">
                 <div className="relative overflow-x-auto">
                     <table className="w-full text-left text-sm text-slate-500">
                         <thead className="table-head">
@@ -291,56 +412,52 @@ function GradeTable({ grade, types }: { grade: GradeSummary; types: Option[] }) 
                     </table>
                 </div>
             </div>
-        </section>
+        </div>
     );
 }
 
 function DailyTable({ rows, grades }: { rows: DailyRow[]; grades: number[] }) {
     return (
-        <section className="mb-8">
-            <h2 className="text-xl font-bold tracking-tight text-slate-900">Daily Encoding</h2>
-            <p className="mb-4 text-sm text-slate-500">Learners encoded each day, including ones later cancelled.</p>
-            <div className="panel overflow-hidden">
-                <div className="relative max-h-[28rem] overflow-auto">
-                    <table className="w-full text-left text-sm text-slate-500">
-                        <thead className="table-head sticky top-0">
-                            <tr>
-                                <th className="px-4 py-3 font-medium">Date</th>
-                                {grades.map((g) => (
-                                    <th key={g} className={th}>
-                                        Grade {g}
-                                    </th>
-                                ))}
-                                <th className={th}>Male</th>
-                                <th className={th}>Female</th>
-                                <th className={th}>Total</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {rows.map((r) => (
-                                <tr key={r.date ?? 'none'} className="hover:bg-slate-50">
-                                    <td className="px-4 py-3 whitespace-nowrap text-slate-900">
-                                        {r.date ? (
-                                            dateFormat.format(new Date(r.date + 'T00:00:00'))
-                                        ) : (
-                                            <span className="text-slate-500 italic">No date recorded</span>
-                                        )}
-                                    </td>
-                                    {grades.map((g) => (
-                                        <td key={g} className={td}>
-                                            {r.grades[g]?.total ?? 0}
-                                        </td>
-                                    ))}
-                                    <td className={td}>{r.male}</td>
-                                    <td className={td}>{r.female}</td>
-                                    <td className={cn(td, 'font-bold text-slate-900')}>{r.total}</td>
-                                </tr>
+        <div className="overflow-hidden rounded-lg border border-slate-200">
+            <div className="relative max-h-[28rem] overflow-auto">
+                <table className="w-full text-left text-sm text-slate-500">
+                    <thead className="table-head sticky top-0">
+                        <tr>
+                            <th className="px-4 py-3 font-medium">Date</th>
+                            {grades.map((g) => (
+                                <th key={g} className={th}>
+                                    Grade {g}
+                                </th>
                             ))}
-                        </tbody>
-                    </table>
-                </div>
+                            <th className={th}>Male</th>
+                            <th className={th}>Female</th>
+                            <th className={th}>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {rows.map((r) => (
+                            <tr key={r.date ?? 'none'} className="hover:bg-slate-50">
+                                <td className="px-4 py-3 whitespace-nowrap text-slate-900">
+                                    {r.date ? (
+                                        dateFormat.format(new Date(r.date + 'T00:00:00'))
+                                    ) : (
+                                        <span className="text-slate-500 italic">No date recorded</span>
+                                    )}
+                                </td>
+                                {grades.map((g) => (
+                                    <td key={g} className={td}>
+                                        {r.grades[g]?.total ?? 0}
+                                    </td>
+                                ))}
+                                <td className={td}>{r.male}</td>
+                                <td className={td}>{r.female}</td>
+                                <td className={cn(td, 'font-bold text-slate-900')}>{r.total}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
-        </section>
+        </div>
     );
 }
 
@@ -457,18 +574,18 @@ function RoleBlocks({
 
             {sectionOverview && (
                 <Block title="Section Overview">
-                    <dl className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
-                        {[
-                            ['Sections', sectionOverview.sections],
-                            ['Seats', sectionOverview.capacity],
-                            ['Learners placed', sectionOverview.assigned],
-                        ].map(([l, v]) => (
-                            <div key={l}>
-                                <dt className="text-xs text-slate-500 uppercase">{l}</dt>
-                                <dd className="text-2xl font-bold text-slate-900 tabular-nums">{v}</dd>
-                            </div>
-                        ))}
-                    </dl>
+                    <div className="mb-5 space-y-4">
+                        <Meter
+                            label="Enrolled learners placed in a section"
+                            value={sectionOverview.assigned}
+                            of={sectionOverview.assigned + sectionOverview.unassigned}
+                        />
+                        <Meter
+                            label={`Seats filled in ${sectionOverview.sections} ${sectionOverview.sections === 1 ? 'section' : 'sections'}`}
+                            value={sectionOverview.assigned}
+                            of={sectionOverview.capacity}
+                        />
+                    </div>
                     <h3 className="mb-2 text-sm font-semibold text-slate-700">Action Required</h3>
                     <ul className="space-y-2 text-sm">
                         {sectionOverview.unassigned > 0 && (

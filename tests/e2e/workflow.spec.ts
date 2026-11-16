@@ -288,8 +288,20 @@ test('advisers download SF1 and class lists; reports draw charts', async ({ brow
     for (const heading of ['This year at a glance', 'Where learners are', 'How enrollment is changing', 'Who the learners are', 'Needs attention']) {
         await expect(registrar.page.getByRole('heading', { name: heading })).toBeVisible();
     }
+    // The numbers are drawn as charts, each with its exact figures one click away.
+    await expect(registrar.page.getByRole('img', { name: /^Male and female: Male \d+/ })).toBeVisible();
+    await expect(registrar.page.getByRole('img', { name: /^Grade 11 learners by strand: / })).toBeVisible();
+    await expect(registrar.page.getByRole('img', { name: /^Type of learner: / })).toBeVisible();
+    await expect(registrar.page.getByRole('cell', { name: 'All grades' })).toHaveCount(0);
+    await registrar.page.getByText("Show the full table, like the workbook's MONITORING tab").click();
+    await expect(registrar.page.getByRole('cell', { name: 'All grades' })).toBeVisible();
     // The DepEd rates are for administrators only.
     await expect(registrar.page.getByRole('heading', { name: 'DepEd indicators' })).toHaveCount(0);
+
+    // The dashboard leads with charts too.
+    await registrar.page.goto('/dashboard');
+    await expect(registrar.page.getByRole('img', { name: /^Enrolled learners by strand: / })).toBeVisible();
+    await registrar.page.goto('/reports');
     for (const [label, pattern] of [
         ['Export Excel', /^Reports_.*\.xlsx$/],
         ['Export CSV', /^Reports_.*\.csv$/],

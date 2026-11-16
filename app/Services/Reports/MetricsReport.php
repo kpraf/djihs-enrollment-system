@@ -138,6 +138,7 @@ class MetricsReport
         return [
             'sections' => $sections->count(),
             'capacity' => $capacity,
+            'seated' => $seated,
             'learners_per_section' => $sections->count() ? round($seated / $sections->count(), 1) : null,
             'fill_rate' => $capacity ? round($seated / $capacity * 100, 1) : null,
             'nearly_full' => $sections->filter(fn ($s) => $s->capacity && $s->enrollments_count / $s->capacity >= 0.9)->count(),

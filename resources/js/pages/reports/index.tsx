@@ -1,4 +1,4 @@
-import { LineChart } from '@/components/charts';
+import { BarChart, CONTEXT, DonutChart, LineChart, Meter, TableToggle } from '@/components/charts';
 import { Icon } from '@/components/icon';
 import { type IconName } from '@/components/icons';
 import { PageHeader } from '@/components/page-header';
@@ -42,7 +42,14 @@ interface Rates {
         dropout_rate: number;
         status: 'good' | 'watch' | 'concern';
     }[];
-    resources: { sections: number; capacity: number; learners_per_section: number | null; fill_rate: number | null; advisers: number };
+    resources: {
+        sections: number;
+        capacity: number;
+        seated: number;
+        learners_per_section: number | null;
+        fill_rate: number | null;
+        advisers: number;
+    };
     insights: { tone: 'good' | 'watch' | 'concern'; text: string }[];
 }
 
@@ -151,25 +158,30 @@ export default function Reports({ schoolYears, filters, compareName, summary, ta
                     </div>
 
                     <Section title="This year at a glance">
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                             <Tile label="Enrolled" value={summary.now.enrolled} before={summary.before?.enrolled} compareName={compareName} />
                             <Tile label="New to the school" value={summary.now.new} before={summary.before?.new} compareName={compareName} />
                             <Tile label="Returning" value={summary.now.returning} before={summary.before?.returning} compareName={compareName} />
-                            <div className="panel p-5">
-                                <p className="text-sm font-medium text-slate-600">Male · Female</p>
-                                <p className="mt-1 text-3xl font-bold text-slate-900 tabular-nums">
-                                    {summary.now.male} · {summary.now.female}
-                                </p>
-                                <p className="mt-1 text-sm text-slate-500">
-                                    {share(summary.now.male, summary.now.enrolled)} male · {share(summary.now.female, summary.now.enrolled)} female
-                                </p>
-                            </div>
                         </div>
+                        {summary.now.enrolled > 0 && (
+                            <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                                <DonutChart
+                                    title="Male and female"
+                                    parts={[
+                                        { label: 'Male', value: summary.now.male },
+                                        { label: 'Female', value: summary.now.female },
+                                    ]}
+                                />
+                                <Deferred data="table" fallback={<ChartSkeleton what="the track split" height={112} />}>
+                                    <TrackDonut rows={table ?? []} />
+                                </Deferred>
+                            </div>
+                        )}
                     </Section>
 
                     <Section title="Where learners are" note="Enrolled learners by grade and strand, like the workbook's MONITORING tab.">
-                        <Deferred data="table" fallback={<TableSkeleton what="the grade and strand table" rows={8} columns={compareName ? 5 : 4} />}>
-                            <GradeStrandTable rows={table ?? []} compareName={compareName} />
+                        <Deferred data="table" fallback={<ChartSkeleton what="learners by grade and strand" height={240} />}>
+                            <WhereLearnersAre rows={table ?? []} yearName={yearName ?? 'This year'} compareName={compareName} />
                         </Deferred>
                     </Section>
 
@@ -189,12 +201,40 @@ export default function Reports({ schoolYears, filters, compareName, summary, ta
                     {profile && (
                         <Section title="Who the learners are">
                             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                                <ShareTable
-                                    title="Type of learner"
-                                    rows={profile.learner_types.map((t) => ({ label: t.label, total: t.total }))}
-                                    of={summary.now.enrolled}
-                                />
-                                <ShareTable title="Inclusion" rows={profile.inclusion} of={summary.now.enrolled} />
+                                <div className="panel p-5">
+                                    <h3 className="mb-3 font-semibold text-slate-900">Type of learner</h3>
+                                    <BarChart
+                                        horizontal
+                                        values
+                                        labels={[...profile.learner_types].sort((a, b) => b.total - a.total).map((t) => t.label)}
+                                        series={[
+                                            {
+                                                label: 'Learners',
+                                                data: [...profile.learner_types].sort((a, b) => b.total - a.total).map((t) => t.total),
+                                            },
+                                        ]}
+                                        label={`Type of learner: ${profile.learner_types.map((t) => `${t.label} ${t.total}`).join(', ')}`}
+                                    />
+                                    <TableToggle>
+                                        <ShareTable
+                                            title="Type of learner"
+                                            rows={profile.learner_types.map((t) => ({ label: t.label, total: t.total }))}
+                                            of={summary.now.enrolled}
+                                        />
+                                    </TableToggle>
+                                </div>
+                                <div className="panel p-5">
+                                    <h3 className="mb-1 font-semibold text-slate-900">Inclusion</h3>
+                                    <p className="mb-4 text-sm text-slate-500">Share of the {summary.now.enrolled} enrolled learners.</p>
+                                    <div className="space-y-5">
+                                        {profile.inclusion.map((r) => (
+                                            <Meter key={r.label} label={r.label} value={r.total} of={summary.now.enrolled} />
+                                        ))}
+                                    </div>
+                                    <TableToggle>
+                                        <ShareTable title="Inclusion" rows={profile.inclusion} of={summary.now.enrolled} />
+                                    </TableToggle>
+                                </div>
                             </div>
                         </Section>
                     )}
@@ -293,6 +333,60 @@ function Tile({ label, value, before, compareName }: { label: string; value: num
                 <Change now={value} before={before} compareName={compareName} />
             </p>
         </div>
+    );
+}
+
+/** Learners per strand, one chart per grade; this year in green beside the compared year in grey. */
+function WhereLearnersAre({ rows, yearName, compareName }: { rows: TableRow[]; yearName: string; compareName: string | null }) {
+    if (rows.length === 0) return <p className="panel p-5 text-sm text-slate-500">No enrolled learners yet.</p>;
+    const grades = [...new Set(rows.map((r) => r.grade))];
+
+    return (
+        <div className="panel p-5">
+            <div className="grid grid-cols-1 gap-x-8 gap-y-6 xl:grid-cols-2">
+                {grades.map((g) => {
+                    const list = rows.filter((r) => r.grade === g);
+                    const labels = list.map((r) => r.strand ?? 'Junior High');
+                    const now = { label: yearName, data: list.map((r) => r.total) };
+                    return (
+                        <div key={g}>
+                            <h3 className="mb-3 font-semibold text-slate-900">
+                                Grade {g} <span className="font-normal text-slate-500">· {list.reduce((n, r) => n + r.total, 0)} learners</span>
+                            </h3>
+                            <BarChart
+                                horizontal
+                                values
+                                labels={labels}
+                                series={compareName ? [now, { label: compareName, data: list.map((r) => r.before ?? 0), color: CONTEXT }] : [now]}
+                                label={`Grade ${g} learners by strand: ${list
+                                    .map(
+                                        (r) => `${r.strand ?? 'Junior High'} ${r.total}${compareName ? ` (${r.before ?? 0} in ${compareName})` : ''}`,
+                                    )
+                                    .join(', ')}`}
+                            />
+                        </div>
+                    );
+                })}
+            </div>
+            <TableToggle label="Show the full table, like the workbook's MONITORING tab">
+                <GradeStrandTable rows={rows} compareName={compareName} />
+            </TableToggle>
+        </div>
+    );
+}
+
+function TrackDonut({ rows }: { rows: TableRow[] }) {
+    const academic = rows.filter((r) => r.track === 'academic').reduce((n, r) => n + r.total, 0);
+    const tvl = rows.filter((r) => r.track === 'tvl').reduce((n, r) => n + r.total, 0);
+    if (academic + tvl === 0) return <></>;
+    return (
+        <DonutChart
+            title="Academic and TVL track"
+            parts={[
+                { label: 'Academic', value: academic },
+                { label: 'TVL', value: tvl },
+            ]}
+        />
     );
 }
 
@@ -479,13 +573,13 @@ function RatesSection({ rates }: { rates: Rates }) {
 
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     <div className="panel p-5">
-                        <h3 className="mb-2 font-semibold text-slate-900">Sections and seats</h3>
-                        <dl className="space-y-1.5 text-sm">
+                        <h3 className="mb-3 font-semibold text-slate-900">Sections and seats</h3>
+                        <Meter label="Seats filled" value={rates.resources.seated} of={rates.resources.capacity} />
+                        <dl className="mt-4 space-y-1.5 text-sm">
                             {[
                                 ['Active sections', rates.resources.sections],
                                 ['Advisers assigned', rates.resources.advisers],
                                 ['Learners per section', rates.resources.learners_per_section ?? 'n/a'],
-                                ['Seats filled', pct(rates.resources.fill_rate)],
                             ].map(([k, v]) => (
                                 <div key={k} className="flex justify-between gap-4">
                                     <dt className="text-slate-600">{k}</dt>
