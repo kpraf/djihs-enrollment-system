@@ -30,6 +30,14 @@ interface SectionCard {
     learners: { id: number; name: string; sex: string }[];
 }
 
+/** Learners being dragged: from the unassigned list (from = null) or from a section. */
+interface Drag {
+    ids: number[];
+    from: number | null;
+    strandIds: (number | null)[];
+    names: string[];
+}
+
 interface Props {
     schoolYear: { id: number; name: string } | null;
     unassigned: Learner[];
@@ -48,6 +56,10 @@ export default function AssignStudents({ schoolYear, unassigned, sections, filte
     const [confirmPlace, setConfirmPlace] = useState(false);
     const [removing, setRemoving] = useState<{ id: number; name: string; section: string } | null>(null);
     const [busy, setBusy] = useState(false);
+    // Drag and drop: what is being dragged, and which drop target it is over.
+    const [drag, setDrag] = useState<Drag | null>(null);
+    const [over, setOver] = useState<number | 'unassigned' | null>(null);
+    const [moving, setMoving] = useState<{ ids: number[]; names: string[]; from: SectionCard; to: SectionCard } | null>(null);
     const first = useRef(true);
 
     const apply = (changes: Record<string, string | number | undefined>) =>
@@ -89,6 +101,39 @@ export default function AssignStudents({ schoolYear, unassigned, sections, filte
     const picked = unassigned.filter((u) => selected.includes(u.id));
     const wrongStrand = targetSection?.strand_id ? picked.filter((u) => u.strand_id !== targetSection.strand_id) : [];
     const seatsLeft = targetSection ? targetSection.capacity - targetSection.learners.length : 0;
+
+    // A section takes the drop if it's active, has a free seat, isn't where the
+    // learners already are, and is for their strand (or for no particular strand).
+    const fits = (s: SectionCard, d: Drag) =>
+        s.is_active && s.learners.length < s.capacity && d.from !== s.id && (!s.strand_id || d.strandIds.every((id) => id === s.strand_id));
+
+    const startDrag = (e: React.DragEvent, d: Drag) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', d.names.join(', '));
+        setDrag(d);
+    };
+    const endDrag = () => {
+        setDrag(null);
+        setOver(null);
+    };
+    const dropOnSection = (s: SectionCard) => {
+        if (!drag || !fits(s, drag)) return endDrag();
+        if (drag.from === null) {
+            // Same confirmation as ticking learners and pressing Place.
+            setSelected(drag.ids);
+            setTarget(String(s.id));
+            setConfirmPlace(true);
+        } else {
+            const from = sections.find((x) => x.id === drag.from);
+            if (from) setMoving({ ids: drag.ids, names: drag.names, from, to: s });
+        }
+        endDrag();
+    };
+    const dropOnUnassigned = () => {
+        const from = drag && drag.from !== null ? sections.find((x) => x.id === drag.from) : undefined;
+        if (drag && from) setRemoving({ id: drag.ids[0], name: drag.names[0], section: from.name });
+        endDrag();
+    };
 
     return (
         <AppLayout>
@@ -149,13 +194,29 @@ export default function AssignStudents({ schoolYear, unassigned, sections, filte
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <section
                     className={cn(
-                        'panel flex flex-col overflow-hidden transition-opacity duration-150',
+                        'panel flex flex-col overflow-hidden transition duration-150',
                         reloading && 'pointer-events-none opacity-50',
+                        drag?.from != null && 'outline-primary/50 outline-2 outline-offset-2 outline-dashed',
+                        over === 'unassigned' && 'ring-primary bg-green-50/40 ring-2',
                     )}
                     aria-busy={reloading}
+                    onDragOver={(e) => {
+                        if (drag?.from == null) return;
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                        setOver('unassigned');
+                    }}
+                    onDragLeave={(e) => !e.currentTarget.contains(e.relatedTarget as Node) && setOver(null)}
+                    onDrop={(e) => {
+                        e.preventDefault();
+                        dropOnUnassigned();
+                    }}
                 >
                     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-4">
-                        <h2 className="text-lg font-semibold text-slate-900">Unassigned Students ({unassigned.length})</h2>
+                        <div>
+                            <h2 className="text-lg font-semibold text-slate-900">Unassigned Students ({unassigned.length})</h2>
+                            <p className="text-xs text-slate-500">Drag a learner onto a section, or tick learners and choose a section below.</p>
+                        </div>
                         <label className="flex items-center gap-2 text-sm text-slate-600">
                             <input
                                 type="checkbox"
@@ -168,8 +229,20 @@ export default function AssignStudents({ schoolYear, unassigned, sections, filte
                     </div>
                     <ul className="max-h-[32rem] divide-y divide-slate-100 overflow-y-auto">
                         {unassigned.map((u) => (
-                            <li key={u.id}>
+                            <li
+                                key={u.id}
+                                draggable
+                                onDragStart={(e) => {
+                                    // Dragging a ticked learner brings every ticked learner along.
+                                    const ids = selected.includes(u.id) ? selected : [u.id];
+                                    const rows = unassigned.filter((x) => ids.includes(x.id));
+                                    startDrag(e, { ids, from: null, strandIds: rows.map((x) => x.strand_id), names: rows.map((x) => x.name) });
+                                }}
+                                onDragEnd={endDrag}
+                                className={cn('cursor-grab active:cursor-grabbing', drag?.from === null && drag.ids.includes(u.id) && 'opacity-50')}
+                            >
                                 <label className="flex cursor-pointer items-center gap-3 px-4 py-3 hover:bg-slate-50">
+                                    <Icon name="drag_indicator" className="-ml-1 hidden text-slate-300 sm:block" />
                                     <input type="checkbox" className="checkbox" checked={selected.includes(u.id)} onChange={() => toggle(u.id)} />
                                     <span className="min-w-0 flex-1">
                                         <span className="block truncate text-sm font-medium text-slate-900">{u.name}</span>
@@ -218,6 +291,12 @@ export default function AssignStudents({ schoolYear, unassigned, sections, filte
                     className={cn('space-y-4 transition-opacity duration-150', reloading && 'pointer-events-none opacity-50')}
                     aria-busy={reloading}
                 >
+                    {sections.length > 0 && (
+                        <p className="text-xs text-slate-500">
+                            Open a section to see its learners. Drag a learner to another section to move them, or back to Unassigned to take them
+                            out.
+                        </p>
+                    )}
                     {sections.length === 0 && (
                         <div className="panel px-6 py-10 text-center text-sm text-slate-500">
                             No sections for this grade yet.{' '}
@@ -228,7 +307,27 @@ export default function AssignStudents({ schoolYear, unassigned, sections, filte
                         </div>
                     )}
                     {sections.map((s) => (
-                        <details key={s.id} className={cn('panel group overflow-hidden', !s.is_active && 'opacity-60')}>
+                        <details
+                            key={s.id}
+                            className={cn(
+                                'panel group overflow-hidden transition',
+                                !s.is_active && 'opacity-60',
+                                drag && fits(s, drag) && 'outline-primary/50 outline-2 outline-offset-2 outline-dashed',
+                                over === s.id && drag && (fits(s, drag) ? 'ring-primary bg-green-50/60 ring-2' : 'bg-red-50/60 ring-2 ring-red-300'),
+                            )}
+                            onDragOver={(e) => {
+                                if (!drag) return;
+                                setOver(s.id);
+                                if (!fits(s, drag)) return;
+                                e.preventDefault();
+                                e.dataTransfer.dropEffect = 'move';
+                            }}
+                            onDragLeave={(e) => !e.currentTarget.contains(e.relatedTarget as Node) && setOver(null)}
+                            onDrop={(e) => {
+                                e.preventDefault();
+                                dropOnSection(s);
+                            }}
+                        >
                             <summary className="flex cursor-pointer list-none flex-wrap items-center gap-4 p-4">
                                 <div className="min-w-0 flex-1">
                                     <p className="font-semibold text-slate-900">
@@ -242,8 +341,18 @@ export default function AssignStudents({ schoolYear, unassigned, sections, filte
                             </summary>
                             <ul className="max-h-72 divide-y divide-slate-100 overflow-y-auto border-t border-slate-100">
                                 {s.learners.map((l) => (
-                                    <li key={l.id} className="flex items-center justify-between gap-3 px-4 py-2 text-sm">
-                                        <span className="truncate">
+                                    <li
+                                        key={l.id}
+                                        draggable
+                                        onDragStart={(e) => startDrag(e, { ids: [l.id], from: s.id, strandIds: [s.strand_id], names: [l.name] })}
+                                        onDragEnd={endDrag}
+                                        className={cn(
+                                            'flex cursor-grab items-center justify-between gap-3 px-4 py-2 text-sm active:cursor-grabbing',
+                                            drag?.from === s.id && drag.ids.includes(l.id) && 'opacity-50',
+                                        )}
+                                    >
+                                        <span className="flex min-w-0 items-center gap-2 truncate">
+                                            <Icon name="drag_indicator" className="hidden shrink-0 text-slate-300 sm:block" />
                                             {l.name} <span className="text-xs text-slate-400">{l.sex}</span>
                                         </span>
                                         <RowActionButton
@@ -328,6 +437,29 @@ export default function AssignStudents({ schoolYear, unassigned, sections, filte
                     </>
                 }
                 confirmLabel="Yes, place them"
+                icon="group_add"
+                tone="primary"
+            />
+            <ConfirmDialog
+                open={moving !== null}
+                onClose={() => setMoving(null)}
+                onConfirm={() => {
+                    if (!moving) return;
+                    setBusy(true);
+                    router.post(
+                        route('section-assignments.assign'),
+                        { enrollment_ids: moving.ids, section_id: moving.to.id },
+                        { ...done, onFinish: () => (setBusy(false), setMoving(null)) },
+                    );
+                }}
+                processing={busy}
+                title={`Move ${moving?.names.join(', ') ?? ''} to ${moving?.to.name ?? ''}?`}
+                message={
+                    moving && moving.to.capacity - moving.to.learners.length < moving.ids.length
+                        ? `${moving.to.name} is full, so the learner will stay in ${moving.from.name}.`
+                        : `From ${moving?.from.name ?? ''} to ${moving?.to.name ?? ''}. The learner stays enrolled; only the section changes.`
+                }
+                confirmLabel="Yes, move"
                 icon="group_add"
                 tone="primary"
             />

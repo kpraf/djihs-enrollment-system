@@ -29,6 +29,7 @@ import DashboardIcon from '@material-symbols/svg-400/outlined/dashboard.svg?raw'
 import DeleteIcon from '@material-symbols/svg-400/outlined/delete.svg?raw';
 import DescriptionIcon from '@material-symbols/svg-400/outlined/description.svg?raw';
 import DownloadIcon from '@material-symbols/svg-400/outlined/download.svg?raw';
+import DragIndicatorIcon from '@material-symbols/svg-400/outlined/drag_indicator.svg?raw';
 import EditIcon from '@material-symbols/svg-400/outlined/edit.svg?raw';
 import ErrorIcon from '@material-symbols/svg-400/outlined/error.svg?raw';
 import FactCheckIcon from '@material-symbols/svg-400/outlined/fact_check.svg?raw';
@@ -112,6 +113,7 @@ export const icons = {
     delete: DeleteIcon,
     description: DescriptionIcon,
     download: DownloadIcon,
+    drag_indicator: DragIndicatorIcon,
     edit: EditIcon,
     error: ErrorIcon,
     fact_check: FactCheckIcon,

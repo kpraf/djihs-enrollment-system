@@ -174,6 +174,38 @@ test('placing and removing a learner both ask first', async ({ browser }) => {
     await key.context.close();
 });
 
+test('learners can be dragged onto a section and back out, confirming each time', async ({ browser }) => {
+    const reg = await staffBrowser(browser, 'registrar');
+    const lrn = uniqueLrn();
+    await encode(reg.page, { lrn, last: 'Hila', first: `Dina ${tag(lrn)}` });
+    await approve(reg.page, lrn);
+
+    const key = await staffBrowser(browser, 'keyteacher');
+    await key.page.goto(`/section-assignments?grade=11&search=${lrn}`);
+    const learner = key.page.locator('li[draggable="true"]', { hasText: lrn });
+    const integrity = key.page.locator('details', { hasText: 'Integrity' });
+    const dialog = key.page.getByRole('dialog');
+
+    // Onto a section: the same confirmation as ticking and pressing Place.
+    await learner.dragTo(integrity.locator('summary'));
+    await expect(dialog).toContainText('Place 1 learner in Integrity?');
+    await dialog.getByRole('button', { name: 'Yes, place them' }).click();
+    await expect(key.page.getByRole('status').filter({ hasText: 'Placed 1 learner in Integrity.' })).toBeVisible();
+    await expect(key.page.locator('li[draggable="true"]', { hasText: lrn })).toHaveCount(0);
+
+    // Back out to the unassigned list: asks first, then removes.
+    await integrity.locator('summary').click();
+    await integrity
+        .locator('li[draggable="true"]', { hasText: `HILA, DINA ${tag(lrn)}` })
+        .dragTo(key.page.getByRole('heading', { name: /Unassigned Students/ }));
+    await expect(dialog).toContainText(`Remove HILA, DINA ${tag(lrn)} from Integrity?`);
+    await dialog.getByRole('button', { name: 'Yes, remove' }).click();
+    await expect(key.page.locator('li[draggable="true"]', { hasText: lrn })).toBeVisible();
+
+    await reg.context.close();
+    await key.context.close();
+});
+
 test('changing the strand of a placed learner warns that they leave the section', async ({ browser }) => {
     const reg = await staffBrowser(browser, 'registrar');
     const lrn = uniqueLrn();
