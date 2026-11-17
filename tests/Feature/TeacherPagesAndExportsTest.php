@@ -129,10 +129,19 @@ class TeacherPagesAndExportsTest extends TestCase
 
         $response = $this->actingAs($this->adviser)->get("/sections/{$this->section->id}/sf8")->assertOk();
         $this->assertMatchesRegularExpression('/filename=DJIHS_SF8_.+_SY2026-2027_\d{4}-\d{2}-\d{2}\.xlsx$/', $response->headers->get('content-disposition'));
-        $book = IOFactory::load($response->baseResponse->getFile()->getPathname());
+        $file = $response->baseResponse->getFile()->getPathname();
+        $book = IOFactory::load($file);
         $sheet = $book->getActiveSheet();
 
         $this->assertSame(['Nutritional Status'], $book->getSheetNames(), 'No helper sheets.');
+        // What made Excel "repair" the file: a first tab that doesn't exist. And
+        // teachers must be able to edit their own form.
+        $zip = new ZipArchive;
+        $zip->open($file);
+        $this->assertMatchesRegularExpression('/<workbookView [^>]*firstSheet="0"/', $zip->getFromName('xl/workbook.xml'));
+        $this->assertStringNotContainsString('<sheetProtection', $zip->getFromName('xl/worksheets/sheet1.xml'));
+        $this->assertStringContainsString('<mergeCell ref="D12:G12"/>', $zip->getFromName('xl/worksheets/sheet1.xml'), 'Names span D to G.');
+        $zip->close();
         // The same pictures and school details as SF1.
         $this->assertSame(['DJIHS seal', 'DepEd logo'], array_map(fn ($d) => $d->getName(), iterator_to_array($sheet->getDrawingCollection())));
         $this->assertSame('Don Jose Integrated High School', $sheet->getCell('F5')->getValue());

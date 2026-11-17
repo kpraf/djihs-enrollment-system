@@ -110,6 +110,11 @@ class Sf8Exporter
         $sheet->getStyle('B'.$signatures)->getNumberFormat()->setFormatCode('mm/dd/yyyy');
         $sheet->setCellValue('F'.$signatures, $section->adviser?->name ? mb_strtoupper($section->adviser->name) : null);
 
+        // One sheet, so the first tab is tab 0: any other index makes Excel
+        // "repair" the file and drop its merged cells and pictures.
+        $book->setFirstSheetIndex(0);
+        $book->setActiveSheetIndex(0);
+
         $path = tempnam(sys_get_temp_dir(), 'sf8');
         (new Xlsx($book))->save($path);
         $name = ExportName::make('SF8', $section->label(), ExportName::schoolYear($section->schoolYear->name)).'.xlsx';
