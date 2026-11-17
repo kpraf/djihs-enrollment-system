@@ -22,8 +22,9 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class EncodingTemplate
 {
     /**
-     * A to AF are the school's own ENROLLMENT_ENCODING layout, so rows copied
-     * from that workbook paste straight in. AG onwards were added for SF1.
+     * The school's ENROLLMENT_ENCODING layout up to the address (Y), then
+     * parents, guardian, date encoded, status and remarks. The importer finds
+     * columns by header, so the school's own workbook still imports.
      */
     private const LAST_COLUMN = 'AM';
 
@@ -43,7 +44,7 @@ class EncodingTemplate
         foreach ($sub as $col => $text) {
             $sheet->setCellValue("{$col}2", $text);
         }
-        foreach (['D1:F1', 'N1:O1', 'P1:R1', 'S1:Y1', 'Z1:AC1', 'AG1:AI1', 'AJ1:AL1'] as $range) {
+        foreach (['D1:F1', 'N1:O1', 'P1:R1', 'S1:Y1', 'Z1:AB1', 'AC1:AE1', 'AF1:AJ1'] as $range) {
             $sheet->mergeCells($range);
         }
         $sheet->getStyle('A1:'.self::LAST_COLUMN.'2')->getFont()->setBold(true);
@@ -63,7 +64,7 @@ class EncodingTemplate
             'M' => ['MALE', 'FEMALE'],
             'P' => ['YES', 'NO'],
             'R' => ['YES', 'NO'],
-            'AE' => ['ENROLLED', 'CANCELLED'],
+            TemplateGuide::letter('ENROLLMENTSTATUS') => ['ENROLLED', 'CANCELLED'],
         ];
 
         // The choices live on a hidden sheet so long lists still work.
@@ -93,8 +94,10 @@ class EncodingTemplate
             $sheet->setDataValidation("{$col}3:{$col}2000", $validation);
         }
 
+        $sheet->getColumnDimension(TemplateGuide::letter("LEGAL GUARDIAN'S NAME: RELATIONSHIP TO LEARNER"))->setWidth(14);
+
         // Kept as text so Excel never drops a leading zero or shortens an LRN.
-        foreach (['J', 'AC'] as $col) {
+        foreach (['J', TemplateGuide::letter("LEGAL GUARDIAN'S NAME: CONTACT NO.")] as $col) {
             $sheet->getStyle("{$col}3:{$col}2000")->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);
         }
 
@@ -151,7 +154,7 @@ class EncodingTemplate
         };
 
         $status = TemplateGuide::status();
-        $section('ENROLLMENTSTATUS (column AE)');
+        $section('ENROLLMENTSTATUS (column '.TemplateGuide::letter('ENROLLMENTSTATUS').')');
         $list('DO', $status['do'], '166534');
         $list("DON'T", $status['dont'], 'B91C1C');
         $row++;
@@ -229,14 +232,15 @@ class EncodingTemplate
         // C (FULL NAME) and L (AGE) are worked out from other columns, as in the
         // school's workbook; the importer reads the name and birth date instead.
         $top = ['A' => 'NO.', 'B' => 'GRADE LEVEL TO ENROLL', 'C' => 'FULL NAME', 'D' => "LEARNER'S NAME", 'G' => 'TYPE OF LEARNER', 'H' => 'TRACK', 'I' => 'STRAND', 'J' => 'LRN',
-            'K' => "BIRTH DATE\n(mm/dd/yyyy)", 'L' => 'AGE', 'M' => 'SEX', 'N' => 'FOR SF8', 'P' => 'OTHER DETAILS', 'S' => 'CURRENT ADDRESS', 'Z' => "LEGAL GUARDIAN'S NAME",
-            'AD' => "DATE ENCODED\n(mm/dd/yyyy)", 'AE' => 'ENROLLMENTSTATUS', 'AF' => 'REMARKS',
-            'AG' => "FATHER'S NAME", 'AJ' => "MOTHER'S MAIDEN NAME", 'AM' => "LEGAL GUARDIAN'S RELATIONSHIP TO LEARNER"];
+            'K' => "BIRTH DATE\n(mm/dd/yyyy)", 'L' => 'AGE', 'M' => 'SEX', 'N' => 'FOR SF8', 'P' => 'OTHER DETAILS', 'S' => 'CURRENT ADDRESS',
+            'Z' => "FATHER'S NAME", 'AC' => "MOTHER'S MAIDEN NAME", 'AF' => "LEGAL GUARDIAN'S NAME",
+            'AK' => "DATE ENCODED\n(mm/dd/yyyy)", 'AL' => 'ENROLLMENTSTATUS', 'AM' => 'REMARKS'];
         $sub = ['C' => '(fills in by itself)', 'L' => '(fills in by itself)', 'D' => 'LAST NAME', 'E' => 'FIRST NAME', 'F' => 'MIDDLE NAME', 'N' => "WEIGHT\n(kg)", 'O' => "HEIGHT\n(mtrs)",
             'P' => 'BELONGING TO ANY INDIGENOUS PEOPLES (IP)', 'Q' => 'IF YES, PLEASE SPECIFY', 'R' => "IS YOUR FAMILY A BENEFICIARY OF 4P'S?",
             'S' => 'HOUSE NO.', 'T' => 'STREET NAME', 'U' => 'BARANGAY', 'V' => 'MUNICIPALITY / CITY', 'W' => 'PROVINCE', 'X' => 'COUNTRY', 'Y' => 'ZIP CODE',
-            'Z' => 'LAST NAME', 'AA' => 'FIRST NAME', 'AB' => 'MIDDLE NAME', 'AC' => 'CONTACT NO.',
-            'AG' => 'LAST NAME', 'AH' => 'FIRST NAME', 'AI' => 'MIDDLE NAME', 'AJ' => 'LAST NAME', 'AK' => 'FIRST NAME', 'AL' => 'MIDDLE NAME'];
+            'Z' => 'LAST NAME', 'AA' => 'FIRST NAME', 'AB' => 'MIDDLE NAME',
+            'AC' => 'LAST NAME', 'AD' => 'FIRST NAME', 'AE' => 'MIDDLE NAME',
+            'AF' => 'LAST NAME', 'AG' => 'FIRST NAME', 'AH' => 'MIDDLE NAME', 'AI' => "RELATIONSHIP\nTO LEARNER", 'AJ' => 'CONTACT NO.'];
 
         return [$top, $sub];
     }

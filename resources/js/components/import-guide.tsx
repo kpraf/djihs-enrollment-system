@@ -20,6 +20,8 @@ interface DoDont {
 
 export interface ImportGuideData {
     columns: GuideColumn[];
+    /** The letter of the ENROLLMENTSTATUS column, e.g. "AL". */
+    status_column: string;
     status: DoDont;
     general: DoDont;
 }
@@ -53,7 +55,7 @@ export function ImportGuide({ guide }: { guide: ImportGuideData }) {
             </div>
 
             <div>
-                <h3 className="text-base font-semibold text-slate-900">Enrollment status (column AE)</h3>
+                <h3 className="text-base font-semibold text-slate-900">Enrollment status (column {guide.status_column})</h3>
                 <p className="mb-3 text-sm text-slate-600">
                     Only two words are understood here: <Code>ENROLLED</Code> and <Code>CANCELLED</Code>.
                 </p>

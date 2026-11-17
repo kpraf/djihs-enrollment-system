@@ -193,8 +193,8 @@ class TeacherPagesAndExportsTest extends TestCase
         $book = IOFactory::load($file);
         $sheet = $book->getSheetByName('MAIN_ENCODING_SHEET');
         $row = ['B' => 'GRADE 11', 'D' => 'REYES', 'E' => 'ANA', 'G' => 'REGULAR - NEW STUDENT (INCOMING G11)', 'H' => 'ACADEMIC',
-            'I' => 'HUMANITIES AND SOCIAL SCIENCES (HUMSS)', 'J' => 123456789012, 'M' => 'FEMALE', 'AE' => 'ENROLLED', 'AC' => 9171234567,
-            'AG' => 'Reyes', 'AH' => 'Pedro', 'AJ' => 'Santos', 'AK' => 'Rosa', 'AM' => 'Grandmother'];
+            'I' => 'HUMANITIES AND SOCIAL SCIENCES (HUMSS)', 'J' => 123456789012, 'M' => 'FEMALE', 'AL' => 'ENROLLED', 'AJ' => 9171234567,
+            'Z' => 'Reyes', 'AA' => 'Pedro', 'AC' => 'Santos', 'AD' => 'Rosa', 'AI' => 'Grandmother'];
         foreach ($row as $col => $v) {
             $sheet->setCellValue("{$col}3", $v);
         }
@@ -202,17 +202,19 @@ class TeacherPagesAndExportsTest extends TestCase
 
         // A how-to tab, a tip on every column, and LRNs kept as text.
         $this->assertSame(['MAIN_ENCODING_SHEET', 'HOW TO FILL IN', 'LISTS'], $book->getSheetNames());
-        $status = $sheet->getCell('AE3')->getDataValidation();
+        $status = $sheet->getCell('AL3')->getDataValidation();
         $this->assertSame('list', $status->getType());
         $this->assertTrue($status->getShowInputMessage());
         $this->assertStringContainsString('ENROLLED or CANCELLED only', $status->getPrompt());
         $this->assertStringContainsString('LRN', $sheet->getCell('J3')->getDataValidation()->getPrompt());
         $this->assertSame(NumberFormat::FORMAT_TEXT, $sheet->getStyle('J3')->getNumberFormat()->getFormatCode());
-        $this->assertSame("FATHER'S NAME", $sheet->getCell('AG1')->getValue());
-        $this->assertSame("MOTHER'S MAIDEN NAME", $sheet->getCell('AJ1')->getValue());
+        // Parents, then the guardian, then date encoded, status and remarks.
+        $this->assertSame(["FATHER'S NAME", "MOTHER'S MAIDEN NAME", "LEGAL GUARDIAN'S NAME", 'ENROLLMENTSTATUS', 'REMARKS'],
+            array_map(fn ($c) => $sheet->getCell($c)->getValue(), ['Z1', 'AC1', 'AF1', 'AL1', 'AM1']));
+        $this->assertSame(NumberFormat::FORMAT_TEXT, $sheet->getStyle('AJ3')->getNumberFormat()->getFormatCode(), 'Contact number kept as text.');
         $this->assertSame('(fills in by itself)', $sheet->getCell('C2')->getValue());
         $howTo = collect($book->getSheetByName('HOW TO FILL IN')->toArray())->flatten()->filter()->implode("\n");
-        $this->assertStringContainsString('ENROLLMENTSTATUS (column AE)', $howTo);
+        $this->assertStringContainsString('ENROLLMENTSTATUS (column AL)', $howTo);
         $this->assertStringContainsString("Don't type DROPPED or TRANSFERRED OUT", $howTo);
 
         // Every column has a header; FULL NAME and AGE fill themselves in.
@@ -226,7 +228,7 @@ class TeacherPagesAndExportsTest extends TestCase
         // A Grade 7 learner: no track or strand.
         $grades = $book->getSheetByName('LISTS')->rangeToArray('A1:A6');
         $this->assertSame(['GRADE 7', 'GRADE 8', 'GRADE 9', 'GRADE 10', 'GRADE 11', 'GRADE 12'], array_column($grades, 0));
-        foreach (['B' => 'GRADE 7', 'D' => 'SANTOS', 'E' => 'LEO', 'G' => 'REGULAR - NEW STUDENT', 'J' => 123456789013, 'M' => 'MALE', 'AE' => 'ENROLLED'] as $col => $v) {
+        foreach (['B' => 'GRADE 7', 'D' => 'SANTOS', 'E' => 'LEO', 'G' => 'REGULAR - NEW STUDENT', 'J' => 123456789013, 'M' => 'MALE', 'AL' => 'ENROLLED'] as $col => $v) {
             $sheet->setCellValue("{$col}4", $v);
         }
 
@@ -264,7 +266,9 @@ class TeacherPagesAndExportsTest extends TestCase
         $this->actingAs($registrar)->get('/imports')->assertInertia(fn ($page) => $page
             ->component('imports/create')
             ->has('guide.columns', $headerColumns)
-            ->where('guide.columns.30.column', 'AE')
+            ->where('guide.columns.37.column', 'AL')
+            ->where('guide.columns.37.header', 'ENROLLMENTSTATUS')
+            ->where('guide.status_column', 'AL')
             ->has('guide.status.do')
             ->has('guide.status.dont'));
     }
@@ -277,7 +281,7 @@ class TeacherPagesAndExportsTest extends TestCase
         $this->assertStringContainsString("LEARNER'S NAME", $csv);
         $this->assertStringContainsString('LAST NAME', $csv);
 
-        $columns = array_map(fn ($i) => Coordinate::stringFromColumnIndex($i), range(1, 32));
+        $columns = array_map(fn ($i) => Coordinate::stringFromColumnIndex($i), range(1, 39));
         $line = function (array $cells) use ($columns) {
             $out = fopen('php://temp', 'w+');
             fputcsv($out, array_map(fn ($c) => $cells[$c] ?? '', $columns));
@@ -286,8 +290,8 @@ class TeacherPagesAndExportsTest extends TestCase
             return stream_get_contents($out);
         };
         $base = ['B' => 'GRADE 11', 'G' => 'REGULAR - NEW STUDENT (INCOMING G11)', 'H' => 'ACADEMIC',
-            'I' => 'HUMANITIES AND SOCIAL SCIENCES (HUMSS)', 'K' => '03/15/2009', 'M' => 'FEMALE', 'AE' => 'ENROLLED'];
-        $csv .= $line([...$base, 'D' => 'REYES', 'E' => 'ANA', 'J' => '012345678912', 'AC' => '09171234567', 'U' => 'POBLACION', 'N' => '45.5']);
+            'I' => 'HUMANITIES AND SOCIAL SCIENCES (HUMSS)', 'K' => '03/15/2009', 'M' => 'FEMALE', 'AL' => 'ENROLLED'];
+        $csv .= $line([...$base, 'D' => 'REYES', 'E' => 'ANA', 'J' => '012345678912', 'AJ' => '09171234567', 'U' => 'POBLACION', 'N' => '45.5']);
         $csv .= $line([...$base, 'D' => 'CRUZ', 'E' => 'MIA', 'J' => '1.60645E+11']);
 
         $file = UploadedFile::fake()->createWithContent('ENROLLMENT_ENCODING.csv', $csv);
