@@ -6,8 +6,8 @@ return [
     'school_id' => '301239',
     'region' => 'REGION IV-A',
     'division' => 'SANTA ROSA CITY',
-    // Printed on SF8; leave unset if the school has no district.
-    'district' => env('SCHOOL_DISTRICT'),
+    // Printed in the District box of SF1 and SF8.
+    'district' => env('SCHOOL_DISTRICT', 'SANTA ROSA CITY'),
 
     // Demo accounts (password "password") and fake learners for trying the
     // system out. Always on locally; on a live site only with DEMO_DATA=true.

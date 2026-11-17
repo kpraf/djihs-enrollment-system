@@ -133,8 +133,13 @@ class TeacherPagesAndExportsTest extends TestCase
         $sheet = $book->getActiveSheet();
 
         $this->assertSame(['Nutritional Status'], $book->getSheetNames(), 'No helper sheets.');
-        $this->assertCount(2, $sheet->getDrawingCollection(), 'The DepEd seal and logo.');
+        // The same pictures and school details as SF1.
+        $this->assertSame(['DJIHS seal', 'DepEd logo'], array_map(fn ($d) => $d->getName(), iterator_to_array($sheet->getDrawingCollection())));
         $this->assertSame('Don Jose Integrated High School', $sheet->getCell('F5')->getValue());
+        $this->assertSame('SANTA ROSA CITY', $sheet->getCell('J5')->getValue());
+        $this->assertSame('SANTA ROSA CITY', $sheet->getCell('M5')->getValue());
+        $this->assertSame('REGION IV-A', $sheet->getCell('P5')->getValue());
+        $this->assertSame('301239', $sheet->getCell('D7')->getValue());
         $this->assertSame(11, $sheet->getCell('G7')->getValue());
         $this->assertSame('Integrity', $sheet->getCell('I7')->getValue());
         $this->assertSame('HUMSS', $sheet->getCell('M7')->getValue());

@@ -44,7 +44,7 @@ class Sf1Exporter
         $sheet->setCellValue('F4', $school['school_id']);
         $sheet->setCellValue('J4', $school['region']);
         $sheet->setCellValue('M4', $school['division']);
-        $sheet->setCellValue('S4', $school['division']);
+        $sheet->setCellValue('S4', $school['district']);
         $sheet->setCellValue('F6', $school['name']);
         $sheet->setCellValue('O6', $section->schoolYear->name);
         $sheet->setCellValue('S6', $section->grade_level->label().($section->strand ? ' - '.$section->strand->code : ''));

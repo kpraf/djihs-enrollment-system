@@ -62,7 +62,7 @@ class Sf8Exporter
         $sheet->setCellValue('F5', $school['name']);
         // The school's full name is longer than the form's box.
         $sheet->getStyle('F5')->getAlignment()->setShrinkToFit(true)->setWrapText(false);
-        $sheet->setCellValue('J5', $school['district'] ?? null);
+        $sheet->setCellValue('J5', $school['district']);
         $sheet->setCellValue('M5', $school['division']);
         $sheet->setCellValue('P5', $school['region']);
         $sheet->setCellValueExplicit('D7', (string) $school['school_id'], DataType::TYPE_STRING);
