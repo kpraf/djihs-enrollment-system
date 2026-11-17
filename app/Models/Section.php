@@ -16,7 +16,7 @@ class Section extends Model
 
     /** @var array<string, mixed> */
     protected $attributes = [
-        'capacity' => 45,
+        'capacity' => 40,
         'is_active' => true,
     ];
 

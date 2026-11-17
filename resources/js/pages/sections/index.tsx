@@ -266,7 +266,7 @@ function SectionDialog({
         grade_level: String(existing?.grade_level ?? 11),
         strand_id: existing?.strand_id ? String(existing.strand_id) : '',
         adviser_id: existing?.adviser_id ? String(existing.adviser_id) : '',
-        capacity: String(existing?.capacity ?? 45),
+        capacity: String(existing?.capacity ?? 40),
         is_active: existing?.is_active ?? true,
     });
     const shs = Number(data.grade_level) >= 11;

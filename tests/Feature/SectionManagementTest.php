@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\Sections\SectionAssigner;
 use Database\Seeders\StrandSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class SectionManagementTest extends TestCase
@@ -58,6 +59,17 @@ class SectionManagementTest extends TestCase
         $this->actingAs($this->key)->delete("/strands/{$this->humss->id}")->assertSessionHas('error');
         $this->actingAs($this->key)->delete("/strands/{$stem->id}")->assertSessionHas('success');
         $this->assertNull($stem->fresh());
+    }
+
+    public function test_a_new_section_has_40_seats_unless_told_otherwise(): void
+    {
+        $this->assertSame(40, (new Section)->capacity);
+
+        // The database's own default, for rows added outside the app.
+        $id = DB::table('sections')->insertGetId([
+            'school_year_id' => $this->year->id, 'grade_level' => 7, 'name' => 'Sampaguita', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->assertSame(40, (int) DB::table('sections')->where('id', $id)->value('capacity'));
     }
 
     public function test_sections_are_validated(): void
