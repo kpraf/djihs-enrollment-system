@@ -329,7 +329,27 @@ test('advisers download SF1 and class lists; reports draw charts', async ({ brow
     expect(sf1.suggestedFilename()).toMatch(/^DJIHS_SF1_Grade_11_.*Integrity_SY\d{4}-\d{4}_\d{4}-\d{2}-\d{2}\.xlsx$/);
     const [csv] = await Promise.all([adviser.page.waitForEvent('download'), adviser.page.getByRole('link', { name: 'Export CSV' }).click()]);
     expect(csv.suggestedFilename()).toMatch(/\.csv$/);
+    const [sf8] = await Promise.all([adviser.page.waitForEvent('download'), adviser.page.getByRole('link', { name: 'Export SF8' }).click()]);
+    expect(sf8.suggestedFilename()).toMatch(/^DJIHS_SF8_Grade_11_.*Integrity_SY\d{4}-\d{4}_\d{4}-\d{2}-\d{2}\.xlsx$/);
     await adviser.context.close();
+
+    // On Sections, one Export button opens every form, by tap or click, not hover.
+    const admin = await staffBrowser(browser, 'admin');
+    await admin.page.goto('/sections');
+    await admin.page.getByRole('button', { name: /^Export for .*Integrity/ }).click();
+    const menu = admin.page.getByRole('menu');
+    await expect(menu.getByRole('menuitem')).toHaveCount(5);
+    await expect(menu.getByRole('menuitem', { name: /SF1 – School Register/ })).toBeFocused();
+    const [fromMenu] = await Promise.all([
+        admin.page.waitForEvent('download'),
+        menu.getByRole('menuitem', { name: /SF8 – Health and Nutrition/ }).click(),
+    ]);
+    expect(fromMenu.suggestedFilename()).toMatch(/^DJIHS_SF8_/);
+    await expect(menu).toBeHidden();
+    await admin.page.getByRole('button', { name: /^Export for .*Integrity/ }).click();
+    await admin.page.keyboard.press('Escape');
+    await expect(admin.page.getByRole('menu')).toBeHidden();
+    await admin.context.close();
 
     const registrar = await staffBrowser(browser, 'registrar');
     await registrar.page.goto('/reports');

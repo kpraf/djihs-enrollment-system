@@ -109,6 +109,57 @@ class TeacherPagesAndExportsTest extends TestCase
         $this->assertSame(45, $sheet->getCell('R59')->getValue(), 'Pending learners are not on SF1.');
     }
 
+    public function test_sf8_grades_each_learner_on_their_own_who_chart_and_keeps_the_logos(): void
+    {
+        $measured = '2026-06-15';
+        $learner = function (Sex $sex, string $last, string $birthdate, ?float $kg, ?float $m) use ($measured) {
+            Enrollment::factory()->enrolled()->create([
+                'school_year_id' => $this->year->id, 'grade_level' => 11, 'strand_id' => $this->section->strand_id, 'section_id' => $this->section->id,
+                'student_id' => Student::factory()->create(['sex' => $sex, 'last_name' => $last, 'first_name' => 'TEST', 'middle_name' => null, 'extension_name' => null, 'birthdate' => $birthdate]),
+                'weight_kg' => $kg, 'height_m' => $m, 'encoded_on' => $measured,
+            ]);
+        };
+        // 13 years old on the measuring day, BMI 21.0: overweight for a boy, normal for a girl.
+        $learner(Sex::Male, 'ABAD', '2013-06-01', 47.25, 1.50);
+        $learner(Sex::Female, 'BAUTISTA', '2013-06-01', 47.25, 1.50);
+        // 55 more boys: more than the form's 52 rows for boys.
+        foreach (range(1, 55) as $i) {
+            $learner(Sex::Male, 'ZAMORA'.str_pad((string) $i, 2, '0', STR_PAD_LEFT), '2010-01-01', null, null);
+        }
+
+        $response = $this->actingAs($this->adviser)->get("/sections/{$this->section->id}/sf8")->assertOk();
+        $this->assertMatchesRegularExpression('/filename=DJIHS_SF8_.+_SY2026-2027_\d{4}-\d{2}-\d{2}\.xlsx$/', $response->headers->get('content-disposition'));
+        $book = IOFactory::load($response->baseResponse->getFile()->getPathname());
+        $sheet = $book->getActiveSheet();
+
+        $this->assertSame(['Nutritional Status'], $book->getSheetNames(), 'No helper sheets.');
+        $this->assertCount(2, $sheet->getDrawingCollection(), 'The DepEd seal and logo.');
+        $this->assertSame('Don Jose Integrated High School', $sheet->getCell('F5')->getValue());
+        $this->assertSame(11, $sheet->getCell('G7')->getValue());
+        $this->assertSame('Integrity', $sheet->getCell('I7')->getValue());
+        $this->assertSame('HUMSS', $sheet->getCell('M7')->getValue());
+
+        $this->assertSame('ABAD, TEST', $sheet->getCell('D12')->getValue());
+        $this->assertSame('13y 0m', $sheet->getCell('I12')->getValue());
+        $this->assertEquals(21.0, $sheet->getCell('M12')->getValue());
+        $this->assertSame('Overweight', $sheet->getCell('N12')->getValue());
+        $this->assertSame('No weight or height on record', $sheet->getCell('P13')->getValue());
+
+        // 56 boys: rows 12 to 67, so FEMALE moved from row 64 to 68 and the girls start on 69.
+        $this->assertSame('FEMALE', $sheet->getCell('B68')->getValue());
+        $this->assertSame('BAUTISTA, TEST', $sheet->getCell('D69')->getValue());
+        $this->assertSame('Normal', $sheet->getCell('N69')->getValue());
+
+        // Summary: rows 114 to 116, moved down by the 4 inserted rows.
+        $this->assertSame(1, $sheet->getCell('H118')->getValue(), 'One overweight boy.');
+        $this->assertSame(1, $sheet->getCell('G119')->getValue(), 'One normal girl.');
+        $this->assertSame(2, $sheet->getCell('J120')->getCalculatedValue());
+        $this->assertSame('06/15/2026', $sheet->getCell('B123')->getFormattedValue(), 'Date of assessment.');
+        $this->assertSame(mb_strtoupper($this->adviser->name), $sheet->getCell('F123')->getValue());
+
+        $this->actingAs(User::factory()->role(Role::Adviser)->create())->get("/sections/{$this->section->id}/sf8")->assertForbidden();
+    }
+
     public function test_subject_teachers_see_and_export_only_their_classes(): void
     {
         $this->seat(4);

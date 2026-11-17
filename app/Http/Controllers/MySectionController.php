@@ -9,6 +9,7 @@ use App\Models\SchoolYear;
 use App\Models\Section;
 use App\Models\User;
 use App\Services\Exports\Sf1Exporter;
+use App\Services\Exports\Sf8Exporter;
 use App\Services\Privacy\AccessLog;
 use App\Support\ExportName;
 use App\Support\TableExport;
@@ -78,6 +79,14 @@ class MySectionController extends Controller
     {
         $this->authorizeSection($request->user(), $section);
         AccessLog::exported($request, $section, 'School Form 1 (SF1)');
+
+        return $exporter->download($section);
+    }
+
+    public function sf8(Request $request, Section $section, Sf8Exporter $exporter): HttpResponse
+    {
+        $this->authorizeSection($request->user(), $section);
+        AccessLog::exported($request, $section, 'School Form 8 (SF8)');
 
         return $exporter->download($section);
     }

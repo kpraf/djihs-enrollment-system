@@ -69,6 +69,9 @@ export default function MySection({ schoolYear, sections, selected }: Props) {
                                     <a className="btn-primary py-2" href={route('sections.sf1', selected.id)}>
                                         <Icon name="description" /> Export SF1
                                     </a>
+                                    <a className="btn-primary py-2" href={route('sections.sf8', selected.id)}>
+                                        <Icon name="monitor_weight" /> Export SF8
+                                    </a>
                                 </div>
                             </div>
                             <div className="relative overflow-x-auto">

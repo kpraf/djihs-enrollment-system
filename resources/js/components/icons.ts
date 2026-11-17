@@ -50,6 +50,7 @@ import LogoutIcon from '@material-symbols/svg-400/outlined/logout.svg?raw';
 import MeetingRoomIcon from '@material-symbols/svg-400/outlined/meeting_room.svg?raw';
 import MenuIcon from '@material-symbols/svg-400/outlined/menu.svg?raw';
 import MenuBookIcon from '@material-symbols/svg-400/outlined/menu_book.svg?raw';
+import MonitorWeightIcon from '@material-symbols/svg-400/outlined/monitor_weight.svg?raw';
 import MoreVertIcon from '@material-symbols/svg-400/outlined/more_vert.svg?raw';
 import PendingIcon from '@material-symbols/svg-400/outlined/pending.svg?raw';
 import PersonIcon from '@material-symbols/svg-400/outlined/person.svg?raw';
@@ -134,6 +135,7 @@ export const icons = {
     logout: LogoutIcon,
     meeting_room: MeetingRoomIcon,
     menu_book: MenuBookIcon,
+    monitor_weight: MonitorWeightIcon,
     menu: MenuIcon,
     more_vert: MoreVertIcon,
     pending: PendingIcon,

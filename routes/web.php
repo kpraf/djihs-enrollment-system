@@ -105,6 +105,7 @@ Route::middleware('auth')->group(function () {
     Route::get('my-section', [MySectionController::class, 'index'])->middleware('can:view-own-section')->name('my-section.index');
     Route::get('sections/{section}/export/{format}', [MySectionController::class, 'export'])->whereIn('format', ['csv', 'xlsx'])->name('sections.export');
     Route::get('sections/{section}/sf1', [MySectionController::class, 'sf1'])->name('sections.sf1');
+    Route::get('sections/{section}/sf8', [MySectionController::class, 'sf8'])->name('sections.sf8');
     Route::get('sections/{section}/print', [MySectionController::class, 'print'])->name('sections.print');
     Route::middleware('can:view-own-classes')->group(function () {
         Route::get('my-students', [MyStudentsController::class, 'index'])->name('my-students.index');

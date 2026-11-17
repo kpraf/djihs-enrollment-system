@@ -1,10 +1,11 @@
+import { ActionMenu, type ActionMenuItem } from '@/components/action-menu';
 import { CapacityBar } from '@/components/capacity-bar';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Field, SelectInput, TextInput } from '@/components/form';
 import { Icon } from '@/components/icon';
 import { Modal } from '@/components/modal';
 import { PageHeader } from '@/components/page-header';
-import { RowActionButton, RowActionLink } from '@/components/row-action';
+import { RowActionButton } from '@/components/row-action';
 import { BusyLabel } from '@/components/spinner';
 import { StatusBadge } from '@/components/status-badge';
 import AppLayout from '@/layouts/app-layout';
@@ -46,6 +47,23 @@ interface Props {
     };
 }
 
+/** Every form and list a section can be downloaded as. */
+function sectionExports(id: number): ActionMenuItem[] {
+    return [
+        { label: 'SF1 – School Register', hint: 'Excel · DepEd School Form 1', icon: 'description', href: route('sections.sf1', id) },
+        { label: 'SF8 – Health and Nutrition', hint: 'Excel · BMI and height-for-age', icon: 'monitor_weight', href: route('sections.sf8', id) },
+        { label: 'Class list', hint: 'Excel', icon: 'table_view', href: route('sections.export', { section: id, format: 'xlsx' }) },
+        { label: 'Class list', hint: 'CSV', icon: 'download', href: route('sections.export', { section: id, format: 'csv' }) },
+        {
+            label: 'Print class list',
+            hint: 'Opens a printable page; save it as PDF there',
+            icon: 'print',
+            href: route('sections.print', id),
+            newTab: true,
+        },
+    ];
+}
+
 export default function Sections({ sections, schoolYears, selectedYear, options }: Props) {
     const [editing, setEditing] = useState<SectionRow | 'new' | null>(null);
     const [teachersOf, setTeachersOf] = useState<number | null>(null);
@@ -79,53 +97,97 @@ export default function Sections({ sections, schoolYears, selectedYear, options 
                 }
             />
 
-            <div className="panel overflow-hidden">
+            {/* Phones, tablets and small laptops: one card per section, so nothing is scrolled out of view. */}
+            <ul className="grid gap-3 md:grid-cols-2 xl:hidden" aria-label="Sections">
+                {sections.map((s) => (
+                    <li key={s.id} className="panel space-y-3 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                                <h2 className="text-base font-semibold text-slate-900">{s.name}</h2>
+                                <p className="text-sm text-slate-600">
+                                    Grade {s.grade_level}
+                                    {s.strand ? ` · ${s.strand}` : ''}
+                                </p>
+                            </div>
+                            <StatusBadge status={s.is_active ? 'active' : 'inactive'} />
+                        </div>
+                        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
+                            <dt className="text-slate-500">Adviser</dt>
+                            <dd className="text-slate-800">{s.adviser ?? <span className="text-amber-700">No adviser</span>}</dd>
+                            <dt className="text-slate-500">Subject teachers</dt>
+                            <dd>
+                                <button type="button" className="text-primary font-medium hover:underline" onClick={() => setTeachersOf(s.id)}>
+                                    {s.subject_teachers.length} assigned
+                                </button>
+                            </dd>
+                        </dl>
+                        <CapacityBar filled={s.filled} capacity={s.capacity} />
+                        <div className="flex gap-2 border-t border-slate-100 pt-3">
+                            <ActionMenu
+                                label="Export"
+                                icon="download"
+                                items={sectionExports(s.id)}
+                                srSuffix={`for ${s.name}`}
+                                className="flex-1 py-2"
+                            />
+                            <RowActionButton icon="edit" text="Edit" srSuffix={s.name} onClick={() => setEditing(s)} className="py-2" />
+                            <RowActionButton
+                                icon="delete"
+                                text="Delete"
+                                srSuffix={s.name}
+                                tone="danger"
+                                onClick={() => setDeleting(s)}
+                                className="py-2"
+                            />
+                        </div>
+                    </li>
+                ))}
+                {sections.length === 0 && (
+                    <li className="panel p-8 text-center text-slate-500 md:col-span-2">No sections yet for this school year.</li>
+                )}
+            </ul>
+
+            <div className="panel hidden overflow-hidden xl:block">
                 <div className="relative overflow-x-auto">
                     <table className="w-full text-left text-sm">
                         <thead className="table-head">
                             <tr>
-                                <th className="px-4 py-3 font-medium">Section Name</th>
-                                <th className="px-4 py-3 font-medium">Adviser</th>
+                                <th className="px-4 py-3 font-medium">Section</th>
                                 <th className="px-4 py-3 font-medium">Grade / Strand</th>
+                                <th className="px-4 py-3 font-medium">Adviser and teachers</th>
                                 <th className="px-4 py-3 font-medium">Capacity</th>
-                                <th className="px-4 py-3 font-medium">Subject Teachers</th>
-                                <th className="px-4 py-3 font-medium">Status</th>
                                 <th className="px-4 py-3 text-right font-medium">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {sections.map((s) => (
                                 <tr key={s.id} className="hover:bg-slate-50">
-                                    <td className="px-4 py-4 font-semibold text-slate-900">{s.name}</td>
-                                    <td className="px-4 py-4 text-slate-600">{s.adviser ?? <span className="text-amber-700">No adviser</span>}</td>
+                                    <td className="px-4 py-4">
+                                        <p className="font-semibold text-slate-900">{s.name}</p>
+                                        <div className="mt-1">
+                                            <StatusBadge status={s.is_active ? 'active' : 'inactive'} />
+                                        </div>
+                                    </td>
                                     <td className="px-4 py-4 whitespace-nowrap text-slate-600">
                                         Grade {s.grade_level}
                                         {s.strand ? ` · ${s.strand}` : ''}
                                     </td>
                                     <td className="px-4 py-4">
-                                        <CapacityBar filled={s.filled} capacity={s.capacity} />
-                                    </td>
-                                    <td className="px-4 py-4">
+                                        <p className="text-slate-700">{s.adviser ?? <span className="text-amber-700">No adviser</span>}</p>
                                         <button
                                             type="button"
                                             className="text-primary text-sm font-medium hover:underline"
                                             onClick={() => setTeachersOf(s.id)}
                                         >
-                                            {s.subject_teachers.length} assigned
+                                            {s.subject_teachers.length} subject {s.subject_teachers.length === 1 ? 'teacher' : 'teachers'}
                                         </button>
                                     </td>
                                     <td className="px-4 py-4">
-                                        <StatusBadge status={s.is_active ? 'active' : 'inactive'} />
+                                        <CapacityBar filled={s.filled} capacity={s.capacity} />
                                     </td>
                                     <td className="px-4 py-4">
                                         <div className="flex justify-end gap-2">
-                                            <RowActionLink
-                                                href={route('sections.sf1', s.id)}
-                                                download
-                                                icon="download"
-                                                text="Export SF1"
-                                                srSuffix={`for ${s.name}`}
-                                            />
+                                            <ActionMenu label="Export" icon="download" items={sectionExports(s.id)} srSuffix={`for ${s.name}`} />
                                             <RowActionButton icon="edit" text="Edit" srSuffix={s.name} onClick={() => setEditing(s)} />
                                             <RowActionButton
                                                 icon="delete"
@@ -140,7 +202,7 @@ export default function Sections({ sections, schoolYears, selectedYear, options 
                             ))}
                             {sections.length === 0 && (
                                 <tr>
-                                    <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
+                                    <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
                                         No sections yet for this school year.
                                     </td>
                                 </tr>
