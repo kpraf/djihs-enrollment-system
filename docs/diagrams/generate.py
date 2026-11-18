@@ -715,123 +715,169 @@ def old_vs_new(pdf):
 
 # --- Figure 8: use cases ----------------------------------------------------------------
 def use_cases(pdf):
-    """UML 2 use case diagram, drawn from the roles and abilities in app/Enums/Role.php.
+    """UML 2 use case diagram, checked against every route in routes/web.php, the
+    ability each one needs (app/Enums/Role.php), and which pages show the button.
 
-    The Administrator can do everything the ICT Coordinator, Registrar and Key Teacher
-    can (Role::Admin has every ability but the adviser's and subject teacher's own
-    lists), so it is drawn as a specialisation of those three actors instead of with
-    another twenty lines. «include» is behaviour that always happens; «extend» is
-    optional, and its arrow points back at the use case it extends.
+    Teachers and office staff stand on the left, the Administrator on the right.
+    «include» is behaviour that always happens; «extend» is optional and points
+    back at the use case it extends. Lines end at the left or right tip of their
+    use case, and the «include»/«extend» circles are placed in the gaps between
+    the Administrator's lines, so no line passes through a circle.
     """
-    # Rows are grouped by who uses them (teachers, shared records work, the office),
-    # and each actor stands beside its group, so most lines stay short.
-    w, h = 11.6, 15.2
+    from math import hypot
+
+    w, h = 13.2, 21.5
     fig, ax = figure(w, h, 8, "Use case diagram of the DJIHS Enrollment System")
-    top, step = h - 1.4, 0.82
+    D, step = 1.06, 1.13
+    R = D / 2
+    top = h - 1.5
     row = lambda n: top - (n - 1) * step  # noqa: E731
 
-    bx0, bx1 = 3.15, 11.35
-    by0, by1 = row(16) - 0.6, h - 0.35
+    MX, SX = 4.45, 10.45            # main use cases; included and extending ones
+    LAX, RAX = 1.25, 12.35          # actor columns, left and right
+    bx0, bx1 = 2.4, 11.35
+    by1, by0 = h - 0.35, row(17) - R - 0.4
     ax.add_patch(Rectangle((bx0, by0), bx1 - bx0, by1 - by0, facecolor=WHITE, edgecolor=LINE, linewidth=LW * 1.2, zorder=1))
-    ax.text((bx0 + bx1) / 2, by1 - 0.3, "DJIHS Enrollment System", ha="center", va="center", fontsize=12, fontweight="bold", color=INK)
+    ax.text((bx0 + bx1) / 2, by1 - 0.32, "DJIHS Enrollment System", ha="center", va="center", fontsize=13, fontweight="bold", color=INK)
 
-    MX, MW, MH = 5.75, 2.95, 0.56   # main use cases
-    SX, SW, SH = 9.55, 3.05, 0.56   # included and extending use cases
-    from matplotlib.patches import Ellipse
+    def circle(x, y, text):
+        ax.add_patch(Circle((x, y), R, facecolor=WHITE, edgecolor=LINE, linewidth=LW * 1.1, zorder=3))
+        ax.text(x, y, text, ha="center", va="center", fontsize=8.3, color=INK, zorder=4, linespacing=1.1)
 
-    def oval(x, y, text, ow, oh):
-        ax.add_patch(Ellipse((x, y), ow, oh, facecolor=WHITE, edgecolor=LINE, linewidth=LW, zorder=3))
-        ax.text(x, y, text, ha="center", va="center", fontsize=8.6, color=INK, zorder=4, linespacing=1.12)
-        return (x, y, ow / 2, oh / 2)
-
-    main = {
-        "login": (1, "Log In"),
-        # teachers
-        "own": (2, "View Own Section\nor Classes"),
-        "export": (3, "Export SF1, SF8\nand Class Lists"),
-        "sections": (4, "Manage Sections\nand Strands"),
-        "assign": (5, "Assign Learners\nto Sections"),
-        "search": (6, "Search and View Learners"),
-        # records work shared by advisers and the office
-        "encode": (7, "Encode New Enrollment"),
-        "review": (8, "Review Enrollments"),
-        "update": (9, "Update Learner Record"),
-        "docs": (10, "Track Submitted Documents"),
-        # the office
-        "import": (11, "Import Learners\nfrom Excel or CSV"),
-        "users": (12, "Manage User Accounts"),
-        "audit": (13, "View Audit Log"),
-        "reports": (14, "View Reports\nand Analytics"),
-        "years": (15, "Manage School Years"),
-        "backup": (16, "Back Up Data"),
-    }
-    M = {k: oval(MX, row(n), text, MW, MH) for k, (n, text) in main.items()}
-
-    # (row, text, base, kind)
-    side = {
-        "verify": (1, "Verify Account and Role", "login", "include"),
-        "agree": (2, "Accept Confidentiality\nAgreement (first sign-in)", "login", "extend"),
-        "log": (3, "Log the Data Export\n(Data Privacy Act)", "export", "include"),
-        "capacity": (5, "Check Section Capacity", "assign", "include"),
-        "dupe": (7, "Check for Duplicate Learner", "encode", "include"),
-        "decide": (8, "Approve or Reject", "review", "include"),
-        "request": (9, "Send as Change Request\n(Adviser)", "update", "extend"),
-        "check": (11, "Check File Before Importing", "import", "include"),
-        "role": (12, "Assign Role", "users", "include"),
-        "export_report": (14, "Export Report\n(Excel, CSV or PDF)", "reports", "extend"),
-        "open": (15, "Open or Close Enrollment", "years", "extend"),
-    }
-    for n, text, base, kind in side.values():
-        s = oval(SX, row(n), text, SW, SH)
-        b = M[base]
-        # «include»: base -> included.  «extend»: extension -> base.
-        right_tip, left_tip = (b[0] + b[2], b[1]), (s[0] - s[2], s[1])
-        if base == "login" and kind == "extend":
-            # Log In's right tip already starts the «include» arrow: come in lower down.
-            from math import cos, radians, sin
-            right_tip = (b[0] + b[2] * cos(radians(-50)), b[1] + b[3] * sin(radians(-50)))
-        p0, p1 = (right_tip, left_tip) if kind == "include" else (left_tip, right_tip)
-        ax.add_patch(FancyArrowPatch(p0, p1, arrowstyle="->,head_length=6,head_width=3.5", linestyle=(0, (4, 3)),
-                                     color=LINE, linewidth=LW, shrinkA=0, shrinkB=0, zorder=2))
-        mx, my = (p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2
-        label(ax, mx, my + 0.13, f"\u00ab{kind}\u00bb", size=7.4)
+    main = [
+        ("login", "Log In"),
+        ("own", "View Own\nSection or\nClasses"),
+        ("export", "Export SF1,\nSF8 and\nClass Lists"),
+        ("sections", "Manage\nSections\nand Strands"),
+        ("search", "Search and\nView\nLearners"),
+        ("encode", "Encode New\nEnrollment"),
+        ("review", "Review\nEnrollments"),
+        ("update", "Update\nLearner\nRecord"),
+        ("docs", "Track\nSubmitted\nDocuments"),
+        ("approve", "Approve\nChange\nRequests"),
+        ("leave", "Record\nDropout or\nTransfer Out"),
+        ("import", "Import\nLearners\n(Excel, CSV)"),
+        ("users", "Manage\nUser\nAccounts"),
+        ("audit", "View\nAudit Log"),
+        ("reports", "View Reports\nand\nAnalytics"),
+        ("years", "Manage\nSchool\nYears"),
+        ("backup", "Back Up\nData"),
+    ]
+    MY = {key: row(n + 1) for n, (key, _) in enumerate(main)}
+    for key, text in main:
+        circle(MX, MY[key], text)
 
     def actor(x, y, name):
-        """Stick figure; returns the point lines attach to (its right shoulder)."""
-        r = 0.13
-        ax.add_patch(Circle((x, y + 0.42), r, facecolor=WHITE, edgecolor=LINE, linewidth=LW * 1.2, zorder=4))
-        for xs, ys in (([x, x], [y + 0.29, y - 0.05]), ([x - 0.22, x + 0.22], [y + 0.18, y + 0.18]),
-                       ([x, x - 0.18], [y - 0.05, y - 0.36]), ([x, x + 0.18], [y - 0.05, y - 0.36])):
-            ax.plot(xs, ys, color=LINE, linewidth=LW * 1.2, zorder=4, solid_capstyle="round")
-        ax.text(x, y - 0.52, name, ha="center", va="center", fontsize=9.2, color=INK, zorder=4)
-        return (x + 0.26, y + 0.16)
+        r = 0.14
+        ax.add_patch(Circle((x, y + 0.44), r, facecolor=WHITE, edgecolor=LINE, linewidth=LW * 1.25, zorder=4))
+        for xs, ys in (([x, x], [y + 0.30, y - 0.06]), ([x - 0.24, x + 0.24], [y + 0.19, y + 0.19]),
+                       ([x, x - 0.19], [y - 0.06, y - 0.38]), ([x, x + 0.19], [y - 0.06, y - 0.38])):
+            ax.plot(xs, ys, color=LINE, linewidth=LW * 1.25, zorder=4, solid_capstyle="round")
+        ax.text(x, y - 0.56, name, ha="center", va="center", fontsize=10, color=INK, zorder=4)
 
-    # Who does what, from Role::abilities() in app/Enums/Role.php.
-    AX = 2.35
-    actors = {
-        "subject": (actor(AX, row(2.2), "Subject\nTeacher"), ["login", "own", "export"]),
-        "key": (actor(AX, row(4.6), "Key Teacher"), ["login", "export", "sections", "assign", "search"]),
-        "adviser": (actor(AX, row(7.6), "Adviser"), ["login", "own", "export", "search", "encode", "review", "update", "docs"]),
-        "registrar": (actor(AX, row(11.0), "Registrar"), ["login", "export", "search", "encode", "review", "update", "docs",
-                                                           "import", "users", "audit", "reports"]),
-        "ict": (actor(AX, row(14.3), "ICT\nCoordinator"), ["login", "export", "search", "encode", "review", "update", "docs",
-                                                            "import", "users", "audit", "years", "backup"]),
-    }
-    # Every line ends at its oval's left tip. The tips line up, so no line passes
-    # through another use case; lines only cross in the gap beside the actors.
-    for anchor, uses in actors.values():
+    # Who can do what: the ability each route needs, and only where a page offers it.
+    # (Registrar and ICT Coordinator may download section forms, but no page shows them the button.)
+    left = [
+        ("Subject\nTeacher", 2.0, ["login", "own", "export"]),
+        ("Key Teacher", 4.3, ["login", "export", "sections", "search"]),
+        ("Adviser", 6.6, ["login", "own", "export", "search", "encode", "review", "update", "docs"]),
+        ("Registrar", 10.1, ["login", "search", "encode", "review", "update", "docs", "approve", "leave",
+                             "import", "users", "audit", "reports"]),
+        ("ICT\nCoordinator", 13.6, ["login", "search", "encode", "review", "update", "docs", "approve", "leave",
+                                    "import", "users", "audit", "years", "backup"]),
+    ]
+    for name, at, uses in left:
+        y = row(at)
+        actor(LAX, y, name)
         for u in uses:
-            x, y, a, _ = M[u]
-            ax.plot(*zip(anchor, (x - a, y)), color=LINE, linewidth=LW * 0.8, zorder=1.5)
+            ax.plot([LAX + 0.28, MX - R], [y + 0.17, MY[u]], color=LINE, linewidth=LW * 0.8, zorder=1.5)
 
-    # Generalisation: the Administrator is a specialised Key Teacher, Registrar and ICT Coordinator.
-    adx, ady = 0.62, row(11.0)
-    actor(adx, ady, "Administrator")
-    for parent in ("key", "registrar", "ict"):
-        (px, py) = actors[parent][0]
-        tip = (px - 0.52, py - 0.05)
-        ax.add_patch(FancyArrowPatch((adx + 0.26, ady + 0.05), tip, arrowstyle="-|>,head_length=9,head_width=5",
-                                     facecolor=WHITE, edgecolor=LINE, linewidth=LW, shrinkA=0, shrinkB=0, zorder=2))
+    # The Administrator can do everything except the adviser's and subject teacher's own lists.
+    admin_uses = [k for k, _ in main if k != "own"]
+
+    # (base, text, kind): the included or extending use case beside its base.
+    side = [
+        ("login", "Verify\nAccount\nand Role", "include"),
+        ("login", "Accept\nConfidentiality\nAgreement", "extend"),
+        ("export", "Log the\nData Export", "include"),
+        ("sections", "Assign\nLearners to\nSections", "extend"),
+        ("search", "Print\nLearner\nData Record", "extend"),
+        ("encode", "Check for\nDuplicate\nLearner", "include"),
+        ("review", "Approve\nor Reject", "include"),
+        ("update", "Send as\nChange\nRequest", "extend"),
+        ("import", "Check File\nBefore\nImporting", "include"),
+        ("users", "Assign\nRole", "include"),
+        ("reports", "Export\nReport", "extend"),
+        ("years", "Open or\nClose\nEnrollment", "extend"),
+    ]
+
+    def seg_dist(p, a, b):
+        (px, py), (ax_, ay), (bx, by) = p, a, b
+        dx, dy = bx - ax_, by - ay
+        t = max(0.0, min(1.0, ((px - ax_) * dx + (py - ay) * dy) / (dx * dx + dy * dy)))
+        return hypot(px - (ax_ + t * dx), py - (ay + t * dy))
+
+    def place(admin_y):
+        """Put each side circle as near its base as it can go without touching an
+        Administrator line or another side circle. Returns the positions and the
+        total distance moved."""
+        anchor = (RAX - 0.28, admin_y + 0.17)
+        lines = [(anchor, (MX + R, MY[u])) for u in admin_uses]
+        placed, moved = [], 0.0
+        first_row = {}
+        for base, _, _ in side:
+            first_row[base] = first_row.get(base, 0) + 1
+        seen = {}
+        for base, _, _ in side:
+            seen[base] = seen.get(base, 0) + 1
+            want = MY[base] - (seen[base] - 1) * step  # a second circle for the same base sits one row lower
+            want = MY[base] if seen[base] == 1 else MY[base] - step
+            best = None
+            for k in range(0, 400):
+                for y in ((want - k * 0.01, want + k * 0.01) if k else (want,)):
+                    if not (by0 + R + 0.1 <= y <= by1 - 0.75 - R):
+                        continue
+                    if any(seg_dist((SX, y), a, b) < R + 0.07 for a, b in lines):
+                        continue
+                    if any(abs(y - q) < D + 0.1 for q in placed):
+                        continue
+                    best = y
+                    break
+                if best is not None:
+                    break
+            if best is None:
+                return None, float("inf")
+            placed.append(best)
+            moved += abs(best - want)
+        return placed, moved
+
+    # Try heights for the Administrator; prefer one near the middle (shorter lines)
+    # that still lets every side circle stay close to its use case.
+    best_y, best, best_cost = None, None, float("inf")
+    for k in range(0, 121):
+        y = row(7) - k * 0.05
+        ys, moved = place(y)
+        cost = moved + 0.35 * abs(y - row(9))
+        if ys and cost < best_cost:
+            best_y, best, best_cost = y, ys, cost
+    ys = best
+
+    actor(RAX, best_y, "Administrator")
+    for u in admin_uses:
+        ax.plot([RAX - 0.28, MX + R], [best_y + 0.17, MY[u]], color=LINE, linewidth=LW * 0.8, zorder=1.5)
+
+    for (base, text, kind), y in zip(side, ys):
+        circle(SX, y, text)
+        bx, by = MX, MY[base]
+        d = hypot(SX - bx, y - by)
+        ux, uy = (SX - bx) / d, (y - by) / d
+        on_base, on_side = (bx + ux * R, by + uy * R), (SX - ux * R, y - uy * R)
+        p0, p1 = (on_base, on_side) if kind == "include" else (on_side, on_base)
+        ax.add_patch(FancyArrowPatch(p0, p1, arrowstyle="->,head_length=6,head_width=3.5", linestyle=(0, (4, 3)),
+                                     color=LINE, linewidth=LW, shrinkA=0, shrinkB=0, zorder=2))
+        t = 0.32  # label near the base end, clear of the Administrator's lines
+        lx, ly = on_base[0] + (on_side[0] - on_base[0]) * t, on_base[1] + (on_side[1] - on_base[1]) * t
+        label(ax, lx, ly + 0.13, f"«{kind}»", size=7.6)
 
     save(fig, "fig8-use-case", pdf)
 
