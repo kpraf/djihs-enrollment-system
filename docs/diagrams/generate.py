@@ -9,6 +9,7 @@ notations:
   Figure 5  Enrollment status        UML 2 state machine
   Figure 6  Entity relationship      crow's foot notation
   Figure 7  Old and new system       architecture and comparison table
+  Figure 8  Use cases                UML 2 use case diagram
 
     pip install matplotlib pillow
     python3 docs/diagrams/generate.py
@@ -712,8 +713,131 @@ def old_vs_new(pdf):
     save(fig, "fig7-old-vs-new", pdf)
 
 
+# --- Figure 8: use cases ----------------------------------------------------------------
+def use_cases(pdf):
+    """UML 2 use case diagram, drawn from the roles and abilities in app/Enums/Role.php.
+
+    The Administrator can do everything the ICT Coordinator, Registrar and Key Teacher
+    can (Role::Admin has every ability but the adviser's and subject teacher's own
+    lists), so it is drawn as a specialisation of those three actors instead of with
+    another twenty lines. «include» is behaviour that always happens; «extend» is
+    optional, and its arrow points back at the use case it extends.
+    """
+    # Rows are grouped by who uses them (teachers, shared records work, the office),
+    # and each actor stands beside its group, so most lines stay short.
+    w, h = 11.6, 15.2
+    fig, ax = figure(w, h, 8, "Use case diagram of the DJIHS Enrollment System")
+    top, step = h - 1.4, 0.82
+    row = lambda n: top - (n - 1) * step  # noqa: E731
+
+    bx0, bx1 = 3.15, 11.35
+    by0, by1 = row(16) - 0.6, h - 0.35
+    ax.add_patch(Rectangle((bx0, by0), bx1 - bx0, by1 - by0, facecolor=WHITE, edgecolor=LINE, linewidth=LW * 1.2, zorder=1))
+    ax.text((bx0 + bx1) / 2, by1 - 0.3, "DJIHS Enrollment System", ha="center", va="center", fontsize=12, fontweight="bold", color=INK)
+
+    MX, MW, MH = 5.75, 2.95, 0.56   # main use cases
+    SX, SW, SH = 9.55, 3.05, 0.56   # included and extending use cases
+    from matplotlib.patches import Ellipse
+
+    def oval(x, y, text, ow, oh):
+        ax.add_patch(Ellipse((x, y), ow, oh, facecolor=WHITE, edgecolor=LINE, linewidth=LW, zorder=3))
+        ax.text(x, y, text, ha="center", va="center", fontsize=8.6, color=INK, zorder=4, linespacing=1.12)
+        return (x, y, ow / 2, oh / 2)
+
+    main = {
+        "login": (1, "Log In"),
+        # teachers
+        "own": (2, "View Own Section\nor Classes"),
+        "export": (3, "Export SF1, SF8\nand Class Lists"),
+        "sections": (4, "Manage Sections\nand Strands"),
+        "assign": (5, "Assign Learners\nto Sections"),
+        "search": (6, "Search and View Learners"),
+        # records work shared by advisers and the office
+        "encode": (7, "Encode New Enrollment"),
+        "review": (8, "Review Enrollments"),
+        "update": (9, "Update Learner Record"),
+        "docs": (10, "Track Submitted Documents"),
+        # the office
+        "import": (11, "Import Learners\nfrom Excel or CSV"),
+        "users": (12, "Manage User Accounts"),
+        "audit": (13, "View Audit Log"),
+        "reports": (14, "View Reports\nand Analytics"),
+        "years": (15, "Manage School Years"),
+        "backup": (16, "Back Up Data"),
+    }
+    M = {k: oval(MX, row(n), text, MW, MH) for k, (n, text) in main.items()}
+
+    # (row, text, base, kind)
+    side = {
+        "verify": (1, "Verify Account and Role", "login", "include"),
+        "agree": (2, "Accept Confidentiality\nAgreement (first sign-in)", "login", "extend"),
+        "log": (3, "Log the Data Export\n(Data Privacy Act)", "export", "include"),
+        "capacity": (5, "Check Section Capacity", "assign", "include"),
+        "dupe": (7, "Check for Duplicate Learner", "encode", "include"),
+        "decide": (8, "Approve or Reject", "review", "include"),
+        "request": (9, "Send as Change Request\n(Adviser)", "update", "extend"),
+        "check": (11, "Check File Before Importing", "import", "include"),
+        "role": (12, "Assign Role", "users", "include"),
+        "export_report": (14, "Export Report\n(Excel, CSV or PDF)", "reports", "extend"),
+        "open": (15, "Open or Close Enrollment", "years", "extend"),
+    }
+    for n, text, base, kind in side.values():
+        s = oval(SX, row(n), text, SW, SH)
+        b = M[base]
+        # «include»: base -> included.  «extend»: extension -> base.
+        right_tip, left_tip = (b[0] + b[2], b[1]), (s[0] - s[2], s[1])
+        if base == "login" and kind == "extend":
+            # Log In's right tip already starts the «include» arrow: come in lower down.
+            from math import cos, radians, sin
+            right_tip = (b[0] + b[2] * cos(radians(-50)), b[1] + b[3] * sin(radians(-50)))
+        p0, p1 = (right_tip, left_tip) if kind == "include" else (left_tip, right_tip)
+        ax.add_patch(FancyArrowPatch(p0, p1, arrowstyle="->,head_length=6,head_width=3.5", linestyle=(0, (4, 3)),
+                                     color=LINE, linewidth=LW, shrinkA=0, shrinkB=0, zorder=2))
+        mx, my = (p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2
+        label(ax, mx, my + 0.13, f"\u00ab{kind}\u00bb", size=7.4)
+
+    def actor(x, y, name):
+        """Stick figure; returns the point lines attach to (its right shoulder)."""
+        r = 0.13
+        ax.add_patch(Circle((x, y + 0.42), r, facecolor=WHITE, edgecolor=LINE, linewidth=LW * 1.2, zorder=4))
+        for xs, ys in (([x, x], [y + 0.29, y - 0.05]), ([x - 0.22, x + 0.22], [y + 0.18, y + 0.18]),
+                       ([x, x - 0.18], [y - 0.05, y - 0.36]), ([x, x + 0.18], [y - 0.05, y - 0.36])):
+            ax.plot(xs, ys, color=LINE, linewidth=LW * 1.2, zorder=4, solid_capstyle="round")
+        ax.text(x, y - 0.52, name, ha="center", va="center", fontsize=9.2, color=INK, zorder=4)
+        return (x + 0.26, y + 0.16)
+
+    # Who does what, from Role::abilities() in app/Enums/Role.php.
+    AX = 2.35
+    actors = {
+        "subject": (actor(AX, row(2.2), "Subject\nTeacher"), ["login", "own", "export"]),
+        "key": (actor(AX, row(4.6), "Key Teacher"), ["login", "export", "sections", "assign", "search"]),
+        "adviser": (actor(AX, row(7.6), "Adviser"), ["login", "own", "export", "search", "encode", "review", "update", "docs"]),
+        "registrar": (actor(AX, row(11.0), "Registrar"), ["login", "export", "search", "encode", "review", "update", "docs",
+                                                           "import", "users", "audit", "reports"]),
+        "ict": (actor(AX, row(14.3), "ICT\nCoordinator"), ["login", "export", "search", "encode", "review", "update", "docs",
+                                                            "import", "users", "audit", "years", "backup"]),
+    }
+    # Every line ends at its oval's left tip. The tips line up, so no line passes
+    # through another use case; lines only cross in the gap beside the actors.
+    for anchor, uses in actors.values():
+        for u in uses:
+            x, y, a, _ = M[u]
+            ax.plot(*zip(anchor, (x - a, y)), color=LINE, linewidth=LW * 0.8, zorder=1.5)
+
+    # Generalisation: the Administrator is a specialised Key Teacher, Registrar and ICT Coordinator.
+    adx, ady = 0.62, row(11.0)
+    actor(adx, ady, "Administrator")
+    for parent in ("key", "registrar", "ict"):
+        (px, py) = actors[parent][0]
+        tip = (px - 0.52, py - 0.05)
+        ax.add_patch(FancyArrowPatch((adx + 0.26, ady + 0.05), tip, arrowstyle="-|>,head_length=9,head_width=5",
+                                     facecolor=WHITE, edgecolor=LINE, linewidth=LW, shrinkA=0, shrinkB=0, zorder=2))
+
+    save(fig, "fig8-use-case", pdf)
+
+
 if __name__ == "__main__":
     with PdfPages(OUT / "DJIHS-system-diagrams.pdf") as pdf:
-        for draw in (architecture, context, dfd_level1, activity, states, erd, old_vs_new):
+        for draw in (architecture, context, dfd_level1, activity, states, erd, old_vs_new, use_cases):
             draw(pdf)
     print("Wrote", sorted(p.name for p in OUT.iterdir() if p.suffix in {".png", ".svg", ".pdf"}))

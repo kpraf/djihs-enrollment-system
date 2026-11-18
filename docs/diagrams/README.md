@@ -11,8 +11,9 @@ Drawn in standard notations so they can go straight into a paper, report or slid
 | 5. Enrollment status | `fig5-state-enrollment-status` | UML 2 state machine diagram |
 | 6. Database | `fig6-erd` | Entity relationship diagram, crow's foot notation |
 | 7. Old and new system | `fig7-old-vs-new` | Architecture comparison and table |
+| 8. Use cases | `fig8-use-case` | UML 2 use case diagram: actors, «include» and «extend», actor generalization. Drawn from the roles in `app/Enums/Role.php` |
 
-Each figure is a PNG (for documents) and an SVG (scales without blurring). `DJIHS-system-diagrams.pdf` has all seven, one per page.
+Each figure is a PNG (for documents) and an SVG (scales without blurring). `DJIHS-system-diagrams.pdf` has all eight, one per page.
 
 To redraw them after the system changes, edit `generate.py`, then run:
 
@@ -25,3 +26,5 @@ python3 docs/diagrams/generate.py
 ```
 
 Figures 5 and 7 quote counts (tests, tables). Update them in `generate.py` when those change.
+
+Figure 8 follows UML 2.5 use case notation: «include» is behaviour that always happens and points at the included use case; «extend» is optional and points back at the use case it extends. The Administrator is drawn as a specialization of the Key Teacher, Registrar and ICT Coordinator because the Administrator has every ability those roles have. If the roles in `app/Enums/Role.php` change, update the lists in `use_cases()` in `generate.py`.
