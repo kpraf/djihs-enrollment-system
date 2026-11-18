@@ -767,6 +767,36 @@ def use_cases(pdf):
     for key, text in main:
         circle(MX, MY[key], text)
 
+    from math import atan2, cos, degrees, radians, sin
+
+    def spread(cx, cy, sources, lo, hi, gap=10.0):
+        """Where each incoming line meets the circle: near the direction it comes from,
+        kept within [lo, hi] degrees on the side facing the actors, and at least `gap`
+        degrees apart so arrowheads don't pile up. Order is kept, so they never cross."""
+        # 0 to 360 for the left side (around 180), -180 to 180 for the right (around 0)
+        norm = (lambda d: d % 360) if lo >= 0 else (lambda d: (d + 180) % 360 - 180)
+        want = [norm(degrees(atan2(sy - cy, sx - cx))) for sx, sy in sources]
+        order = sorted(range(len(want)), key=lambda k: want[k])
+        at = [min(max(want[k], lo), hi) for k in order]
+        for n in range(1, len(at)):
+            at[n] = max(at[n], at[n - 1] + gap)
+        over = at[-1] - hi if at else 0
+        if over > 0:
+            at = [a - over for a in at]
+            for n in range(len(at) - 2, -1, -1):
+                at[n] = min(at[n], at[n + 1] - gap)
+        ends = [None] * len(want)
+        for k, a in zip(order, at):
+            ends[k] = (cx + R * cos(radians(a)), cy + R * sin(radians(a)))
+        return ends
+
+    drawn = []  # (start, end, key) of every actor line, checked against the circles at the end
+
+    def associate(start, end, key=None):
+        drawn.append((start, end, key))
+        ax.add_patch(FancyArrowPatch(start, end, arrowstyle="-|>,head_length=7,head_width=3.2", color=LINE,
+                                     linewidth=LW * 0.8, shrinkA=0, shrinkB=0, zorder=1.5))
+
     def actor(x, y, name):
         r = 0.14
         ax.add_patch(Circle((x, y + 0.44), r, facecolor=WHITE, edgecolor=LINE, linewidth=LW * 1.25, zorder=4))
@@ -786,11 +816,15 @@ def use_cases(pdf):
         ("ICT\nCoordinator", 13.6, ["login", "search", "encode", "review", "update", "docs", "approve", "leave",
                                     "import", "users", "audit", "years", "backup"]),
     ]
+    incoming = {k: [] for k, _ in main}
     for name, at, uses in left:
         y = row(at)
         actor(LAX, y, name)
         for u in uses:
-            ax.plot([LAX + 0.28, MX - R], [y + 0.17, MY[u]], color=LINE, linewidth=LW * 0.8, zorder=1.5)
+            incoming[u].append((LAX + 0.28, y + 0.17))
+    for key, sources in incoming.items():
+        for start, end in zip(sources, spread(MX, MY[key], sources, 145, 215)):
+            associate(start, end, key)
 
     # The Administrator can do everything except the adviser's and subject teacher's own lists.
     admin_uses = [k for k, _ in main if k != "own"]
@@ -811,6 +845,10 @@ def use_cases(pdf):
         ("years", "Open or\nClose\nEnrollment", "extend"),
     ]
 
+    def admin_lines(admin_y):
+        anchor = (RAX - 0.28, admin_y + 0.17)
+        return [(anchor, spread(MX, MY[u], [anchor], -35, 35)[0]) for u in admin_uses]
+
     def seg_dist(p, a, b):
         (px, py), (ax_, ay), (bx, by) = p, a, b
         dx, dy = bx - ax_, by - ay
@@ -821,8 +859,7 @@ def use_cases(pdf):
         """Put each side circle as near its base as it can go without touching an
         Administrator line or another side circle. Returns the positions and the
         total distance moved."""
-        anchor = (RAX - 0.28, admin_y + 0.17)
-        lines = [(anchor, (MX + R, MY[u])) for u in admin_uses]
+        lines = admin_lines(admin_y)
         placed, moved = [], 0.0
         first_row = {}
         for base, _, _ in side:
@@ -863,8 +900,8 @@ def use_cases(pdf):
     ys = best
 
     actor(RAX, best_y, "Administrator")
-    for u in admin_uses:
-        ax.plot([RAX - 0.28, MX + R], [best_y + 0.17, MY[u]], color=LINE, linewidth=LW * 0.8, zorder=1.5)
+    for u, (start, end) in zip(admin_uses, admin_lines(best_y)):
+        associate(start, end, u)
 
     for (base, text, kind), y in zip(side, ys):
         circle(SX, y, text)
@@ -878,6 +915,13 @@ def use_cases(pdf):
         t = 0.32  # label near the base end, clear of the Administrator's lines
         lx, ly = on_base[0] + (on_side[0] - on_base[0]) * t, on_base[1] + (on_side[1] - on_base[1]) * t
         label(ax, lx, ly + 0.13, f"«{kind}»", size=7.6)
+
+    # No actor line may cut through a use case other than its own.
+    circles = [(MX, MY[k], k) for k, _ in main] + [(SX, y, None) for y in ys]
+    for start, end, key in drawn:
+        for cx, cy, k in circles:
+            if k != key:
+                assert seg_dist((cx, cy), start, end) >= R, f"a line to {key} cuts through {k or 'a side circle'}"
 
     save(fig, "fig8-use-case", pdf)
 
