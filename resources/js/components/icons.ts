@@ -3,6 +3,7 @@
 // Add a name here to use a new icon.
 import AccountCircleIcon from '@material-symbols/svg-400/outlined/account_circle.svg?raw';
 import AddIcon from '@material-symbols/svg-400/outlined/add.svg?raw';
+import AdminPanelSettingsIcon from '@material-symbols/svg-400/outlined/admin_panel_settings.svg?raw';
 import AnalyticsIcon from '@material-symbols/svg-400/outlined/analytics.svg?raw';
 import ArchiveIcon from '@material-symbols/svg-400/outlined/archive.svg?raw';
 import ArrowForwardIcon from '@material-symbols/svg-400/outlined/arrow_forward.svg?raw';
@@ -64,6 +65,8 @@ import PrintIcon from '@material-symbols/svg-400/outlined/print.svg?raw';
 import PrivacyTipIcon from '@material-symbols/svg-400/outlined/privacy_tip.svg?raw';
 import RateReviewIcon from '@material-symbols/svg-400/outlined/rate_review.svg?raw';
 import RefreshIcon from '@material-symbols/svg-400/outlined/refresh.svg?raw';
+import RemoveIcon from '@material-symbols/svg-400/outlined/remove.svg?raw';
+import RestartAltIcon from '@material-symbols/svg-400/outlined/restart_alt.svg?raw';
 import SaveIcon from '@material-symbols/svg-400/outlined/save.svg?raw';
 import SchoolIcon from '@material-symbols/svg-400/outlined/school.svg?raw';
 import SearchIcon from '@material-symbols/svg-400/outlined/search.svg?raw';
@@ -89,6 +92,7 @@ export const icons = {
     privacy_tip: PrivacyTipIcon,
     account_circle: AccountCircleIcon,
     add: AddIcon,
+    admin_panel_settings: AdminPanelSettingsIcon,
     analytics: AnalyticsIcon,
     archive: ArchiveIcon,
     arrow_forward: ArrowForwardIcon,
@@ -149,6 +153,8 @@ export const icons = {
     print: PrintIcon,
     rate_review: RateReviewIcon,
     refresh: RefreshIcon,
+    remove: RemoveIcon,
+    restart_alt: RestartAltIcon,
     restore: RestoreIcon,
     save: SaveIcon,
     school: SchoolIcon,

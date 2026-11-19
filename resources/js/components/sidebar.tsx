@@ -64,6 +64,7 @@ export const navGroups: NavGroup[] = [
         items: [
             { title: 'School Years', href: '/school-years', icon: 'calendar_month', ability: 'manage-school-years', prefetch: true },
             { title: 'User Accounts', href: '/users', icon: 'person_add', ability: 'manage-users', prefetch: true },
+            { title: 'Roles and Permissions', href: '/roles', icon: 'admin_panel_settings', ability: 'manage-roles' },
             { title: 'Audit Log', href: '/audit-log', icon: 'fact_check', ability: 'view-audit-log', prefetch: true },
         ],
     },

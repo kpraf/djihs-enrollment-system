@@ -2,6 +2,7 @@
 
 namespace App\Services\Audit;
 
+use App\Enums\Ability;
 use App\Enums\DocumentType;
 use App\Enums\EnrollmentStatus;
 use App\Enums\LearnerType;
@@ -10,6 +11,8 @@ use App\Models\AuditLog;
 use App\Models\DocumentSubmission;
 use App\Models\Enrollment;
 use App\Models\RevisionRequest;
+use App\Models\RolePermission;
+use App\Models\RoleSetting;
 use App\Models\SchoolYear;
 use App\Models\Section;
 use App\Models\Strand;
@@ -36,6 +39,8 @@ class AuditTrail
         TeacherAssignment::class => 'Subject teacher',
         Section::class => 'Section',
         SchoolYear::class => 'School year',
+        RolePermission::class => 'Role permission',
+        RoleSetting::class => 'Role',
         AccessLog::BACKUP => 'Full backup',
         AccessLog::USER_LIST => 'User accounts list',
         AccessLog::AUDIT_LOG => 'Audit log',
@@ -47,7 +52,7 @@ class AuditTrail
     /** @var array<string, string> */
     private const LABELS = [
         'lrn' => 'LRN', 'last_name' => 'Last name', 'first_name' => 'First name', 'middle_name' => 'Middle name',
-        'extension_name' => 'Suffix', 'birthdate' => 'Birth date', 'sex' => 'Sex', 'religion' => 'Religion',
+        'extension_name' => 'Suffix', 'is_retired' => 'Retired', 'ability' => 'Permission', 'birthdate' => 'Birth date', 'sex' => 'Sex', 'religion' => 'Religion',
         'mother_tongue' => 'Mother tongue', 'is_indigenous' => 'Indigenous Peoples', 'indigenous_group' => 'IP community',
         'is_4ps_beneficiary' => '4Ps', 'is_pwd' => 'With disability', 'disability' => 'Disability',
         'house_number' => 'House no.', 'street' => 'Street', 'barangay' => 'Barangay', 'municipality' => 'Municipality',
@@ -136,7 +141,11 @@ class AuditTrail
                 'subject_type' => self::SUBJECTS[$log->auditable_type] ?? class_basename($log->auditable_type),
                 'subject' => $subjects[$log->auditable_type][$log->auditable_id] ?? ($log->auditable_id ? '#'.$log->auditable_id : ''),
                 'changes' => $changes,
-                'detail' => $access ? ($log->new_values['what'] ?? null) : null,
+                'detail' => match (true) {
+                    $access => $log->new_values['what'] ?? null,
+                    $log->auditable_type === RolePermission::class => $log->event === 'created' ? 'Permission given' : 'Permission taken away',
+                    default => null,
+                },
                 'ip_address' => $log->ip_address,
             ];
         })->values()->all();
@@ -209,6 +218,20 @@ class AuditTrail
             $names[TeacherAssignment::class] = TeacherAssignment::with('section.strand')->whereIn('id', $ids[TeacherAssignment::class])->get()
                 ->mapWithKeys(fn (TeacherAssignment $t) => [$t->id => $t->subject_name.' · '.$t->section?->label()])->all();
         }
+        // "Registrar: Manage user accounts", read from the entry itself, since a
+        // removed permission no longer has a row to look up.
+        foreach ($logs->where('auditable_type', RolePermission::class) as $log) {
+            $values = $log->new_values ?: $log->old_values ?: [];
+            $role = Role::tryFrom((string) ($values['role'] ?? ''));
+            $ability = Ability::tryFrom((string) ($values['ability'] ?? ''));
+            if ($role && $ability) {
+                $names[RolePermission::class][$log->auditable_id] = "{$role->label()}: {$ability->label()}";
+            }
+        }
+        if ($ids->has(RoleSetting::class)) {
+            $names[RoleSetting::class] = RoleSetting::whereIn('id', $ids[RoleSetting::class])->get()
+                ->mapWithKeys(fn (RoleSetting $r) => [$r->id => $r->role->label()])->all();
+        }
         if ($ids->has(SchoolYear::class)) {
             $names[SchoolYear::class] = SchoolYear::whereIn('id', $ids[SchoolYear::class])->get()->pluck('name', 'id')->all();
         }
@@ -235,6 +258,7 @@ class AuditTrail
             in_array($field, ['privacy_notice_at', 'privacy_agreed_at'], true) => substr((string) $value, 0, 10),
             is_array($value) => count($value).' fields',
             $field === 'role' => Role::tryFrom($value)?->label() ?? (string) $value,
+            $field === 'ability' => Ability::tryFrom($value)?->label() ?? (string) $value,
             $field === 'sex' => ucfirst((string) $value),
             in_array($field, ['birthdate', 'encoded_on'], true) => substr((string) $value, 0, 10),
             default => (string) $value,

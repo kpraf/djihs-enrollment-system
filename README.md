@@ -65,6 +65,12 @@ These legacy tables were folded in:
 
 ## Roles
 
+The Administrator sets what each role can do on **Administration → Roles and Permissions**: a grid of checkboxes, saved with a confirmation that lists every change, and recorded in the Audit Log. A role the school no longer uses (for example Key Teacher) can be **retired**: no new account can be given it, and the accounts that have it move to a role the Administrator picks. **Reset to defaults** puts back the table below.
+
+Two safeguards: the Administrator always keeps *Manage user accounts* and *Manage roles and permissions*, and the Administrator role can't be retired, so nobody can be locked out.
+
+Default permissions:
+
 | Ability | Admin | ICT Coordinator | Registrar | Key Teacher | Adviser | Subject Teacher |
 | --- | :-: | :-: | :-: | :-: | :-: | :-: |
 | Manage user accounts | ✓ | ✓ | ✓ | | | |
@@ -84,8 +90,9 @@ These legacy tables were folded in:
 | DepEd rates on Reports | ✓ | | | | | |
 | Audit log | ✓ | ✓ | ✓ | | | |
 | Backup | ✓ | ✓ | | | | |
+| Roles and permissions | ✓ | | | | | |
 
-Only administrators can create or change administrator accounts. Change a role's abilities in [`app/Enums/Role.php`](app/Enums/Role.php).
+Only administrators can create or change administrator accounts. The defaults live in `defaultAbilities()` in [`app/Enums/Role.php`](app/Enums/Role.php); what is saved on the page is in the `role_permissions` and `role_settings` tables.
 
 ## Run it on a school computer
 

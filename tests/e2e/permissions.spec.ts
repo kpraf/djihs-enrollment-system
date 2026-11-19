@@ -14,6 +14,7 @@ const menu = [
     'Reports',
     'School Years',
     'User Accounts',
+    'Roles and Permissions',
     'Audit Log',
 ];
 const headings = ['Enrollment', 'Sections', 'Administration'];

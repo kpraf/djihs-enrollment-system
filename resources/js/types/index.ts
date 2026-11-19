@@ -15,7 +15,8 @@ export type Ability =
     | 'view-analytics'
     | 'view-metrics'
     | 'view-audit-log'
-    | 'backup-data';
+    | 'backup-data'
+    | 'manage-roles';
 
 export interface User {
     id: number;

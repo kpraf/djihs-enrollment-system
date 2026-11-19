@@ -138,8 +138,9 @@ class UserController extends Controller
      */
     private function assignableRoles(User $actor): array
     {
+        // Retired roles (Roles and Permissions page) can't be given to accounts.
         return array_values(array_filter(
-            Role::options(),
+            Role::activeOptions(),
             fn ($r) => $actor->role === Role::Admin || $r['value'] !== Role::Admin->value,
         ));
     }

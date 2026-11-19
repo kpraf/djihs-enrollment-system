@@ -11,6 +11,7 @@ use App\Http\Controllers\MyStudentsController;
 use App\Http\Controllers\PrivacyController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SchoolYearController;
 use App\Http\Controllers\SectionAssignmentController;
 use App\Http\Controllers\SectionController;
@@ -131,6 +132,13 @@ Route::middleware('auth')->group(function () {
     });
 
     // User accounts
+    Route::middleware('can:manage-roles')->group(function () {
+        Route::get('roles', [RoleController::class, 'index'])->name('roles.index');
+        Route::put('roles', [RoleController::class, 'update'])->name('roles.update');
+        Route::post('roles/reset', [RoleController::class, 'reset'])->name('roles.reset');
+        Route::post('roles/{role}/retire', [RoleController::class, 'retire'])->name('roles.retire');
+        Route::post('roles/{role}/restore', [RoleController::class, 'restore'])->name('roles.restore');
+    });
     Route::middleware('can:manage-users')->group(function () {
         Route::get('users', [UserController::class, 'index'])->name('users.index');
         Route::get('users/export', [ExportController::class, 'users'])->name('users.export');

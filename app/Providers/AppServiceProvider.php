@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Enums\Ability;
 use App\Enums\TextSize;
 use App\Models\User;
+use App\Services\Auth\RolePermissions;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
@@ -16,7 +17,8 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        // Role permissions are read once per request, then reused for every check.
+        $this->app->scoped(RolePermissions::class);
     }
 
     public function boot(): void
