@@ -11,6 +11,7 @@ notations:
   Figure 7  Old and new system       architecture and comparison table
   Figure 8  Use cases                UML 2 use case diagram
   Figure 9  Deployment               UML 2 deployment diagram with logos
+  Figures 10-13  Sequence diagrams   UML 2: encoding, review, import, sign-in
 
     pip install matplotlib pillow
     python3 docs/diagrams/generate.py
@@ -1038,8 +1039,274 @@ def deployment(pdf):
     save(fig, "fig9-deployment", pdf)
 
 
+# --- Figures 10 to 13: sequence diagrams ---------------------------------------------------
+class Sequence:
+    """A UML 2 sequence diagram: lifelines, activation bars, call and reply
+    messages, and combined fragments (alt, opt, loop). Rows run top to bottom."""
+
+    def __init__(self, number, caption, parts, rows, w=13.33, dy=0.355, xs=None):
+        self.dy = dy
+        self.top = rows * dy + 1.8
+        h = self.top + 0.95
+        self.fig, self.ax = figure(w, h, number, caption)
+        self.h = h
+        n = len(parts)
+        self.x = {}
+        for i, (key, name, kind) in enumerate(parts):
+            x = xs[i] if xs else 1.0 + i * (w - 2.0) / (n - 1)
+            self.x[key] = x
+            head = h - 0.35
+            if kind == "actor":
+                cy = head - 0.55
+                self.ax.add_patch(Circle((x, cy + 0.36), 0.11, facecolor=WHITE, edgecolor=LINE, lw=LW * 1.2, zorder=4))
+                for xs_, ys_ in (([x, x], [cy + 0.25, cy - 0.05]), ([x - 0.2, x + 0.2], [cy + 0.15, cy + 0.15]),
+                                 ([x, x - 0.16], [cy - 0.05, cy - 0.3]), ([x, x + 0.16], [cy - 0.05, cy - 0.3])):
+                    self.ax.plot(xs_, ys_, color=LINE, lw=LW * 1.2, zorder=4, solid_capstyle="round")
+                self.ax.text(x, cy - 0.47, name, ha="center", va="center", fontsize=8.6, color=INK, zorder=4, linespacing=1.1)
+                start = cy - 0.68
+            else:
+                bw = max(1.55, 0.075 * max(len(t) for t in name.split("\n")) + 0.3)
+                rect(self.ax, x - bw / 2, head - 0.62, bw, 0.62, name, fill=TINT, size=8.4, weight="bold", z=4)
+                start = head - 0.62
+            self.ax.plot([x, x], [start, 0.75], color=MUTED, lw=0.8, ls=(0, (5, 4)), zorder=0.5)
+
+    def y(self, r):
+        return self.top - 0.8 - r * self.dy
+
+    def act(self, key, r0, r1):
+        x = self.x[key]
+        self.ax.add_patch(Rectangle((x - 0.07, self.y(r1)), 0.14, self.y(r0) - self.y(r1), facecolor=WHITE, edgecolor=LINE, lw=LW * 0.9, zorder=3))
+
+    def msg(self, a, b, r, text, ret=False, ha="center"):
+        """A call (solid, filled head) or a reply (dashed, open head)."""
+        xa, xb, y = self.x[a], self.x[b], self.y(r)
+        if a == b:  # a call to itself
+            pts = [(xa + 0.07, y), (xa + 0.45, y), (xa + 0.45, y - 0.2), (xa + 0.07, y - 0.2)]
+            self.ax.plot(*zip(*pts[:-1]), color=LINE, lw=LW, zorder=5)
+            self.ax.add_patch(FancyArrowPatch(pts[2], pts[3], arrowstyle="-|>", mutation_scale=9, color=LINE, lw=LW, shrinkA=0, shrinkB=0, zorder=5))
+            self.ax.text(xa + 0.55, y - 0.1, text, fontsize=7.6, va="center", ha="left", color=INK, zorder=6, linespacing=1.15,
+                         bbox=dict(boxstyle="square,pad=0.08", facecolor=WHITE, edgecolor="none"))
+            return
+        sgn = 1 if xb > xa else -1
+        p0, p1 = (xa + 0.07 * sgn, y), (xb - 0.07 * sgn, y)
+        style = "->,head_length=6,head_width=3.5" if ret else "-|>"
+        self.ax.add_patch(FancyArrowPatch(p0, p1, arrowstyle=style, mutation_scale=1 if ret else 9, color=LINE, lw=LW,
+                                          linestyle=(0, (4, 3)) if ret else "-", shrinkA=0, shrinkB=0, zorder=5))
+        tx = (xa + xb) / 2 if ha == "center" else (min(xa, xb) + 0.18)
+        self.ax.text(tx, y + 0.1, text, fontsize=7.6, ha=ha, va="bottom", color=INK, zorder=6, linespacing=1.12,
+                     bbox=dict(boxstyle="square,pad=0.06", facecolor=WHITE, edgecolor="none"))
+
+    def frag(self, op, r0, r1, a, b, guards=(), pad_l=0.35, pad_r=0.35):
+        """A combined fragment from row r0 to r1 across lifelines a..b.
+        guards: (row, "[condition]") pairs; every guard after the first starts a new operand."""
+        x0, x1 = self.x[a] - pad_l, self.x[b] + pad_r
+        y0, y1 = self.y(r0), self.y(r1)
+        self.ax.add_patch(Rectangle((x0, y1), x1 - x0, y0 - y1, facecolor="none", edgecolor=LINE, lw=LW * 0.9, zorder=2))
+        tw = 0.12 + 0.085 * len(op)
+        self.ax.add_patch(Polygon([(x0, y0), (x0 + tw + 0.12, y0), (x0 + tw + 0.12, y0 - 0.14), (x0 + tw, y0 - 0.25), (x0, y0 - 0.25)],
+                                  closed=True, facecolor=WHITE, edgecolor=LINE, lw=LW * 0.9, zorder=2.1))
+        self.ax.text(x0 + 0.08, y0 - 0.125, op, fontsize=8, fontweight="bold", va="center", zorder=2.2)
+        for i, (r, text) in enumerate(guards):
+            yy = self.y(r)
+            if i:
+                self.ax.plot([x0, x1], [yy + 0.13, yy + 0.13], color=LINE, lw=LW * 0.8, ls=(0, (5, 3)), zorder=2)
+            self.ax.text(x0 + (tw + 0.25 if i == 0 else 0.1), yy, text, fontsize=7.6, va="center", style="italic", color=INK, zorder=6,
+                         bbox=dict(boxstyle="square,pad=0.05", facecolor=WHITE, edgecolor="none"))
+
+    def note(self, key, r, text, dx=0.25, width=2.3):
+        x, y = self.x[key] + dx, self.y(r)
+        lines = text.count("\n") + 1
+        hh = 0.16 + 0.15 * lines
+        self.ax.add_patch(Polygon([(x, y), (x + width - 0.12, y), (x + width, y - 0.12), (x + width, y - hh), (x, y - hh)],
+                                  closed=True, facecolor="#fffbea", edgecolor=LINE, lw=LW * 0.8, zorder=6))
+        self.ax.text(x + 0.08, y - hh / 2, text, fontsize=7.3, va="center", color=INK, zorder=7, linespacing=1.15)
+
+    def save(self, name, pdf):
+        save(self.fig, name, pdf)
+
+
+def seq_encode(pdf):
+    """New Enrollment: app/Http/Controllers/StudentLookupController.php,
+    EnrollmentController::store and app/Services/Enrollment/EnrollLearner.php."""
+    S = Sequence(10, "Sequence diagram: encoding a new enrollment", [
+        ("enc", "Encoder\n(Registrar or Adviser)", "actor"),
+        ("form", "New Enrollment\nform (browser)", "box"),
+        ("ctl", "Laravel\ncontrollers", "box"),
+        ("svc", "EnrollLearner\n(service)", "box"),
+        ("db", "PostgreSQL\ndatabase", "box"),
+    ], rows=34.2, xs=[0.9, 3.3, 6.0, 8.7, 11.6])
+    m = S.msg
+    m("enc", "form", 0.5, "1: types the LRN")
+    S.act("form", 0.5, 33.4)
+    m("form", "ctl", 1.5, "2: GET /students/lookup?lrn=…")
+    S.act("ctl", 1.5, 4.5)
+    m("ctl", "db", 2.5, "3: find the learner and this year's enrollment")
+    m("db", "ctl", 3.5, "learner, or none", ret=True)
+    m("ctl", "form", 4.5, "4: learner's details, already enrolled?", ret=True)
+    S.frag("opt", 5.2, 7.4, "form", "form", [(5.55, "[LRN already known]")], pad_l=0.45, pad_r=2.6)
+    m("form", "form", 6.5, "5: fill in the details;\nwarn if already enrolled")
+    m("enc", "form", 8.2, "6: fills in the rest, Submit")
+    m("form", "ctl", 9.2, "7: POST /enrollments  (permission: encode enrollments)")
+    S.act("ctl", 9.2, 32.4)
+    m("ctl", "ctl", 10.0, "8: validate; is enrollment open?")
+    S.frag("alt", 11.2, 13.3, "form", "ctl", [(11.55, "[enrollment closed]")], pad_r=0.6)
+    m("ctl", "form", 12.6, "\"Enrollment is closed\"", ret=True)
+    m("ctl", "svc", 14.0, "9: handle(learner, enrollment)")
+    S.act("svc", 14.0, 31.4)
+    m("svc", "db", 15.0, "10: same name and birth date, other LRN?")
+    S.frag("alt", 15.8, 17.9, "form", "db", [(16.15, "[look-alike found, not confirmed]")], pad_r=0.4)
+    m("svc", "form", 17.2, "\"Possible duplicate: tick the box if this is a different person\"", ret=True)
+    m("svc", "db", 19.0, "11: BEGIN; SELECT learner WHERE lrn = … FOR UPDATE")
+    S.note("db", 19.4, "locks the learner's row:\na second encoder waits", dx=-2.55, width=2.3)
+    S.frag("alt", 21.2, 26.2, "svc", "db", [(21.55, "[learner exists]"), (24.8, "[new LRN]")], pad_l=0.45, pad_r=0.4)
+    m("svc", "db", 22.6, "12: this year's enrollment?")
+    m("svc", "svc", 23.4, "13: already encoded → refuse;\nrejected → resubmit")
+    m("svc", "db", 25.75, "12': INSERT learner")
+    m("svc", "db", 27.4, "14: INSERT enrollment (Pending), audit log entries; COMMIT")
+    S.frag("alt", 28.2, 30.3, "form", "db", [(28.55, "[unique LRN broken: someone else saved this learner first]")], pad_r=0.4)
+    m("svc", "form", 29.6, "ROLLBACK; \"Someone else just enrolled this learner. Nothing was saved.\"", ret=True)
+    m("svc", "ctl", 31.4, "enrollment", ret=True)
+    m("ctl", "form", 32.4, "15: \"Submitted … It is now waiting for review.\"", ret=True)
+    m("form", "enc", 33.4, "16: success; empty form", ret=True)
+    S.save("fig10-sequence-encode", pdf)
+
+
+def seq_review(pdf):
+    """Review Enrollments: ReviewController::approve and
+    app/Services/Enrollment/EnrollmentWorkflow.php (transition)."""
+    S = Sequence(11, "Sequence diagram: two reviewers approve the same learner at once", [
+        ("a", "Reviewer A", "actor"),
+        ("b", "Reviewer B", "actor"),
+        ("ctl", "ReviewController", "box"),
+        ("wf", "EnrollmentWorkflow", "box"),
+        ("db", "PostgreSQL\ndatabase", "box"),
+    ], rows=21.6, xs=[0.9, 2.7, 5.4, 8.3, 11.6])
+    m = S.msg
+    m("a", "ctl", 0.5, "1: Approve  (POST /reviews/{id}/approve)")
+    m("b", "ctl", 1.5, "2: Approve, a moment later")
+    S.note("ctl", 0.3, "each request runs on\nits own; permission:\nreview enrollments", dx=0.3, width=1.9)
+    S.act("ctl", 0.5, 20.8)
+    m("ctl", "wf", 3.0, "3: approve(enrollment, A)")
+    S.act("wf", 3.0, 8.4)
+    m("wf", "db", 4.0, "4: BEGIN; SELECT enrollment … FOR UPDATE")
+    m("db", "wf", 4.9, "status: Pending (A holds the row lock)", ret=True)
+    m("wf", "db", 6.4, "5: UPDATE status = Enrolled, reviewed_by = A;\naudit log entry; COMMIT")
+    m("wf", "ctl", 8.4, "approved", ret=True)
+    m("ctl", "a", 9.3, "\"Approved Juan Dela Cruz.\"", ret=True)
+    m("ctl", "wf", 10.6, "6: approve(enrollment, B)")
+    S.act("wf", 10.6, 19.8)
+    m("wf", "db", 11.6, "7: BEGIN; SELECT enrollment … FOR UPDATE")
+    S.note("db", 11.9, "waits until A's COMMIT\nfrees the row", dx=-2.35, width=2.0)
+    m("db", "wf", 14.6, "status: Enrolled, by A", ret=True)
+    S.frag("alt", 15.3, 19.0, "ctl", "db", [(15.65, "[status is still Pending]"), (17.6, "[already decided]")], pad_l=0.45, pad_r=0.4)
+    m("wf", "wf", 16.6, "approve as above")
+    m("wf", "wf", 18.3, "ROLLBACK: nothing changed")
+    m("wf", "ctl", 19.8, "\"Already enrolled (by Reviewer A).\"", ret=True)
+    m("ctl", "b", 20.8, "\"This enrollment is already enrolled (by Reviewer A). Nothing was changed.\"", ret=True)
+    S.save("fig11-sequence-review", pdf)
+
+
+def seq_import(pdf):
+    """Bulk Import: app/Http/Controllers/ImportController.php (preview, store)
+    and app/Services/Import/EncodingSheetImporter.php."""
+    S = Sequence(12, "Sequence diagram: importing the school's encoding workbook", [
+        ("reg", "Registrar", "actor"),
+        ("page", "Bulk Import\npage (browser)", "box"),
+        ("ctl", "ImportController", "box"),
+        ("imp", "EncodingSheetImporter", "box"),
+        ("files", "File storage", "box"),
+        ("db", "PostgreSQL\ndatabase", "box"),
+    ], rows=40.4, xs=[0.9, 2.95, 5.15, 7.65, 10.0, 12.1])
+    m = S.msg
+    m("reg", "page", 0.5, "1: school year and file, Check File")
+    S.act("page", 0.5, 39.6)
+    m("page", "ctl", 1.5, "2: POST /imports/preview (file)")
+    S.act("ctl", 1.5, 17.2)
+    m("ctl", "files", 2.5, "3: save as {token}.xlsx")
+    m("ctl", "imp", 3.5, "4: import(file, year, check only)")
+    S.act("imp", 3.5, 15.0)
+    m("imp", "imp", 4.3, "5: open MAIN_ENCODING_SHEET;\nfind columns by header")
+    S.frag("alt", 5.7, 7.8, "page", "imp", [(6.05, "[a required column is missing]")], pad_r=0.5)
+    m("imp", "page", 7.1, "\"Could not find these columns in the sheet: …\"", ret=True)
+    m("imp", "db", 8.6, "6: BEGIN; load learners and enrollments for the file's LRNs")
+    S.frag("loop", 9.4, 13.3, "imp", "db", [(9.75, "[each row]")], pad_l=0.5, pad_r=0.4)
+    m("imp", "imp", 10.9, "7: check the row: skip with a reason,\nor note a warning")
+    m("imp", "db", 12.8, "8: INSERT or UPDATE learner and enrollment")
+    m("imp", "db", 14.1, "9: ROLLBACK (a check saves nothing and writes no audit entries)")
+    m("imp", "ctl", 15.0, "summary: rows, new, updated, skipped, notes", ret=True)
+    m("ctl", "ctl", 15.8, "10: keep the token in the session")
+    m("ctl", "page", 17.2, "11: preview: summary, rows not imported, warnings", ret=True)
+    m("page", "reg", 18.2, "reviews the preview", ret=True)
+    m("reg", "page", 19.4, "12: Import N learners")
+    m("page", "ctl", 20.4, "13: POST /imports (token)")
+    S.act("ctl", 20.4, 38.5)
+    S.frag("alt", 21.2, 25.5, "page", "ctl", [(21.55, "[token doesn't match or file is gone]"), (23.7, "[another import is running]")], pad_r=0.6)
+    m("ctl", "page", 22.6, "\"That upload expired. Upload the file again.\"", ret=True)
+    m("ctl", "page", 24.8, "\"Another import is running right now.\"", ret=True)
+    m("ctl", "ctl", 26.3, "14: take the import lock (one at a time)")
+    m("ctl", "imp", 27.8, "15: import(file, year, for real)")
+    S.act("imp", 27.8, 34.1)
+    m("imp", "db", 28.8, "16: BEGIN")
+    S.frag("loop", 29.6, 31.8, "imp", "db", [(29.95, "[each row]")], pad_l=0.5, pad_r=0.4)
+    m("imp", "db", 31.1, "17: INSERT or UPDATE learner and enrollment")
+    m("imp", "db", 32.7, "18: audit log entries in batches of 200; COMMIT")
+    m("imp", "ctl", 34.1, "result", ret=True)
+    m("ctl", "ctl", 34.9, "19: release the lock")
+    m("ctl", "files", 36.4, "20: delete the uploaded file")
+    m("ctl", "page", 38.5, "21: \"Imported N rows.\" with the result", ret=True)
+    m("page", "reg", 39.6, "what was added, updated, skipped", ret=True)
+    S.save("fig12-sequence-import", pdf)
+
+
+def seq_sign_in(pdf):
+    """Sign in and every request after it: LoginRequest::authenticate,
+    EnsureAccountIsUsable, the permission gates and RolePermissions."""
+    S = Sequence(13, "Sequence diagram: signing in, then every request", [
+        ("u", "Staff member", "actor"),
+        ("br", "Browser", "box"),
+        ("auth", "Sign-in\n(LoginRequest)", "box"),
+        ("mw", "Account checks\n(middleware)", "box"),
+        ("perm", "Permission check\n(Gate, RolePermissions)", "box"),
+        ("db", "PostgreSQL\ndatabase", "box"),
+    ], rows=35.0, xs=[0.9, 2.9, 5.0, 7.2, 9.6, 12.1])
+    m = S.msg
+    m("u", "br", 0.5, "1: username, password, Sign In")
+    S.act("br", 0.5, 34.3)
+    m("br", "auth", 1.5, "2: POST /login")
+    S.act("auth", 1.5, 15.0)
+    m("auth", "auth", 2.3, "3: 5 failed tries in a row?")
+    S.frag("alt", 3.7, 5.8, "br", "auth", [(4.05, "[too many tries]")], pad_r=0.5)
+    m("auth", "br", 5.1, "\"Too many attempts. Try again in N seconds.\"", ret=True)
+    m("auth", "db", 6.6, "4: find the account by username")
+    m("db", "auth", 7.5, "account, or none", ret=True)
+    S.frag("alt", 8.3, 14.2, "br", "db", [(8.65, "[no such account, or wrong password]"), (10.6, "[account deactivated]"), (12.55, "[else]")], pad_r=0.4)
+    m("auth", "br", 9.7, "count a failed try; \"These credentials do not match our records.\"", ret=True)
+    m("auth", "br", 11.65, "\"This account has been deactivated.\"", ret=True)
+    m("auth", "db", 13.6, "5: sign in, new session id, save last sign-in time")
+    m("auth", "br", 15.0, "6: go to the dashboard", ret=True)
+    m("br", "mw", 16.2, "7: GET a page or POST an action (every request)")
+    S.act("mw", 16.2, 33.3)
+    S.frag("alt", 17.0, 27.6, "br", "db", [(17.35, "[account deactivated meanwhile]"), (19.3, "[password set by an administrator]"),
+                                           (21.25, "[confidentiality agreement not accepted]"), (23.2, "[else]")], pad_r=0.4)
+    m("mw", "br", 18.4, "sign out; back to Sign In", ret=True)
+    m("mw", "br", 20.35, "go to Change Password", ret=True)
+    m("mw", "br", 22.3, "go to the confidentiality agreement", ret=True)
+    m("mw", "perm", 24.2, "8: may this role do it?  (e.g. manage sections)")
+    S.act("perm", 24.2, 27.1)
+    m("perm", "db", 25.2, "9: role permissions (read once per request)")
+    m("db", "perm", 26.1, "the role's permissions", ret=True)
+    m("perm", "mw", 27.1, "allowed or not", ret=True)
+    S.frag("alt", 28.2, 32.3, "br", "db", [(28.55, "[not allowed]"), (30.5, "[allowed]")], pad_r=0.4)
+    m("mw", "br", 29.6, "403: this page isn't for your role", ret=True)
+    m("mw", "db", 31.55, "10: run the action; changes go to the audit log")
+    m("mw", "br", 33.3, "11: the page, with only the links the role may use", ret=True)
+    m("br", "u", 34.3, "sees the page", ret=True)
+    S.save("fig13-sequence-sign-in", pdf)
+
+
 if __name__ == "__main__":
     with PdfPages(OUT / "DJIHS-system-diagrams.pdf") as pdf:
-        for draw in (architecture, context, dfd_level1, activity, states, erd, old_vs_new, use_cases, deployment):
+        for draw in (architecture, context, dfd_level1, activity, states, erd, old_vs_new, use_cases, deployment,
+                     seq_encode, seq_review, seq_import, seq_sign_in):
             draw(pdf)
     print("Wrote", sorted(p.name for p in OUT.iterdir() if p.suffix in {".png", ".svg", ".pdf"}))

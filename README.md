@@ -191,7 +191,7 @@ npm run test:e2e
 
 ## Diagrams
 
-[`docs/diagrams`](docs/diagrams) has nine figures in standard notations: system architecture (three-tier), context diagram and level 1 data flow diagram (Gane & Sarson), UML activity and state machine diagrams, a crow's foot ERD, an old-versus-new comparison, a UML use case diagram and a UML deployment diagram. Each is a PNG and an SVG, and all are in one PDF. `docs/diagrams/generate.py` redraws them.
+[`docs/diagrams`](docs/diagrams) has thirteen figures in standard notations: system architecture (three-tier), context diagram and level 1 data flow diagram (Gane & Sarson), UML activity and state machine diagrams, a crow's foot ERD, an old-versus-new comparison, a UML use case diagram, a UML deployment diagram, and UML sequence diagrams for encoding, review, import and sign-in. Each is a PNG and an SVG, and all are in one PDF. `docs/diagrams/generate.py` redraws them.
 
 ## Testing with real users
 
