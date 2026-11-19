@@ -29,7 +29,10 @@ class PasswordController extends Controller
     {
         $validated = $request->validate([
             'current_password' => ['required', 'current_password'],
-            'password' => ['required', Password::defaults(), 'confirmed'],
+            // Reusing a temporary password would leave it known to whoever issued it.
+            'password' => ['required', Password::defaults(), 'confirmed', 'different:current_password'],
+        ], [
+            'password.different' => 'Choose a new password that is different from your current one.',
         ]);
 
         $user = $request->user();

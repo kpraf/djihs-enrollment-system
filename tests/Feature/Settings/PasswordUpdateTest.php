@@ -76,4 +76,21 @@ class PasswordUpdateTest extends TestCase
             ])
             ->assertSessionHasErrors('password');
     }
+
+    public function test_a_temporary_password_cannot_be_kept_as_the_new_one(): void
+    {
+        // The account was given the temporary password "Temp1234abcd" by an administrator.
+        $user = User::factory()->mustChangePassword()->create(['password' => 'Temp1234abcd']);
+
+        $this->actingAs($user)
+            ->put('/settings/password', [
+                'current_password' => 'Temp1234abcd',
+                'password' => 'Temp1234abcd',
+                'password_confirmation' => 'Temp1234abcd',
+            ])
+            ->assertSessionHasErrors(['password' => 'Choose a new password that is different from your current one.']);
+
+        $this->assertTrue($user->refresh()->must_change_password, 'They still have to choose their own password.');
+        $this->actingAs($user)->get('/dashboard')->assertRedirect(route('password.edit'));
+    }
 }
