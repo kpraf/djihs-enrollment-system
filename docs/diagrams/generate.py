@@ -1000,8 +1000,8 @@ def deployment(pdf):
     artifact(0.78, 6.5 + T, 1.98, 1.35, "DJIHS web app", "React screens and\ncharts, from public/build", logos=("react", "typescript", "inertia"))
 
     node(4.15, 3.7 + T, 9.4, 6.55, "cloud platform", "Render", logos=("render",), fill="#fbfcfb")
-    node(4.4, 4.0 + T, 5.4, 5.5, "device", "Web service (free instance)", z=2.0)
-    ax.text(4.54, 8.83 + T, "listens on port 10000 · health check /up · sleeps after 15 idle minutes", fontsize=7.3, color=MUTED, va="center", zorder=2.1)
+    node(4.4, 4.0 + T, 5.4, 5.5, "device", "Web service", z=2.0)
+    ax.text(4.54, 8.83 + T, "listens on port 10000 · health check /up", fontsize=7.3, color=MUTED, va="center", zorder=2.1)
     node(4.62, 4.25 + T, 4.95, 4.3, "execution environment", "Docker container  php:8.3-apache", logos=("docker",), size=9.0, z=3.0)
     node(4.84, 4.5 + T, 4.5, 3.15, "execution environment", "Apache 2.4 + PHP 8.3", logos=("apache", "php"), size=9.0, z=4.0)
     artifact(5.02, 5.6 + T, 4.14, 1.1, "Laravel 12 application", "routes, permissions, imports, SF1 and SF8", logos=("laravel",), z=5.0)
@@ -1009,7 +1009,7 @@ def deployment(pdf):
     artifact(7.14, 4.65 + T, 2.02, 0.82, "start.sh", "migrate, seed, optimize", z=5.0)
 
     node(10.75, 5.3 + T, 2.6, 3.2, "device", "Render PostgreSQL", logos=("postgresql",), z=2.0)
-    ax.text(10.89, 7.87 + T, "managed database (free plan)", fontsize=7.4, color=MUTED, va="center", zorder=2.1)
+    ax.text(10.89, 7.87 + T, "managed database", fontsize=7.4, color=MUTED, va="center", zorder=2.1)
     artifact(10.93, 5.5 + T, 2.24, 2.05, "djihs_enrollment", "PostgreSQL 16 database:\nlearners, enrollments,\nsections, users, role\npermissions, audit log,\nsessions and cache", z=3.0)
 
     # Communication paths, each labelled with its protocol.
