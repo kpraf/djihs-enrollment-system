@@ -209,7 +209,7 @@ def architecture(pdf):
     item(X[0], r1, ["apache"], "Apache", "web server")
     item(X[1], r1, ["php"], "PHP 8.3", "runtime")
     item(X[2], r1, ["laravel"], "Laravel 12", "framework")
-    item(X[3], r1, ["lock"], "Access control", "roles, sessions")
+    item(X[3], r1, ["lock"], "Access control", "role permissions, sessions")
     item(X[4], r1, ["shield-check"], "Data privacy", "agreement, access log")
     ax.text(X[0], cap1, "Every request passes, in order", fontsize=7.9, color=MUTED, va="center")
     steps = ["Signed in?", "Role allowed?", "Password changed?", "Agreement accepted?", "Run the action", "Write audit log"]
@@ -313,7 +313,7 @@ def context(pdf):
             label(ax, lx_out + 0.1, y_out, outflow, size=7.9, ha="left", bg=False)
 
     v_pair("ICT Coordinator", 4.7, "accounts,\nschool years", "audit log,\nbackup", 5.6, 5.95, 5.6, 5.3)
-    v_pair("Administrator", 6.95, "accounts,\ndecisions", "DepEd\nindicators", 7.4, 7.75, 5.75, 5.6)
+    v_pair("Administrator", 6.95, "accounts, role\npermissions,\ndecisions", "DepEd\nindicators", 7.4, 7.75, 5.75, 5.6)
 
     entity(ax, 5.74, 0.95, ew, eh, "DepEd")
     line(ax, [(6.67, py), (6.67, 1.65)])
@@ -328,7 +328,7 @@ def dfd_level1(pdf):
     ew, eh = 1.7, 0.66
     sx, sw, sh = 5.6, 2.15, 0.5
 
-    stores = {"D1": ("Students", 7.1), "D2": ("Enrollments", 5.75), "D3": ("Sections", 4.4), "D4": ("Users", 3.05), "D5": ("School years", 1.85)}
+    stores = {"D1": ("Students", 7.1), "D2": ("Enrollments", 5.75), "D3": ("Sections", 4.4), "D4": ("Users and roles", 3.05), "D5": ("School years", 1.85)}
     for sid, (name, y) in stores.items():
         store(ax, sx, y, sw, sh, sid, name)
 
@@ -338,7 +338,7 @@ def dfd_level1(pdf):
     # Left: processes that write learners and enrollments.
     L = {"1.0": ("Encode\nenrollment", 6.8), "6.0": ("Import\nworkbook", 5.0), "2.0": ("Review\nenrollment", 3.3)}
     # Right: sections, reports, administration.
-    Rp = {"4.0": ("Generate reports\nand forms", 6.2), "3.0": ("Manage\nsections", 4.55), "5.0": ("Manage accounts\nand school years", 2.15)}
+    Rp = {"4.0": ("Generate reports\nand forms", 6.2), "3.0": ("Manage\nsections", 4.55), "5.0": ("Manage accounts,\nroles, school years", 2.15)}
     lx, rx = 3.05, 8.45
     for n, (name, y) in L.items():
         process(ax, lx, y, pw, ph, n, name)
@@ -399,7 +399,7 @@ def dfd_level1(pdf):
     line(ax, [(rx + pw / 2, 6.2 + ph), (rx + pw / 2, 7.65)])
     label(ax, rx + pw / 2 + 0.1, 7.43, "reports, class lists", size=7.6, ha="left", bg=False)
     ent_right("Key Teacher", "3.0", "sections,\nplacements", True)
-    ent_right("ICT Coordinator,\nAdministrator", "5.0", "accounts,\nschool years", True)
+    ent_right("ICT Coordinator,\nAdministrator", "5.0", "accounts, role\npermissions,\nschool years", True)
 
     store(ax, sx, 0.95, sw, sh, "D6", "Audit log")
     ax.text(sx + sw / 2, 0.82, "written by every process (lines not drawn)", ha="center", va="top", fontsize=7.4, color=MUTED, style="italic")
@@ -627,6 +627,10 @@ def erd(pdf):
                                                                              ("", "is_submitted", "boolean"), ("", "is_verified", "boolean")])
     T["revision_requests"] = table(ax, 12.6, 4.6, "revision_requests", [("PK", "id", "bigint"), ("FK", "enrollment_id", "bigint"), ("FK", "requested_by", "bigint"),
                                                                        ("", "changes", "json"), ("", "status", "varchar"), ("FK", "reviewed_by", "bigint")])
+    # What each role may do, set on the Roles and Permissions page.
+    T["role_permissions"] = table(ax, 8.4, 3.3, "role_permissions", [("PK", "id", "bigint"), ("", "role", "varchar"), ("", "ability", "varchar"),
+                                                                    ("", "created_at", "timestamp")])
+    T["role_settings"] = table(ax, 12.6, 2.65, "role_settings", [("PK", "id", "bigint"), ("UQ", "role", "varchar"), ("", "is_retired", "boolean")])
     T["audit_logs"] = table(ax, 0.4, 4.75, "audit_logs", [("PK", "id", "bigint"), ("FK", "user_id", "bigint"), ("", "event", "varchar"), ("", "auditable_type", "varchar"),
                                                        ("", "auditable_id", "bigint"), ("", "old_values", "json"), ("", "new_values", "json"), ("", "created_at", "timestamp")])
 
@@ -657,7 +661,11 @@ def erd(pdf):
     relate(ax, [(right("enrollments"), 6.2), (left("document_submissions"), 6.2)], "one", "zero_many")
     relate(ax, [(right("enrollments"), 4.0), (left("revision_requests"), 4.0)], "one", "zero_many")
     # users 0..1 ── N audit_logs, around the right and bottom edges
-    relate(ax, [(right("users"), 8.0), (15.75, 8.0), (15.75, 1.45), (1.75, 1.45), (1.75, bottom("audit_logs"))], "zero_one", "zero_many")
+    relate(ax, [(right("users"), 8.0), (15.88, 8.0), (15.88, 1.45), (1.75, 1.45), (1.75, bottom("audit_logs"))], "zero_one", "zero_many")
+    # role_settings 1 ── N users (each account has one role), down the right edge
+    relate(ax, [(right("users"), 7.65), (15.72, 7.65), (15.72, 2.1), (right("role_settings"), 2.1)], "zero_many", "one")
+    # role_settings 1 ── N role_permissions
+    relate(ax, [(right("role_permissions"), 2.25), (left("role_settings"), 2.25)], "zero_many", "one")
 
     lx, ly = 0.45, 1.05
     ax.text(lx, ly, "Notation:", fontsize=8, fontweight="bold", va="center")
@@ -667,8 +675,10 @@ def erd(pdf):
         crow_end(ax, (x + 0.7, ly), (-1, 0), k)
         ax.text(x + 0.85, ly, t, va="center", fontsize=7.8)
     ax.text(9.6, ly, "PK primary key · FK foreign key · UQ unique", va="center", fontsize=7.8)
-    ax.text(0.45, 0.68, "One enrollment per learner per school year (unique student_id + school_year_id). Not drawn: encoded_by, reviewed_by, requested_by and "
+    ax.text(0.45, 0.78, "One enrollment per learner per school year (unique student_id + school_year_id). Not drawn: encoded_by, reviewed_by, requested_by and "
             "document updated_by, which also point to users.", fontsize=7.6, color=MUTED, style="italic", va="center")
+    ax.text(0.45, 0.6, "users, role_settings and role_permissions are linked by the role value (for example 'registrar'), not a foreign key; "
+            "each (role, ability) pair is unique.", fontsize=7.6, color=MUTED, style="italic", va="center")
     save(fig, "fig6-erd", pdf)
 
 
@@ -717,6 +727,8 @@ def old_vs_new(pdf):
 def use_cases(pdf):
     """UML 2 use case diagram, checked against every route in routes/web.php, the
     ability each one needs (app/Enums/Role.php), and which pages show the button.
+    It shows the default permissions: the Administrator can change them on the
+    Roles and Permissions page.
 
     Teachers and office staff stand on the left, the Administrator on the right.
     «include» is behaviour that always happens; «extend» is optional and points
@@ -726,8 +738,8 @@ def use_cases(pdf):
     """
     from math import hypot
 
-    w, h = 13.2, 21.5
-    fig, ax = figure(w, h, 8, "Use case diagram of the DJIHS Enrollment System")
+    w, h = 13.2, 22.65
+    fig, ax = figure(w, h, 8, "Use case diagram of the DJIHS Enrollment System (default permissions)")
     D, step = 1.06, 1.13
     R = D / 2
     top = h - 1.5
@@ -736,7 +748,7 @@ def use_cases(pdf):
     MX, SX = 4.45, 10.45            # main use cases; included and extending ones
     LAX, RAX = 1.25, 12.35          # actor columns, left and right
     bx0, bx1 = 2.4, 11.35
-    by1, by0 = h - 0.35, row(17) - R - 0.4
+    by1, by0 = h - 0.35, row(18) - R - 0.4
     ax.add_patch(Rectangle((bx0, by0), bx1 - bx0, by1 - by0, facecolor=WHITE, edgecolor=LINE, linewidth=LW * 1.2, zorder=1))
     ax.text((bx0 + bx1) / 2, by1 - 0.32, "DJIHS Enrollment System", ha="center", va="center", fontsize=13, fontweight="bold", color=INK)
 
@@ -758,6 +770,7 @@ def use_cases(pdf):
         ("leave", "Record\nDropout or\nTransfer Out"),
         ("import", "Import\nLearners\n(Excel, CSV)"),
         ("users", "Manage\nUser\nAccounts"),
+        ("roles", "Manage\nRoles and\nPermissions"),
         ("audit", "View\nAudit Log"),
         ("reports", "View Reports\nand\nAnalytics"),
         ("years", "Manage\nSchool\nYears"),
@@ -813,7 +826,7 @@ def use_cases(pdf):
         ("Adviser", 6.6, ["login", "own", "export", "search", "encode", "review", "update", "docs"]),
         ("Registrar", 10.1, ["login", "search", "encode", "review", "update", "docs", "approve", "leave",
                              "import", "users", "audit", "reports"]),
-        ("ICT\nCoordinator", 13.6, ["login", "search", "encode", "review", "update", "docs", "approve", "leave",
+        ("ICT\nCoordinator", 14.3, ["login", "search", "encode", "review", "update", "docs", "approve", "leave",
                                     "import", "users", "audit", "years", "backup"]),
     ]
     incoming = {k: [] for k, _ in main}
@@ -841,6 +854,7 @@ def use_cases(pdf):
         ("update", "Send as\nChange\nRequest", "extend"),
         ("import", "Check File\nBefore\nImporting", "include"),
         ("users", "Assign\nRole", "include"),
+        ("roles", "Retire or\nRestore\na Role", "extend"),
         ("reports", "Export\nReport", "extend"),
         ("years", "Open or\nClose\nEnrollment", "extend"),
     ]
