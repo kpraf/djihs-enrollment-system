@@ -10,6 +10,7 @@ notations:
   Figure 6  Entity relationship      crow's foot notation
   Figure 7  Old and new system       architecture and comparison table
   Figure 8  Use cases                UML 2 use case diagram
+  Figure 9  Deployment               UML 2 deployment diagram with logos
 
     pip install matplotlib pillow
     python3 docs/diagrams/generate.py
@@ -940,8 +941,105 @@ def use_cases(pdf):
     save(fig, "fig8-use-case", pdf)
 
 
+# --- Figure 9: deployment -----------------------------------------------------------------
+def deployment(pdf):
+    """UML 2 deployment diagram: where each part of the system runs.
+
+    Drawn from Dockerfile, docker/start.sh, docker/apache.conf and render.yaml (the
+    live site), and from the README's one-computer setup. Nodes are 3D boxes marked
+    «device» or «execution environment»; artifacts are what runs on them; solid
+    lines are communication paths with their protocol; the dashed «deploy» arrow is
+    how a new version reaches the container.
+    """
+    from matplotlib.patches import Polygon
+
+    w, h = 14.0, 11.85
+    fig, ax = figure(w, h, 9, "Deployment diagram of the DJIHS Enrollment System")
+    D3 = 0.17
+
+    def node(x, y, nw, nh, stereo, name, logos=(), fill=WHITE, z=1.0, size=9.6):
+        ax.add_patch(Polygon([(x, y + nh), (x + D3, y + nh + D3), (x + nw + D3, y + nh + D3), (x + nw, y + nh)],
+                             closed=True, facecolor=SOFT, edgecolor=LINE, lw=LW, zorder=z))
+        ax.add_patch(Polygon([(x + nw, y), (x + nw + D3, y + D3), (x + nw + D3, y + nh + D3), (x + nw, y + nh)],
+                             closed=True, facecolor=SOFT, edgecolor=LINE, lw=LW, zorder=z))
+        ax.add_patch(Rectangle((x, y), nw, nh, facecolor=fill, edgecolor=LINE, lw=LW, zorder=z + 0.01))
+        ax.text(x + 0.14, y + nh - 0.2, f"«{stereo}»", fontsize=7.6, color=MUTED, style="italic", va="center", zorder=z + 0.02)
+        ax.text(x + 0.14, y + nh - 0.44, name, fontsize=size, fontweight="bold", color=INK, va="center", zorder=z + 0.02)
+        for i, name_ in enumerate(reversed(logos)):
+            logo(ax, name_, x + nw - 0.3 - i * 0.48, y + nh - 0.33, 0.36)
+
+    def artifact(x, y, aw, ah, name, sub=None, logos=(), z=3.0):
+        ax.add_patch(Rectangle((x, y), aw, ah, facecolor=WHITE, edgecolor=LINE, lw=LW, zorder=z))
+        # The artifact symbol: a page with its corner folded.
+        px, py, pw_, ph_ = x + aw - 0.3, y + ah - 0.36, 0.18, 0.24
+        ax.add_patch(Polygon([(px, py), (px, py + ph_), (px + pw_ - 0.07, py + ph_), (px + pw_, py + ph_ - 0.07), (px + pw_, py)],
+                             closed=True, facecolor=WHITE, edgecolor=LINE, lw=0.8, zorder=z + 0.1))
+        ax.plot([px + pw_ - 0.07, px + pw_ - 0.07, px + pw_], [py + ph_, py + ph_ - 0.07, py + ph_ - 0.07], color=LINE, lw=0.8, zorder=z + 0.2)
+        ax.text(x + 0.12, y + ah - 0.2, "«artifact»", fontsize=7.2, color=MUTED, style="italic", va="center", zorder=z + 0.1)
+        ax.text(x + 0.12, y + ah - 0.43, name, fontsize=8.8, fontweight="bold", color=INK, va="center", zorder=z + 0.1)
+        if sub:
+            ax.text(x + 0.12, y + ah - 0.62, sub, fontsize=7.6, color=MUTED, va="top", zorder=z + 0.1, linespacing=1.25)
+        for i, name_ in enumerate(reversed(logos)):
+            logo(ax, name_, x + aw - 0.62 - i * 0.36, y + 0.24, 0.27)
+
+    def path(pts, text, at=0.5, dx=0.0, dy=0.12, ha="center"):
+        ax.plot(*zip(*pts), color=LINE, lw=LW * 1.15, zorder=2.5)
+        (x0, y0), (x1, y1) = pts[0], pts[-1]
+        label(ax, x0 + (x1 - x0) * at + dx, y0 + (y1 - y0) * at + dy, text, size=7.8, ha=ha)
+
+    def section(y, text):
+        ax.text(0.4, y, text, fontsize=10.5, fontweight="bold", color=GREEN, va="center")
+
+    # ---- The live site, on Render ----------------------------------------------------------
+    T = 0.55  # the live-site half sits this much higher than its first draft
+    section(h - 0.45, "Live site: Render, Singapore region")
+
+    node(0.4, 6.05 + T, 2.75, 3.6, "device", "Staff computer or phone", logos=("monitor", "smartphone"))
+    node(0.6, 6.3 + T, 2.32, 2.55, "execution environment", "Web browser", size=9.0, z=2.0)
+    ax.text(0.74, 8.07 + T, "Chrome, Edge, Safari or Firefox", fontsize=7.4, color=MUTED, va="center", zorder=2.1)
+    artifact(0.78, 6.5 + T, 1.98, 1.35, "DJIHS web app", "React screens and\ncharts, from public/build", logos=("react", "typescript", "inertia"))
+
+    node(4.15, 3.7 + T, 9.4, 6.55, "cloud platform", "Render", logos=("render",), fill="#fbfcfb")
+    node(4.4, 4.0 + T, 5.4, 5.5, "device", "Web service (free instance)", z=2.0)
+    ax.text(4.54, 8.83 + T, "listens on port 10000 · health check /up · sleeps after 15 idle minutes", fontsize=7.3, color=MUTED, va="center", zorder=2.1)
+    node(4.62, 4.25 + T, 4.95, 4.3, "execution environment", "Docker container  php:8.3-apache", logos=("docker",), size=9.0, z=3.0)
+    node(4.84, 4.5 + T, 4.5, 3.15, "execution environment", "Apache 2.4 + PHP 8.3", logos=("apache", "php"), size=9.0, z=4.0)
+    artifact(5.02, 5.6 + T, 4.14, 1.1, "Laravel 12 application", "routes, permissions, imports, SF1 and SF8", logos=("laravel",), z=5.0)
+    artifact(5.02, 4.65 + T, 2.0, 0.82, "public/build", "JS and CSS (cached 1 year)", z=5.0)
+    artifact(7.14, 4.65 + T, 2.02, 0.82, "start.sh", "migrate, seed, optimize", z=5.0)
+
+    node(10.75, 5.3 + T, 2.6, 3.2, "device", "Render PostgreSQL", logos=("postgresql",), z=2.0)
+    ax.text(10.89, 7.87 + T, "managed database (free plan)", fontsize=7.4, color=MUTED, va="center", zorder=2.1)
+    artifact(10.93, 5.5 + T, 2.24, 2.05, "djihs_enrollment", "PostgreSQL 16 database:\nlearners, enrollments,\nsections, users, role\npermissions, audit log,\nsessions and cache", z=3.0)
+
+    # Communication paths, each labelled with its protocol.
+    path([(3.32, 7.55 + T), (4.4, 7.55 + T)], "HTTPS (TLS)\nport 443", at=0.37, dy=0.3)
+    path([(9.97, 6.6 + T), (10.75, 6.6 + T)], "PostgreSQL\nTCP 5432", at=0.5, dy=0.3)
+
+    # GitHub, and how a new version arrives.
+    node(0.4, 3.7 + T, 2.75, 2.0, "device", "GitHub", logos=("github",))
+    artifact(0.58, 4.3 + T, 2.39, 0.78, "Source code", "main branch, Dockerfile, render.yaml", z=3.0)
+    ax.text(0.58, 4.08 + T, "each push to main: Render builds\nthe image and replaces the container", fontsize=7.0, color=MUTED, va="top", linespacing=1.2)
+    ax.add_patch(FancyArrowPatch((2.97, 4.7 + T), (4.62, 4.7 + T), arrowstyle="->,head_length=7,head_width=4", linestyle=(0, (4, 3)),
+                                 color=LINE, lw=LW, shrinkA=0, shrinkB=0, zorder=6))
+    label(ax, 3.7, 4.88 + T, "«deploy»", size=7.8)
+
+    # ---- One school computer ------------------------------------------------------------------
+    section(3.55, "Or: one school computer on the school network")
+    node(0.4, 0.75, 2.75, 2.4, "device", "Staff computers", logos=("monitor",))
+    ax.text(0.54, 2.2, "web browser on the same\nWi-Fi or wired network", fontsize=7.6, color=MUTED, va="top", linespacing=1.25)
+    node(4.15, 0.75, 9.4, 2.4, "device", "School computer (Windows, Mac or Linux)", z=1.0)
+    node(4.37, 0.95, 5.0, 1.45, "execution environment", "PHP 8.3 (Laravel Herd on Windows)", logos=("php",), size=8.8, z=2.0)
+    artifact(4.55, 1.08, 2.6, 0.62, "Laravel 12 application", None, logos=("laravel",), z=3.0)
+    artifact(9.85, 0.95, 3.5, 1.45, "database.sqlite", "the whole database in one file;\nback it up by copying it", logos=("sqlite",), z=2.0)
+    path([(3.32, 1.95), (4.15, 1.95)], "HTTP\nport 8000", dy=0.3)
+    path([(9.54, 1.6), (9.85, 1.6)], "", dy=0.0)
+
+    save(fig, "fig9-deployment", pdf)
+
+
 if __name__ == "__main__":
     with PdfPages(OUT / "DJIHS-system-diagrams.pdf") as pdf:
-        for draw in (architecture, context, dfd_level1, activity, states, erd, old_vs_new, use_cases):
+        for draw in (architecture, context, dfd_level1, activity, states, erd, old_vs_new, use_cases, deployment):
             draw(pdf)
     print("Wrote", sorted(p.name for p in OUT.iterdir() if p.suffix in {".png", ".svg", ".pdf"}))
