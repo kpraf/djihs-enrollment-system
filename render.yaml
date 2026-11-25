@@ -5,10 +5,9 @@ databases:
     databaseName: djihs_enrollment
     user: djihs
     region: singapore
-    # Free plans for trying it out. Render deletes a free database after 30
-    # days, so switch both to paid plans (for example basic-256mb and
-    # starter) before real enrollment data goes in.
-    plan: free
+    # Paid plans: a free database is deleted after 30 days and has no
+    # backups, and a workspace can have only one.
+    plan: basic-256mb
     postgresMajorVersion: "16"
 
 services:
@@ -16,7 +15,7 @@ services:
     name: djihs-enrollment
     runtime: docker
     region: singapore
-    plan: free
+    plan: starter
     healthCheckPath: /up
     envVars:
       - key: APP_NAME

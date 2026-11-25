@@ -220,12 +220,12 @@ Never commit real workbooks. `*.xlsx` is git-ignored for that reason.
 
 Everything below can be done from a phone, in the Render website.
 
-1. Sign in to [Render](https://render.com) with GitHub, choose **New > Blueprint**, pick this repository and the branch to deploy. [`render.yaml`](render.yaml) creates the web service and a Postgres database in the Singapore region.
+1. Sign in to [Render](https://render.com), choose **New > Blueprint**, and pick this repository, either from your connected GitHub or by pasting its public URL under **Public Git Repository**. With the public URL, pushes to `main` don't deploy by themselves: click **Manual Deploy**, or use the service's deploy hook. [`render.yaml`](render.yaml) creates the web service and a Postgres database in the Singapore region.
 2. When asked for **`ADMIN_PASSWORD`**, type a temporary password for the first administrator, or leave it blank to have one generated and shown in the deploy logs. The app key and the site address are set automatically.
 3. Deploy. The first build takes several minutes. Each deploy runs migrations and the seeders, which are safe to repeat, then starts Apache. See [`docker/start.sh`](docker/start.sh).
 4. Open the address Render shows, such as `https://djihs-enrollment.onrender.com`. Sign in as `admin` and change the password when prompted.
 
-The Blueprint starts on Render's **free** plans so you can try it at no cost. On the free plans, the site sleeps after about 15 minutes without visitors and takes up to a minute to wake. Render also deletes a free database after 30 days, and free databases have no backups. Before real learner records go in, switch the database and the web service to paid plans in the Render dashboard, or change `plan:` in `render.yaml`. Check Render's current pricing first.
+The Blueprint uses Render's paid **Starter** web service and **Basic 256 MB** database, so the site stays awake and the database is kept and backed up. To try it at no cost instead, change both `plan:` values in `render.yaml` to `free`: the site then sleeps after about 15 minutes without visitors, and Render deletes a free database after 30 days. A workspace can have only one free database. Check Render's current pricing first.
 
 ### Demo data on the live site
 
