@@ -220,7 +220,7 @@ Never commit real workbooks. `*.xlsx` is git-ignored for that reason.
 
 Everything below can be done from a phone, in the Render website.
 
-1. Sign in to [Render](https://render.com), choose **New > Blueprint**, and pick this repository, either from your connected GitHub or by pasting its public URL under **Public Git Repository**. With the public URL, pushes to `main` don't deploy by themselves: click **Manual Deploy**, or use the service's deploy hook. [`render.yaml`](render.yaml) creates the web service and a Postgres database in the Singapore region.
+1. Sign in to [Render](https://render.com), choose **New > Blueprint**, and pick this repository, either from your connected GitHub or by pasting its public URL under **Public Git Repository**. With the public URL, Render doesn't deploy on push by itself: copy the web service's **Settings > Deploy Hook** URL into a GitHub repository secret named `RENDER_DEPLOY_HOOK`, and [`deploy.yml`](.github/workflows/deploy.yml) deploys `main` each time its tests pass. [`render.yaml`](render.yaml) creates the web service and a Postgres database in the Singapore region.
 2. When asked for **`ADMIN_PASSWORD`**, type a temporary password for the first administrator, or leave it blank to have one generated and shown in the deploy logs. The app key and the site address are set automatically.
 3. Deploy. The first build takes several minutes. Each deploy runs migrations and the seeders, which are safe to repeat, then starts Apache. See [`docker/start.sh`](docker/start.sh).
 4. Open the address Render shows, such as `https://djihs-enrollment.onrender.com`. Sign in as `admin` and change the password when prompted.

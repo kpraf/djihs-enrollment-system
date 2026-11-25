@@ -1,0 +1,34 @@
+name: deploy
+
+# Deploys main to Render once the tests pass on it. The site is set up from
+# the public repository URL, so Render doesn't deploy on push by itself.
+# Needs the repository secret RENDER_DEPLOY_HOOK: the web service's
+# Settings > Deploy Hook URL in Render.
+on:
+  workflow_run:
+    workflows: [tests]
+    types: [completed]
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
+jobs:
+  render:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask Render to deploy
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::warning::RENDER_DEPLOY_HOOK is not set, so nothing was deployed. Add it under Settings > Secrets and variables > Actions."
+            exit 0
+          fi
+          curl --fail --silent --show-error --retry 3 -X POST "$HOOK" > /dev/null
+          echo "Render is deploying ${SHA::7}."
